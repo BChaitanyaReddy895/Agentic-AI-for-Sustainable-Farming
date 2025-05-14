@@ -1,1 +1,9 @@
 autogen==0.9.1a1
+pandas
+numpy
+scikit-learn
+statsmodels
+pulp
+langchain
+sqlite3
+tkinter
