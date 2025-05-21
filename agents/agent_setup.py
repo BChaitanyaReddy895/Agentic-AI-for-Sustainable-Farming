@@ -10,6 +10,7 @@ from farmer_advisor import FarmerAdvisor
 from market_Researcher import MarketResearcher
 from weather_Analyst import WeatherAnalyst
 from sustainability_Expert import SustainabilityExpert
+import re  # For parsing market prices from the message
 
 # Custom AssistantAgent class to override generate_reply
 class CustomAssistantAgent(AssistantAgent):
@@ -39,7 +40,7 @@ class CustomAssistantAgent(AssistantAgent):
                 'Consumer_Trend_Index': 65.0
             }
         }
-        self.sustainability_metrics = {}  # To store sustainability sub-scores
+        self.sustainability_metrics = {}  # To store overall sustainability scores
 
     def generate_reply(self, messages=None, sender=None):
         if messages is None and sender is not None:
@@ -92,12 +93,12 @@ class CustomAssistantAgent(AssistantAgent):
             )
             # Suggest a second crop based on crop preference
             crop_preference_crops = {
-                "grains": ["wheat", "barley"],
-                "vegetables": ["carrots", "potatoes"],
+                "grains": ["wheat", "corn", "rice", "soybean"],
+                "vegetables": ["carrots", "tomatoes"],
                 "fruits": ["apples", "oranges"]
             }
-            suggested_crops = crop_preference_crops.get(crop_preference, ["wheat", "barley"])
-            if recommended_crop.lower() not in suggested_crops:
+            suggested_crops = crop_preference_crops.get(crop_preference, ["wheat", "corn"])
+            if recommended_crop.lower() not in [crop.lower() for crop in suggested_crops]:
                 suggested_crops[0] = recommended_crop.lower()
             return f"Based on a {land_size}-hectare farm with {soil_type} soil and a preference for {crop_preference}, I suggest planting {suggested_crops[0]} and {suggested_crops[1]}."
         return "No farm inputs provided to suggest crops."
@@ -108,14 +109,11 @@ class CustomAssistantAgent(AssistantAgent):
             crops = farmer_response.split("suggest planting ")[1].split(" and ")
             crops = [crop.strip(".") for crop in crops]
             market_insights = []
-            self.market_predictions = {}  # Store predictions for scoring
             for crop in crops:
                 try:
                     predicted_price = self.market_researcher.forecast(crop, self.simulated_inputs['market_features'])[0]
-                    self.market_predictions[crop] = predicted_price
                     market_insights.append(f"{crop} is expected to have a market price of ${predicted_price:.2f} per ton")
                 except ValueError as e:
-                    self.market_predictions[crop] = 0.0
                     market_insights.append(f"No market data available for {crop}")
             return ", and ".join(market_insights) + "."
         return "No crops suggested to provide market insights."
@@ -131,51 +129,44 @@ class CustomAssistantAgent(AssistantAgent):
             crops = farmer_response.split("suggest planting ")[1].split(" and ")
             crops = [crop.strip(".") for crop in crops]
 
+            # Call evaluate to get the best crop (though we won't use this directly for scoring)
+            try:
+                best_crop = self.sustainability_expert.evaluate(crops)
+            except Exception as e:
+                return f"Error evaluating sustainability: {str(e)}"
+
+            # Compute sustainability scores for each crop manually
             sustainability_notes = []
             self.sustainability_metrics = {}
 
-            # Connect to SQLite database to compute sub-scores
-            with sqlite3.connect("Models/database/sustainable_farming.db") as conn:
-                for crop in crops:
-                    df = pd.read_sql("""
-                        SELECT Crop_Type, Sustainability_Score, Fertilizer_Usage_kg, Soil_Moisture
-                        FROM farmer_advisor
-                        WHERE Crop_Type = ?
-                    """, conn, params=(crop,))
+            for crop in crops:
+                # Access the sustainability data directly
+                data = self.sustainability_expert.sustainability_db.get(crop, {})
+                
+                # Compute the sustainability score using the same formula as in SustainabilityExpert.evaluate
+                avg_score = data.get('avg_score', 0)
+                avg_fertilizer = data.get('avg_fertilizer', 0)
+                avg_moisture = data.get('avg_moisture', 0)
+                
+                # Formula: 0.5 * avg_score + 0.3 * (1 - avg_fertilizer/100) + 0.2 * (avg_moisture/100)
+                # Note: avg_score is already in the range 0-100, so we normalize the final score to 0-1
+                sustainability_score = (
+                    0.5 * avg_score +
+                    0.3 * (1 - avg_fertilizer / 100) +
+                    0.2 * (avg_moisture / 100)
+                )
+                # Normalize to 0-1 (since avg_score is 0-100, the max raw score is 100 * 0.5 + 1 * 0.3 + 1 * 0.2 = 50.5)
+                normalized_score = sustainability_score / 50.5
+                
+                # Store the normalized score for CentralCoordinator
+                self.sustainability_metrics[crop] = {
+                    'sustainability_score': normalized_score
+                }
 
-                    if df.empty:
-                        sustainability_notes.append(f"No sustainability data available for {crop}.")
-                        self.sustainability_metrics[crop] = {'carbon_score': 0.5, 'water_score': 0.5, 'erosion_score': 0.5}
-                        continue
-
-                    # Compute sub-scores
-                    avg_sustainability = df['Sustainability_Score'].mean()
-                    avg_fertilizer = df['Fertilizer_Usage_kg'].mean()
-                    avg_moisture = df['Soil_Moisture'].mean()
-
-                    # Carbon footprint: Lower fertilizer usage = lower carbon footprint
-                    carbon_score = 1.0 - (avg_fertilizer / 100.0)
-                    carbon_score = max(0.0, min(1.0, carbon_score))
-
-                    # Water usage: Lower soil moisture requirement = better water usage score
-                    water_score = 1.0 - (avg_moisture / 100.0)
-                    water_score = max(0.0, min(1.0, water_score))
-
-                    # Soil erosion: Higher sustainability score = better erosion prevention
-                    erosion_score = avg_sustainability / 100.0
-                    erosion_score = max(0.0, min(1.0, erosion_score))
-
-                    self.sustainability_metrics[crop] = {
-                        'carbon_score': carbon_score,
-                        'water_score': water_score,
-                        'erosion_score': erosion_score
-                    }
-
-                    sustainability_notes.append(
-                        f"{crop} has a carbon footprint score of {carbon_score:.2f} (lower fertilizer usage), "
-                        f"a water usage score of {water_score:.2f} (based on soil moisture needs), "
-                        f"and a soil erosion prevention score of {erosion_score:.2f} (based on sustainability score)."
-                    )
+                # Report the raw score (0-50.5) in the output for clarity
+                sustainability_notes.append(
+                    f"{crop} has a predicted sustainability score of {sustainability_score:.2f}."
+                )
 
             return " ".join(sustainability_notes)
         return "No crops suggested to evaluate sustainability."
@@ -198,17 +189,23 @@ class CustomAssistantAgent(AssistantAgent):
         weather_info = agent_responses.get("WeatherAnalyst", "")
         sustainability_info = agent_responses.get("SustainabilityExpert", "")
 
+        # Parse market prices from MarketResearcher's response
+        market_predictions = {}
+        for crop in crops:
+            # Look for a pattern like "wheat is expected to have a market price of $272.19 per ton"
+            pattern = rf"{crop} is expected to have a market price of \$([\d\.]+) per ton"
+            match = re.search(pattern, market_info)
+            if match:
+                market_predictions[crop] = float(match.group(1))
+            else:
+                market_predictions[crop] = 0.0  # Default if price not found
+
         # Weighted scoring system
         weights = {
             "sustainability": 0.5,  # 50%
             "weather": 0.25,        # 25%
             "market": 0.15,         # 15% (profitability)
             "farmer": 0.1           # 10% (preferences)
-        }
-        sustainability_sub_weights = {
-            "carbon": 0.20,  # 20% of total score
-            "water": 0.15,   # 15% of total score
-            "erosion": 0.15  # 15% of total score
         }
         crop_scores = {}
 
@@ -218,7 +215,7 @@ class CustomAssistantAgent(AssistantAgent):
 
             # Market Score (Profitability): Based on predicted price
             market_score = 0.5  # Default
-            predicted_price = self.market_predictions.get(crop, 0.0)
+            predicted_price = market_predictions.get(crop, 0.0)
             market_score = min(predicted_price / 2000.0, 1.0)  # Normalize (assuming $2000/ton is max)
 
             # Weather Score (Suitability): Based on temperature and rainfall
@@ -230,13 +227,9 @@ class CustomAssistantAgent(AssistantAgent):
             rainfall_suitability = 1.0 if 30 <= rainfall <= 70 else 0.6
             weather_score = (temp_suitability + rainfall_suitability) / 2.0
 
-            # Sustainability Sub-Scores
-            metrics = self.sustainability_metrics.get(crop, {'carbon_score': 0.5, 'water_score': 0.5, 'erosion_score': 0.5})
-            sustainability_score = (
-                sustainability_sub_weights["carbon"] * metrics['carbon_score'] +
-                sustainability_sub_weights["water"] * metrics['water_score'] +
-                sustainability_sub_weights["erosion"] * metrics['erosion_score']
-            ) / (sustainability_sub_weights["carbon"] + sustainability_sub_weights["water"] + sustainability_sub_weights["erosion"])
+            # Sustainability Score: Use the overall predicted sustainability score
+            metrics = self.sustainability_metrics.get(crop, {'sustainability_score': 0.5})
+            sustainability_score = metrics['sustainability_score']
 
             # Total score
             total_score = (
@@ -247,9 +240,7 @@ class CustomAssistantAgent(AssistantAgent):
             )
             crop_scores[crop] = {
                 'total_score': total_score,
-                'carbon_score': metrics['carbon_score'],
-                'water_score': metrics['water_score'],
-                'erosion_score': metrics['erosion_score'],
+                'sustainability_score': sustainability_score,
                 'market_score': market_score,
                 'weather_score': weather_score,
                 'farmer_score': farmer_score
@@ -261,9 +252,9 @@ class CustomAssistantAgent(AssistantAgent):
         # Generate recommendation with rationale
         recommendations = []
         for crop, scores in ranked_crops:
-            market_rationale = f"high demand (${self.market_predictions.get(crop, 0.0):.2f}/ton)" if scores['market_score'] > 0.7 else "moderate demand"
+            market_rationale = f"high demand (${market_predictions.get(crop, 0.0):.2f}/ton)" if scores['market_score'] > 0.7 else f"moderate demand (${market_predictions.get(crop, 0.0):.2f}/ton)"
             weather_rationale = "suitable weather" if scores['weather_score'] > 0.7 else "challenging weather"
-            sustainability_rationale = "sustainable" if scores['carbon_score'] > 0.7 and scores['water_score'] > 0.7 and scores['erosion_score'] > 0.7 else "moderately sustainable"
+            sustainability_rationale = "sustainable" if scores['sustainability_score'] > 0.7 else "moderately sustainable"
             rationale = f"Plant {crop}: {market_rationale}, {weather_rationale}, {sustainability_rationale} (Score: {scores['total_score']:.2f})"
             recommendations.append(rationale)
 
@@ -271,7 +262,8 @@ class CustomAssistantAgent(AssistantAgent):
         final_recommendation = "Recommendations:\n" + "\n".join(recommendations) + f"\n\nDetails:\nMarket Insights: {market_info}\nWeather Forecast: {weather_info}\nSustainability Notes: {sustainability_info}"
 
         # Store in SQLite
-        with sqlite3.connect("Models/database/sustainable_farming.db") as conn:
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
+        with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS recommendations (
@@ -279,23 +271,19 @@ class CustomAssistantAgent(AssistantAgent):
                     crop TEXT,
                     score REAL,
                     rationale TEXT,
-                    carbon_score REAL,
-                    water_score REAL,
-                    erosion_score REAL,
+                    sustainability_score REAL,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             for crop, scores in ranked_crops:
                 cursor.execute(
-                    "INSERT INTO recommendations (crop, score, rationale, carbon_score, water_score, erosion_score) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO recommendations (crop, score, rationale, sustainability_score) "
+                    "VALUES (?, ?, ?, ?)",
                     (
                         crop,
                         scores['total_score'],
                         f"Plant {crop}: high demand, suitable weather, sustainable",
-                        scores['carbon_score'],
-                        scores['water_score'],
-                        scores['erosion_score']
+                        scores['sustainability_score']
                     )
                 )
             conn.commit()
@@ -346,7 +334,7 @@ def custom_select_speaker(last_speaker, groupchat):
 group_chat = GroupChat(
     agents=[farmer_advisor, market_researcher, weather_analyst, sustainability_expert, central_coordinator],
     messages=[],
-    max_round=5
+    max_round=6  # Already set to 6 to allow CentralCoordinator to respond
 )
 
 group_chat.select_speaker = custom_select_speaker
@@ -372,4 +360,4 @@ def run_agent_collaboration(land_size, soil_type, crop_preference):
     )
 
 if __name__ == "__main__":
-    run_agent_collaboration(land_size=5, soil_type="Sandy", crop_preference="Grains")
+    run_agent_collaboration(land_size=8, soil_type="Loamy", crop_preference="Grains")
