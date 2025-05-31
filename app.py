@@ -45,60 +45,208 @@ Welcome to the Sustainable Farming Recommendation System!
 Please select your farm's details below to get personalized crop recommendations based on market trends, weather forecasts, and sustainability scores.
 """, unsafe_allow_html=True)
 
-# Dropdown menus for user inputs
-st.subheader("Farm Details", divider="green")
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+    /* Modern color scheme and gradients */
+    :root {
+        --primary-color: #2E7D32;
+        --secondary-color: #1565C0;
+        --accent-color: #FF6D00;
+        --background-color: #F5F7F9;
+    }
+    
+    .main {
+        background-color: var(--background-color);
+        padding: 2rem;
+    }
+    
+    /* Enhanced button styling */
+    .stButton>button {
+        width: 100%;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem;
+        font-weight: 600;
+        transition: transform 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+    
+    /* Modern recommendation box */
+    .recommendation-box {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-left: 6px solid #4CAF50;
+        padding: 25px;
+        border-radius: 15px;
+        margin: 20px 0;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .recommendation-box:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Enhanced headers */
+    .score-header {
+        text-align: center;
+        color: #2C3E50;
+        margin-bottom: 2rem;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* Custom radio buttons */
+    .stRadio>label {
+        background-color: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin: 5px;
+    }
+    
+    /* Custom selectbox */
+    .stSelectbox {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* File uploader styling */
+    .stFileUploader {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px dashed #4CAF50;
+    }
+    
+    /* Success message styling */
+    .stSuccess {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+    }
+    
+    /* Warning message styling */
+    .stWarning {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+    }
+    
+    /* Dataframe styling */
+    .dataframe {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Custom divider */
+    hr {
+        border: none;
+        height: 3px;
+        background: linear-gradient(90deg, #4CAF50 0%, #1565C0 100%);
+        margin: 2rem 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Land Size (in hectares)
-land_size = st.selectbox(
-    "Select your farm size (hectares):",
-    options=[1, 2, 5, 8, 10, 15, 20],
-    index=3,  # Default to 8 hectares
-    help="Choose the size of your farm in hectares."
+# Update the header section with a more modern look
+st.markdown("""
+<div class='recommendation-box' style='background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); color: white;'>
+    <h2 style='color: white; font-size: 2.5em; margin-bottom: 20px;'>🌾 Smart Farming Assistant</h2>
+    <p style='font-size: 1.2em; margin-bottom: 15px;'>Get AI-powered recommendations based on:</p>
+    <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;'>
+        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>
+            📊 Market Analysis
+        </div>
+        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>
+            🌤️ Weather Patterns
+        </div>
+        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>
+            🌱 Sustainability Metrics
+        </div>
+        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>
+            🌍 Environmental Impact
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Update the columns section
+col1, col2 = st.columns(2, gap="large")
+
+with col1:
+    st.markdown("""
+        <div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+            <h3 style='color: #2E7D32;'>📏 Farm Details</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown("### 📏 Farm Details")
+    land_size = st.select_slider(
+        "Farm size (hectares)",
+        options=[1, 2, 5, 8, 10, 15, 20],
+        value=8,
+        help="Slide to select your farm size"
+    )
+
+with col2:
+    st.markdown("""
+        <div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+            <h3 style='color: #2E7D32;'>🌱 Crop Preference</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown("### 🌱 Crop Preference")
+    crop_preference = st.selectbox(
+        "What would you like to grow?",
+        options=["Grains", "Vegetables", "Fruits"],
+        help="Choose your preferred crop type"
+    )
+
+# Soil type section with improved UI
+st.markdown("### 🗺️ Soil Analysis")
+soil_option = st.radio(
+    "How would you like to determine your soil type?",
+    ("📸 Upload a photo", "📝 Manual selection"),
+    horizontal=True
 )
 
-# Soil Type: Photo upload or dropdown
-st.subheader("Soil Type")
-soil_option = st.radio("How would you like to specify the soil type?", ("Upload a photo", "Select from dropdown"))
-
 soil_type = None
-if soil_option == "Upload a photo":
-    soil_photo = st.file_uploader("Upload a photo of the soil", type=["jpg", "jpeg", "png"])
+if soil_option == "📸 Upload a photo":
+    soil_photo = st.file_uploader("Upload soil photo", type=["jpg", "jpeg", "png"])
     if soil_photo:
         soil_type = analyze_soil_from_photo(soil_photo)
         if soil_type:
-            st.success(f"Detected soil type: {soil_type}")
+            st.success(f"✅ Detected soil type: {soil_type}")
         else:
-            st.warning("Could not determine soil type from the photo. Please select from the dropdown.")
+            st.warning("⚠️ Could not determine soil type from photo. Please select manually.")
             soil_type = st.selectbox(
-                "Select your soil type:",
+                "Select soil type",
                 options=["Loamy", "Sandy", "Clay"],
-                index=0,  # Default to Loamy
-                help="Select the type of soil on your farm."
+                help="Choose your soil type"
             )
 else:
     soil_type = st.selectbox(
-        "Select your soil type:",
+        "Select soil type",
         options=["Loamy", "Sandy", "Clay"],
-        index=0,  # Default to Loamy
-        help="Select the type of soil on your farm."
+        help="Choose your soil type"
     )
 
-# Crop Preference: Dropdown only
-crop_preference = st.selectbox(
-    "Select your crop preference:",
-    options=["Grains", "Vegetables", "Fruits"],
-    index=0,  # Default to Grains
-    help="Choose the type of crops you prefer to grow."
-)
-
-# Initialize database if it doesn't exist
-db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
-if not os.path.exists(db_path):
-    initialize_db()
-
-# Button to generate recommendation
-if st.button("Get Recommendation", type="primary"):
-    with st.spinner("Generating recommendation..."):
+# Centered get recommendation button
+st.markdown("<br>", unsafe_allow_html=True)
+if st.button("💡 Generate Smart Recommendation", type="primary"):
+    with st.spinner("🔄 Analyzing your farm conditions..."):
         try:
             # Call the backend function to get the recommendation and chart data
             result = run_agent_collaboration(
@@ -106,21 +254,17 @@ if st.button("Get Recommendation", type="primary"):
                 soil_type=soil_type,
                 crop_preference=crop_preference
             )
-            # Replace newlines with HTML line breaks outside the f-string
-            formatted_recommendation = result['recommendation'].replace('\n', '<br>')
-            # Display the recommendation
-            st.subheader("Your Farming Recommendation", divider="green")
-            st.markdown(
-                f"""
-                <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; line-height: 1.6;'>
-                    {formatted_recommendation}
+            
+            # Display recommendation in a nice box
+            st.markdown("### 🎯 Your Personalized Recommendation")
+            st.markdown(f"""
+                <div class='recommendation-box'>
+                    {result['recommendation'].replace('\n', '<br>')}
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
+            """, unsafe_allow_html=True)
 
-            # Display pie charts for each crop using Plotly
-            st.subheader("Score Distribution", divider="green")
+            # Display charts with improved styling
+            st.markdown("<h3 class='score-header'>📊 Detailed Score Analysis</h3>", unsafe_allow_html=True)
             for chart in result['chart_data']:
                 crop = chart['crop']
                 labels = chart['labels']
@@ -161,11 +305,13 @@ if st.button("Get Recommendation", type="primary"):
                 st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
+            st.error(f"⚠️ An error occurred: {str(e)}")
 
-# Display past recommendations
+# Past recommendations with improved styling
+st.markdown("<h3 class='score-header'>📜 Previous Recommendations</h3>", unsafe_allow_html=True)
 st.subheader("Past Recommendations", divider="green")
 try:
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'farm_recommendations.db')
     with sqlite3.connect(db_path) as conn:
         past_recommendations = pd.read_sql("SELECT * FROM recommendations ORDER BY timestamp DESC LIMIT 5", conn)
     if not past_recommendations.empty:
@@ -190,11 +336,11 @@ try:
 except Exception as e:
     st.warning(f"Could not load past recommendations: {str(e)}")
 
-# Footer with dynamic timestamp
-current_time = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p IST")
-st.markdown(f"""
+# Footer with improved styling
+st.markdown("""
 ---
-
-Built with Streamlit for sustainable farming recommendations.  
-*Generated on {current_time}*
-""", unsafe_allow_html=True)
+<div style='text-align: center; color: #666;'>
+    <p>Built with ❤️ for sustainable farming</p>
+    <p><small>Last updated: {}</small></p>
+</div>
+""".format(datetime.now().strftime("%B %d, %Y at %I:%M %p")), unsafe_allow_html=True)
