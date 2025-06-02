@@ -8,6 +8,7 @@ from agents.init_db import initialize_db  # Import initialize_db
 import plotly.graph_objects as go  # Import Plotly for chart rendering
 from PIL import Image
 import numpy as np
+import re  # For parsing recommendation text
 
 # Add the 'agents' directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
@@ -24,17 +25,73 @@ def analyze_soil_from_photo(uploaded_file):
         avg_color = np.mean(image_array, axis=(0, 1))
         r, g, b = avg_color
 
-        # Simple color-based soil classification (rough approximations)
-        if r > 150 and g < 100 and b < 100:  # Reddish soil
+        # Define typical RGB ranges for soil types (more inclusive thresholds)
+        # Clay: Reddish-brown (higher red, moderate green/blue)
+        if r > 120 and g < 110 and b < 110 and r > g and r > b:
             return "Clay"
-        elif r > 100 and g > 100 and b < 50:  # Yellowish soil
+        # Sandy: Yellowish (higher red and green, lower blue)
+        elif r > 90 and g > 90 and b < 80 and abs(r - g) < 30:
             return "Sandy"
-        elif r < 100 and g < 100 and b < 100:  # Dark soil
+        # Loamy: Dark brown to black (lower values for all, relatively balanced)
+        elif r < 120 and g < 120 and b < 120 and abs(r - g) < 20 and abs(g - b) < 20:
             return "Loamy"
-        else:
-            return None  # Unable to determine
-    except Exception:
+
+        # Fallback: Classify based on the closest match using a simple distance metric
+        # Define typical RGB centers for each soil type
+        clay_rgb = (150, 80, 80)    # Reddish-brown
+        sandy_rgb = (140, 120, 60)  # Yellowish
+        loamy_rgb = (80, 70, 60)    # Dark brown
+
+        # Calculate Euclidean distance to each soil type's RGB center
+        def rgb_distance(rgb1, rgb2):
+            return np.sqrt(sum((a - b) ** 2 for a, b in zip(rgb1, rgb2)))
+
+        distances = {
+            "Clay": rgb_distance((r, g, b), clay_rgb),
+            "Sandy": rgb_distance((r, g, b), sandy_rgb),
+            "Loamy": rgb_distance((r, g, b), loamy_rgb)
+        }
+
+        # Return the soil type with the smallest distance
+        closest_soil = min(distances, key=distances.get)
+        return closest_soil
+
+    except Exception as e:
+        st.error(f"Error processing image: {str(e)}")
         return None
+
+# Function to parse recommendation text and extract scores for visualization
+def parse_recommendation(recommendation_text):
+    crops_data = []
+    # Split recommendation into individual crop entries
+    crop_entries = recommendation_text.split("Plant ")[1:]  # Skip the "Recommendations:" header
+    for entry in crop_entries:
+        # Extract crop name
+        crop_match = re.match(r"(\w+):", entry)
+        if not crop_match:
+            continue
+        crop = crop_match.group(1)
+        
+        # Extract scores using regex
+        scores = {
+            "Market Score": float(re.search(r"market score: ([\d.]+)", entry).group(1)),
+            "Weather Suitability": float(re.search(r"weather suitability: ([\d.]+)", entry).group(1)),
+            "Sustainability": float(re.search(r"sustainability: ([\d.]+)", entry).group(1)),
+            "Carbon Footprint": float(re.search(r"carbon footprint: ([\d.]+)", entry).group(1)),
+            "Water": float(re.search(r"water: ([\d.]+)", entry).group(1)),
+            "Erosion": float(re.search(r"erosion: ([\d.]+)", entry).group(1)),
+            "Final Score": float(re.search(r"Final Score: ([\d.]+)", entry).group(1))
+        }
+        # Extract market price
+        price_match = re.search(r"\(\$([\d.]+)/ton\)", entry)
+        market_price = float(price_match.group(1)) if price_match else 0.0
+        
+        crops_data.append({
+            "crop": crop,
+            "scores": scores,
+            "market_price": market_price
+        })
+    return crops_data
 
 # Streamlit app
 st.set_page_config(page_title="Sustainable Farming Recommendation System", page_icon="🌾")
@@ -243,6 +300,11 @@ else:
         help="Choose your soil type"
     )
 
+# Initialize database if it doesn't exist
+db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
+if not os.path.exists(db_path):
+    initialize_db()
+
 # Centered get recommendation button
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("💡 Generate Smart Recommendation", type="primary"):
@@ -255,15 +317,66 @@ if st.button("💡 Generate Smart Recommendation", type="primary"):
                 crop_preference=crop_preference
             )
             
-            # Display recommendation in a nice box
+            # Parse the recommendation text to extract scores for visualization
+            crops_data = parse_recommendation(result['recommendation'])
+            
+            # Display recommendation as poll-type visuals
             st.markdown("### 🎯 Your Personalized Recommendation")
+            
+            # Display details (Market Insights, Weather Forecast, Sustainability Notes)
+            details = result['recommendation'].split("Details:")[1].strip()
             st.markdown(f"""
                 <div class='recommendation-box'>
-                    {result['recommendation'].replace('\n', '<br>')}
+                    <strong>Details:</strong><br>
+                    {details.replace('\n', '<br>')}
                 </div>
             """, unsafe_allow_html=True)
 
-            # Display charts with improved styling
+            # Create a horizontal bar chart for each crop
+            for crop_data in crops_data:
+                crop = crop_data['crop']
+                scores = crop_data['scores']
+                market_price = crop_data['market_price']
+                
+                # Prepare data for the bar chart
+                labels = list(scores.keys())
+                values = [score * 100 for score in scores.values()]  # Scale to 0-100 for better visualization
+                
+                # Create a Plotly horizontal bar chart
+                fig = go.Figure(
+                    data=[
+                        go.Bar(
+                            y=labels,
+                            x=values,
+                            orientation='h',
+                            marker=dict(
+                                color=[
+                                    "#4caf50",  # Market Score (Green)
+                                    "#2196f3",  # Weather Suitability (Blue)
+                                    "#ff9800",  # Sustainability (Orange)
+                                    "#607d8b",  # Carbon Footprint (Gray)
+                                    "#00bcd4",  # Water (Cyan)
+                                    "#795548",  # Erosion (Brown)
+                                    "#e91e63"   # Final Score (Pink)
+                                ]
+                            ),
+                            text=[f"{val:.1f}%" for val in values],
+                            textposition='auto'
+                        )
+                    ]
+                )
+                fig.update_layout(
+                    title=f"{crop.capitalize()} Scores (Market Price: ${market_price:.2f}/ton)",
+                    title_x=0.5,  # Center the title
+                    xaxis_title="Score (%)",
+                    yaxis_title="Category",
+                    xaxis=dict(range=[0, 100]),  # Scores range from 0 to 100%
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    height=400
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Display charts with improved styling (keep the existing pie charts)
             st.markdown("<h3 class='score-header'>📊 Detailed Score Analysis</h3>", unsafe_allow_html=True)
             for chart in result['chart_data']:
                 crop = chart['crop']
@@ -311,7 +424,6 @@ if st.button("💡 Generate Smart Recommendation", type="primary"):
 st.markdown("<h3 class='score-header'>📜 Previous Recommendations</h3>", unsafe_allow_html=True)
 st.subheader("Past Recommendations", divider="green")
 try:
-    db_path = os.path.join(os.path.dirname(__file__), 'database', 'farm_recommendations.db')
     with sqlite3.connect(db_path) as conn:
         past_recommendations = pd.read_sql("SELECT * FROM recommendations ORDER BY timestamp DESC LIMIT 5", conn)
     if not past_recommendations.empty:
@@ -337,10 +449,11 @@ except Exception as e:
     st.warning(f"Could not load past recommendations: {str(e)}")
 
 # Footer with improved styling
-st.markdown("""
+current_time = datetime.now().strftime("%B %d, %Y at %I:%M %p IST")
+st.markdown(f"""
 ---
 <div style='text-align: center; color: #666;'>
     <p>Built with ❤️ for sustainable farming</p>
-    <p><small>Last updated: {}</small></p>
+    <p><small>Last updated: {current_time}</small></p>
 </div>
-""".format(datetime.now().strftime("%B %d, %Y at %I:%M %p")), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
