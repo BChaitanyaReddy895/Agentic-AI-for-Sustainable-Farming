@@ -163,6 +163,7 @@ if soil_option == "📸 Upload a photo":
         soil_type = analyze_soil_from_photo(soil_photo)
         if soil_type:
             st.success(f"✅ Detected soil type: {soil_type}")
+            st.success(f"✅ Detected soil type: {soil_type}")
         else:
             st.warning("⚠️ Could not determine soil type from photo. Please select manually.")
             soil_type = st.selectbox("Select soil type", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
@@ -371,6 +372,10 @@ if st.sidebar.button("Test Voice Output", key="voice_output_btn_sidebar"):
 current_time = datetime.now().strftime("%B %d, %Y at %I:%M %p IST")
 st.markdown(f"""
 ---
+<div style='text-align: center; color: #666;'>
+    <p>Built with ❤️ for sustainable farming</p>
+    <p><small>Last updated: {current_time}</small></p>
+</div>
 <div style='text-align: center; color: #666;'>
     <p>Built with ❤️ for sustainable farming</p>
     <p><small>Last updated: {current_time}</small></p>
