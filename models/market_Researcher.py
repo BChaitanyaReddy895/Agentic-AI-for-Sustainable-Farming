@@ -55,9 +55,13 @@ class MarketResearcher:
                 model.fit(X_train, y_train)
 
                 model_name = product.strip().lower().replace(" ", "_")
-                joblib.dump(model, f"models/market_model_{model_name}.pkl")
-                joblib.dump(le, f"models/market_encoder_{model_name}.pkl")
-                joblib.dump(scaler, f"models/market_scaler_{model_name}.pkl")
+                # Ensure the models directory exists
+                # Always use the absolute path to the main models directory
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
+                os.makedirs(base_dir, exist_ok=True)
+                joblib.dump(model, os.path.join(base_dir, f"market_model_{model_name}.pkl"))
+                joblib.dump(le, os.path.join(base_dir, f"market_encoder_{model_name}.pkl"))
+                joblib.dump(scaler, os.path.join(base_dir, f"market_scaler_{model_name}.pkl"))
 
     def forecast(self, product, input_features):
         model_name = product.strip().lower().replace(" ", "_")

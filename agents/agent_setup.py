@@ -1,3 +1,4 @@
+
 import sys
 import os
 # Add the 'models' directory to the Python path
@@ -19,7 +20,8 @@ class CustomAssistantAgent(AssistantAgent):
         # Instantiate the agent classes
         self.farmer_advisor = FarmerAdvisor()
         self.market_researcher = MarketResearcher()
-        self.weather_analyst = WeatherAnalyst()
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
+        self.weather_analyst = WeatherAnalyst(db_path=db_path)
         self.sustainability_expert = SustainabilityExpert()
         # Simulated farm and market inputs
         self.simulated_inputs = {

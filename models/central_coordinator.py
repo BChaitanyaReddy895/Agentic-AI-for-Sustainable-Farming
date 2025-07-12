@@ -4,23 +4,44 @@ from Models.market_Researcher import MarketResearcher
 from Models.weather_Analyst import WeatherAnalyst
 from Models.sustainability_Expert import SustainabilityExpert
 import matplotlib.pyplot as plt
+from Models import weather_api
+from Models.pest_disease_predictor import PestDiseasePredictor
 
 
 class CentralCoordinator:
     def __init__(self):
-        db_path = "Models/database/sustainable_farming.db"
+        db_path = "database/sustainable_farming.db"
         self.farmer_advisor = FarmerAdvisor(db_path=db_path)
         self.market_researcher = MarketResearcher(db_path=db_path)
         self.weather_analyst = WeatherAnalyst(db_path=db_path)
         self.sustainability_expert = SustainabilityExpert(db_path=db_path)
+        self.pest_predictor = PestDiseasePredictor()
 
     def generate_recommendation(self, soil_ph, soil_moisture, temperature, rainfall,
-                                fertilizer, pesticide, crop_yield):
+                                fertilizer, pesticide, crop_yield, city_name=None):
+        warnings = []
+        # If city_name is provided, fetch real-time weather
+        if city_name:
+            try:
+                weather = weather_api.get_current_weather(city_name)
+                temperature = weather['temperature']
+                rainfall = weather['rainfall']
+            except Exception as e:
+                warnings.append(f"Weather API error: {e}")
 
         # 1. Recommend crop using FarmerAdvisor
         crop = self.farmer_advisor.recommend(
             soil_ph, soil_moisture, temperature, rainfall,
             fertilizer, pesticide, crop_yield
+        )
+
+        # Pest/Disease prediction
+        pest_advice = self.pest_predictor.predict(
+            crop_type=crop,
+            soil_ph=soil_ph,
+            soil_moisture=soil_moisture,
+            temperature=temperature,
+            rainfall=rainfall
         )
 
         # 2. Prepare dummy input for MarketResearcher
@@ -76,6 +97,48 @@ class CentralCoordinator:
             0.10 * sustainability_scores['erosion']
         )
 
+        # 8. Enhanced Weather Warnings
+        if city_name:
+            # General weather hazards
+            if temperature > 40:
+                warnings.append("Warning: High temperature detected! Crop stress and yield loss possible.")
+            if rainfall > 50:
+                warnings.append("Warning: Heavy rainfall detected! Risk of flooding and waterlogging.")
+            if temperature < 5:
+                warnings.append("Warning: Low temperature detected! Frost risk and stunted growth possible.")
+            if rainfall < 5:
+                warnings.append("Warning: Very low rainfall detected! Drought risk and irrigation needed.")
+            # Crop-specific suitability (example ranges, can be refined per crop)
+            crop_temp_ranges = {
+                'Wheat': (10, 25),
+                'Rice': (20, 35),
+                'Corn': (15, 35),
+                'Soybeans': (15, 30),
+                'Cotton': (20, 35)
+            }
+            crop_rain_ranges = {
+                'Wheat': (30, 90),
+                'Rice': (100, 200),
+                'Corn': (50, 120),
+                'Soybeans': (50, 100),
+                'Cotton': (50, 100)
+            }
+            temp_range = crop_temp_ranges.get(crop)
+            rain_range = crop_rain_ranges.get(crop)
+            if temp_range:
+                if not (temp_range[0] <= temperature <= temp_range[1]):
+                    warnings.append(f"Warning: Real-time temperature ({temperature}°C) is outside the optimal range for {crop} ({temp_range[0]}–{temp_range[1]}°C).")
+            if rain_range:
+                if not (rain_range[0] <= rainfall <= rain_range[1]):
+                    warnings.append(f"Warning: Real-time rainfall ({rainfall} mm) is outside the optimal range for {crop} ({rain_range[0]}–{rain_range[1]} mm).")
+            # Severe weather
+            if temperature > 45:
+                warnings.append("Severe Alert: Extreme heat! Crop failure likely.")
+            if temperature < 0:
+                warnings.append("Severe Alert: Freezing conditions! Crop loss likely.")
+            if rainfall > 100:
+                warnings.append("Severe Alert: Torrential rain! Flooding and root rot risk.")
+
         result = {
             'Recommended Crop': crop,
             'Market Score': round(market_score, 2),
@@ -86,7 +149,11 @@ class CentralCoordinator:
             'Erosion Score': round(sustainability_scores['erosion'], 2),
             'Final Score': round(final_score, 2),
             'Predicted Temperature': round(predicted_temp, 2),
-            'Predicted Rainfall': round(predicted_rain, 2)
+            'Predicted Rainfall': round(predicted_rain, 2),
+            'Real-Time Temperature': round(temperature, 2) if city_name else None,
+            'Real-Time Rainfall': round(rainfall, 2) if city_name else None,
+            'Warnings': warnings,
+            'Pest/Disease Advice': pest_advice
         }
         return result
 
@@ -126,7 +193,8 @@ if __name__ == "__main__":
         rainfall=60,
         fertilizer=20,
         pesticide=5,
-        crop_yield=3.5
+        crop_yield=3.5,
+        city_name="New York"
     )
 
     print("\n --- Final Recommendation ---")
