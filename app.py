@@ -1,16 +1,4 @@
-
-
 import streamlit as st
-
-# --- Language Selection (for page config) ---
-LANGUAGES = {
-    'English': {}, 'Telugu': {}, 'Kannada': {}, 'Hindi': {}, 'French': {}, 'Spanish': {}, 'Tamil': {}, 'Malayalam': {}, 'Marathi': {}, 'Konkani': {}, 'Urdu': {}
-}
-lang = st.sidebar.selectbox("🌐 Select Language / భాషను ఎంచుకోండి", list(LANGUAGES.keys()), index=0)
-# Set page config as the very first Streamlit command
-st.set_page_config(page_title=lang, page_icon="🌾")
-
-# Now import the rest
 import sys
 import os
 import sqlite3
@@ -21,6 +9,15 @@ import plotly.graph_objects as go
 from PIL import Image
 import numpy as np
 import re
+from crop_rotation_planner import CropRotationPlanner
+from fertilizer_optimizer import FertilizerOptimizer
+from agents.agent_setup import run_agent_collaboration
+from models.weather_Analyst import WeatherAnalyst
+from models.pest_disease_predictor import PestDiseasePredictor
+
+# Initialize session state for language if not already set
+if 'lang' not in st.session_state:
+    st.session_state.lang = 'English'
 
 # --- Multilingual Support ---
 LANGUAGES = {
@@ -40,7 +37,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Crop Rotation Planner",
         'fertilizer_optimization': "🧪 Fertilizer Optimization Calculator",
         'previous_recommendations': "📜 Previous Recommendations",
-        # 'voice_assistant': "🎤 Voice Assistant",  # Removed voice feature
         'built_with': "Built with ❤️ for sustainable farming",
         'last_updated': "Last updated: "
     },
@@ -60,11 +56,9 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 పంట మార్పిడి ప్రణాళిక",
         'fertilizer_optimization': "🧪 ఎరువు ఆప్టిమైజేషన్ కాలిక్యులేటర్",
         'previous_recommendations': "📜 గత సూచనలు",
-        # 'voice_assistant': "🎤 వాయిస్ అసిస్టెంట్",  # Removed voice feature
         'built_with': "సస్టైనబుల్ వ్యవసాయం కోసం ప్రేమతో నిర్మించబడింది",
         'last_updated': "చివరిగా నవీకరించబడింది: "
-    }
-    ,
+    },
     'Kannada': {
         'title': "ಸ್ಥಿರ ಕೃಷಿ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",
         'farm_details': "📏 ಕೃಷಿ ವಿವರಗಳು",
@@ -81,7 +75,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 ಬೆಳೆ ಪರಿವರ್ತನೆ ಯೋಜನೆ",
         'fertilizer_optimization': "🧪 ರಸಗೊಬ್ಬರ ಆಪ್ಟಿಮೈಸೇಶನ್ ಕ್ಯಾಲ್ಕ್ಯುಲೇಟರ್",
         'previous_recommendations': "📜 ಹಿಂದಿನ ಶಿಫಾರಸುಗಳು",
-        # 'voice_assistant': "🎤 ಧ್ವನಿ ಸಹಾಯಕ",  # Removed voice feature
         'built_with': "ಸ್ಥಿರ ಕೃಷಿಗಾಗಿ ಪ್ರೀತಿಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ",
         'last_updated': "ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: "
     },
@@ -101,7 +94,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 फसल चक्र योजना",
         'fertilizer_optimization': "🧪 उर्वरक अनुकूलन कैलकुलेटर",
         'previous_recommendations': "📜 पिछली सिफारिशें",
-        # 'voice_assistant': "🎤 वॉयस असिस्टेंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंग के लिए प्यार से बनाया गया",
         'last_updated': "अंतिम बार अपडेट किया गया: "
     },
@@ -121,7 +113,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificateur de rotation des cultures",
         'fertilizer_optimization': "🧪 Calculateur d'optimisation des engrais",
         'previous_recommendations': "📜 Recommandations précédentes",
-        # 'voice_assistant': "🎤 Assistant vocal",  # Removed voice feature
         'built_with': "Construit avec ❤️ pour une agriculture durable",
         'last_updated': "Dernière mise à jour: "
     },
@@ -141,7 +132,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificador de rotación de cultivos",
         'fertilizer_optimization': "🧪 Calculadora de optimización de fertilizantes",
         'previous_recommendations': "📜 Recomendaciones anteriores",
-        # 'voice_assistant': "🎤 Asistente de voz",  # Removed voice feature
         'built_with': "Construido con ❤️ para la agricultura sostenible",
         'last_updated': "Última actualización: "
     },
@@ -161,7 +151,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 பயிர் சுழற்சி திட்டம்",
         'fertilizer_optimization': "🧪 உரம் மேம்பாட்டு கணிப்பான்",
         'previous_recommendations': "📜 முந்தைய பரிந்துரைகள்",
-        # 'voice_assistant': "🎤 குரல் உதவியாளர்",  # Removed voice feature
         'built_with': "திடமான விவசாயத்திற்கு அன்புடன் உருவாக்கப்பட்டது",
         'last_updated': "கடைசியாக புதுப்பிக்கப்பட்டது: "
     },
@@ -181,7 +170,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 വിള ചക്ര പദ്ധതി",
         'fertilizer_optimization': "🧪 വളം ഓപ്റ്റിമൈസേഷൻ കാൽക്കുലേറ്റർ",
         'previous_recommendations': "📜 മുമ്പത്തെ ശുപാർശകൾ",
-        # 'voice_assistant': "🎤 വോയ്സ് അസിസ്റ്റന്റ്",  # Removed voice feature
         'built_with': "സ്ഥിരമായ കൃഷിക്ക് സ്നേഹത്തോടെ നിർമ്മിച്ചു",
         'last_updated': "അവസാനമായി പുതുക്കിയത്: "
     },
@@ -201,7 +189,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "शाश्वत शेतीसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -221,7 +208,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंगसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -241,31 +227,19 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 فصل کی گردش کا منصوبہ",
         'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
         'previous_recommendations': "📜 پچھلی سفارشات",
-        # 'voice_assistant': "🎤 وائس اسسٹنٹ",  # Removed voice feature
         'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
         'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
     }
-    # Add more languages here
 }
 
-
-
-# Now get the translation dictionary for the selected language
-T = LANGUAGES[lang]
+# Get the translation dictionary for the selected language
+T = LANGUAGES[st.session_state.lang]
 
 # Set page config as the first Streamlit command
 st.set_page_config(page_title=T['title'], page_icon="🌾")
 
 # Add the 'agents' directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
-
-
-# Import the run_agent_collaboration function from agent_setup
-from agents.agent_setup import run_agent_collaboration
-
-# Import WeatherAnalyst and PestDiseasePredictor
-from models.weather_Analyst import WeatherAnalyst
-from models.pest_disease_predictor import PestDiseasePredictor
 
 # --- Soil Analysis Function ---
 def analyze_soil_from_photo(uploaded_file):
@@ -298,8 +272,6 @@ def analyze_soil_from_photo(uploaded_file):
     except Exception as e:
         st.error(f"Error processing image: {str(e)}")
         return None
-
-
 
 # --- Recommendation Parsing ---
 def parse_recommendation(recommendation_text):
@@ -348,6 +320,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- Language Selection ---
+st.selectbox(
+    "Select Language",
+    options=list(LANGUAGES.keys()),
+    key="lang",
+    help="Choose your preferred language"
+)
+
 # --- Main Content ---
 st.markdown(f"""
 <div class='recommendation-box' style='background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); color: white;'>
@@ -372,7 +352,6 @@ with col2:
     st.markdown(f"<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>{T['crop_preference']}</h3></div>", unsafe_allow_html=True)
     crop_preference = st.selectbox("What would you like to grow?", options=["Grains", "Vegetables", "Fruits"], help="Choose your preferred crop type")
 
-
 # --- Soil Type Input with Both Options ---
 st.markdown(f"### {T['soil_analysis']}")
 soil_type = None
@@ -396,7 +375,6 @@ elif soil_option == T['manual_selection']:
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
 if not os.path.exists(db_path):
     initialize_db()
-
 
 # --- Recommendation Generation ---
 st.markdown("<br>", unsafe_allow_html=True)
@@ -480,12 +458,8 @@ if st.button(T['generate_recommendation'], type="primary"):
 
         except Exception as e:
             st.error(f"⚠️ An error occurred: {str(e)}")
-# ... (existing imports at the top of app.py)
 
-from crop_rotation_planner import CropRotationPlanner
-
-# ... (existing code up to the recommendation generation)
-
+# --- Crop Rotation Planner ---
 st.markdown("<hr>", unsafe_allow_html=True)
 st.header(T['crop_rotation_planner'])
 planner = CropRotationPlanner(db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db')))
@@ -504,12 +478,7 @@ try:
 except Exception as e:
     st.warning(f"Could not load crop rotation plan: {str(e)}")
 
-# ... (existing imports at the top of app.py)
-
-from fertilizer_optimizer import FertilizerOptimizer
-
-# ... (existing code up to the crop rotation planner)
-
+# --- Fertilizer Optimization ---
 st.markdown("<hr>", unsafe_allow_html=True)
 st.header(T['fertilizer_optimization'])
 with st.form("fertilizer_form"):
@@ -530,7 +499,7 @@ if submitted and 'fert_soil' in st.session_state and 'fert_crop' in st.session_s
     st.write(f"- Potassium: {result['potassium_kg']} kg")
     st.caption("*This recommendation factors in sustainability by reducing excess fertilizer to lower carbon footprint.")
 
-
+# --- Previous Recommendations ---
 st.markdown(f"<h3 class='score-header'>{T['previous_recommendations']}</h3>", unsafe_allow_html=True)
 st.subheader(T['previous_recommendations'], divider="green")
 try:
@@ -556,8 +525,6 @@ try:
 except Exception as e:
     st.warning(f"Could not load past recommendations: {str(e)}")
 
-
-
 # --- Footer ---
 current_time = datetime.now().strftime("%B %d, %Y at %I:%M %p IST")
 st.markdown(f"""
@@ -566,5 +533,4 @@ st.markdown(f"""
     <p>{T['built_with']}</p>
     <p><small>{T['last_updated']} {current_time}</small></p>
 </div>
-
 """, unsafe_allow_html=True)
