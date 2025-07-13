@@ -13,9 +13,15 @@ class FarmerAdvisor:
         self.db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
         self.model = None
         self.encoders = {}
-        self._load_data()
-        self._preprocess()
-        self._train_model()
+        model_path = 'models/farmer_advisor_model.pkl'
+        encoder_path = 'models/farmer_encoders.pkl'
+        if os.path.exists(model_path) and os.path.exists(encoder_path):
+            self.model = joblib.load(model_path)
+            self.encoders = joblib.load(encoder_path)
+        else:
+            self._load_data()
+            self._preprocess()
+            self._train_model()
 
     def _load_data(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -49,43 +55,31 @@ class FarmerAdvisor:
             'Soil_pH', 'Soil_Moisture', 'Temperature_C', 'Rainfall_mm',
             'Fertilizer_Usage_kg', 'Pesticide_Usage_kg', 'Crop_Yield_ton'
         ]
-        
         # Prepare features and target
-        X = self.df[feature_cols].fillna(0)  # Fill any remaining NaN values with 0
+        X = self.df[feature_cols].fillna(0)
         y = self.df['Crop_encoded']
-
-        # Split the data
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, stratify=y, random_state=42
         )
-
-        # Create and train the model
         self.model = DecisionTreeClassifier(
             max_depth=8,
             min_samples_split=6,
             random_state=42
         )
-        
-        # Train without sample weights
         self.model.fit(X_train, y_train)
-
-        # Ensure the models directory exists
         os.makedirs('models', exist_ok=True)
-        # Save model & encoders
         joblib.dump(self.model, 'models/farmer_advisor_model.pkl')
         joblib.dump(self.encoders, 'models/farmer_encoders.pkl')
-
-        # Evaluate model
-        y_pred = self.model.predict(X_test)
-        acc = accuracy_score(y_test, y_pred)
-        print(f"\nFarmerAdvisor Model Accuracy: {acc:.2f}")
-
-        # Print decision rules
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            rules = export_text(self.model, feature_names=feature_cols)
-            print("\nDecision Tree Rules for Crop Recommendation:\n")
-            print(rules)
+        # Only print accuracy and rules if running as a script (not imported)
+        if __name__ == "__main__":
+            y_pred = self.model.predict(X_test)
+            acc = accuracy_score(y_test, y_pred)
+            print(f"\nFarmerAdvisor Model Accuracy: {acc:.2f}")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                rules = export_text(self.model, feature_names=feature_cols)
+                print("\nDecision Tree Rules for Crop Recommendation:\n")
+                print(rules)
 
     def recommend(self, soil_ph, soil_moisture, temp, rainfall, fertilizer, pesticide, crop_yield,
                   carbon_score=None, water_score=None, erosion_score=None):

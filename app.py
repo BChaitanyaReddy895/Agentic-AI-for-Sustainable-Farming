@@ -376,8 +376,5 @@ st.markdown(f"""
     <p>Built with ❤️ for sustainable farming</p>
     <p><small>Last updated: {current_time}</small></p>
 </div>
-<div style='text-align: center; color: #666;'>
-    <p>Built with ❤️ for sustainable farming</p>
-    <p><small>Last updated: {current_time}</small></p>
-</div>
+
 """, unsafe_allow_html=True)

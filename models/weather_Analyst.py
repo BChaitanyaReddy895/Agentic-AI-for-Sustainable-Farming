@@ -26,8 +26,15 @@ class WeatherAnalyst:
 
         self.scaler = StandardScaler()
         self.df = None
-        self._prepare_data()
-        self._train_models()
+        temp_model_path = os.path.join(self.models_dir, 'temp_model.pkl')
+        rain_model_path = os.path.join(self.models_dir, 'rain_model.pkl')
+        scaler_path = os.path.join(self.models_dir, 'weather_scaler.pkl')
+        if os.path.exists(temp_model_path) and os.path.exists(rain_model_path) and os.path.exists(scaler_path):
+            # Models already exist, do not retrain
+            pass
+        else:
+            self._prepare_data()
+            self._train_models()
 
     def _prepare_data(self):
         try:
