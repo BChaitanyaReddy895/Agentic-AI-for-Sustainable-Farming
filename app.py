@@ -11,15 +11,7 @@ from PIL import Image
 import numpy as np
 import re
 
-# --- Multilingual Support ---
-LANGUAGES = {
-    ... # existing LANGUAGES dictionary
-}
-
-# Set page config FIRST, before any other Streamlit command
-st.set_page_config(page_title=LANGUAGES['English']['title'], page_icon="🌾")
-
-# --- Multilingual Support ---
+ # --- Multilingual Support ---
 LANGUAGES = {
     'English': {
         'title': "Sustainable Farming Recommendation System",
@@ -228,9 +220,13 @@ LANGUAGES = {
         'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
         'previous_recommendations': "📜 پچھلی سفارشات",
         'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
-        'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
+
+    'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
     }
 }
+
+# Set page config FIRST, before any other Streamlit command
+st.set_page_config(page_title=LANGUAGES['English']['title'], page_icon="🌾")
 
 
 # Language selection (after set_page_config)
