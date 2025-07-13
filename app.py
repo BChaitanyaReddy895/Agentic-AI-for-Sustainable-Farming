@@ -1,6 +1,5 @@
+
 import streamlit as st
-import speech_recognition as sr
-import pyttsx3
 import sys
 import os
 import sqlite3
@@ -12,8 +11,239 @@ from PIL import Image
 import numpy as np
 import re
 
+# --- Multilingual Support ---
+LANGUAGES = {
+    'English': {
+        'title': "Sustainable Farming Recommendation System",
+        'farm_details': "📏 Farm Details",
+        'crop_preference': "🌱 Crop Preference",
+        'soil_analysis': "🗺️ Soil Analysis",
+        'upload_photo': "📸 Upload a photo",
+        'manual_selection': "📝 Manual selection",
+        'select_soil_type': "Select soil type",
+        'generate_recommendation': "💡 Generate Smart Recommendation",
+        'personalized_recommendation': "### 🎯 Your Personalized Recommendation",
+        'weather_forecast': "#### 🌤️ Weather Forecast (AI Model)",
+        'pest_prediction': "#### 🐛 Pest/Disease Prediction (AI Model)",
+        'details': "Details:",
+        'crop_rotation_planner': "🌱 Crop Rotation Planner",
+        'fertilizer_optimization': "🧪 Fertilizer Optimization Calculator",
+        'previous_recommendations': "📜 Previous Recommendations",
+        'voice_assistant': "🎤 Voice Assistant",
+        'built_with': "Built with ❤️ for sustainable farming",
+        'last_updated': "Last updated: "
+    },
+    'Telugu': {
+        'title': "సస్టైనబుల్ వ్యవసాయ సూచన వ్యవస్థ",
+        'farm_details': "📏 వ్యవసాయ వివరాలు",
+        'crop_preference': "🌱 పంట ప్రాధాన్యత",
+        'soil_analysis': "🗺️ నేల విశ్లేషణ",
+        'upload_photo': "📸 ఫోటోను అప్‌లోడ్ చేయండి",
+        'manual_selection': "📝 మాన్యువల్ ఎంపిక",
+        'select_soil_type': "నేల రకాన్ని ఎంచుకోండి",
+        'generate_recommendation': "💡 స్మార్ట్ సూచనను రూపొందించండి",
+        'personalized_recommendation': "### 🎯 మీ వ్యక్తిగత సూచన",
+        'weather_forecast': "#### 🌤️ వాతావరణ సూచన (AI మోడల్)",
+        'pest_prediction': "#### 🐛 తెగులు/పురుగు సూచన (AI మోడల్)",
+        'details': "వివరాలు:",
+        'crop_rotation_planner': "🌱 పంట మార్పిడి ప్రణాళిక",
+        'fertilizer_optimization': "🧪 ఎరువు ఆప్టిమైజేషన్ కాలిక్యులేటర్",
+        'previous_recommendations': "📜 గత సూచనలు",
+        'voice_assistant': "🎤 వాయిస్ అసిస్టెంట్",
+        'built_with': "సస్టైనబుల్ వ్యవసాయం కోసం ప్రేమతో నిర్మించబడింది",
+        'last_updated': "చివరిగా నవీకరించబడింది: "
+    }
+    ,
+    'Kannada': {
+        'title': "ಸ್ಥಿರ ಕೃಷಿ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",
+        'farm_details': "📏 ಕೃಷಿ ವಿವರಗಳು",
+        'crop_preference': "🌱 ಬೆಳೆ ಆದ್ಯತೆ",
+        'soil_analysis': "🗺️ ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ",
+        'upload_photo': "📸 ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+        'manual_selection': "📝 ಕೈಯಾರೆ ಆಯ್ಕೆ",
+        'select_soil_type': "ಮಣ್ಣಿನ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+        'generate_recommendation': "💡 ಸ್ಮಾರ್ಟ್ ಶಿಫಾರಸು ರಚಿಸಿ",
+        'personalized_recommendation': "### 🎯 ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಶಿಫಾರಸು",
+        'weather_forecast': "#### 🌤️ ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ (AI ಮಾದರಿ)",
+        'pest_prediction': "#### 🐛 ಕೀಟ/ರೋಗ ಮುನ್ಸೂಚನೆ (AI ಮಾದರಿ)",
+        'details': "ವಿವರಗಳು:",
+        'crop_rotation_planner': "🌱 ಬೆಳೆ ಪರಿವರ್ತನೆ ಯೋಜನೆ",
+        'fertilizer_optimization': "🧪 ರಸಗೊಬ್ಬರ ಆಪ್ಟಿಮೈಸೇಶನ್ ಕ್ಯಾಲ್ಕ್ಯುಲೇಟರ್",
+        'previous_recommendations': "📜 ಹಿಂದಿನ ಶಿಫಾರಸುಗಳು",
+        'voice_assistant': "🎤 ಧ್ವನಿ ಸಹಾಯಕ",
+        'built_with': "ಸ್ಥಿರ ಕೃಷಿಗಾಗಿ ಪ್ರೀತಿಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ",
+        'last_updated': "ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: "
+    },
+    'Hindi': {
+        'title': "सस्टेनेबल फार्मिंग सिफारिश प्रणाली",
+        'farm_details': "📏 कृषि विवरण",
+        'crop_preference': "🌱 फसल प्राथमिकता",
+        'soil_analysis': "🗺️ मिट्टी विश्लेषण",
+        'upload_photo': "📸 फोटो अपलोड करें",
+        'manual_selection': "📝 मैन्युअल चयन",
+        'select_soil_type': "मिट्टी का प्रकार चुनें",
+        'generate_recommendation': "💡 स्मार्ट सिफारिश उत्पन्न करें",
+        'personalized_recommendation': "### 🎯 आपकी व्यक्तिगत सिफारिश",
+        'weather_forecast': "#### 🌤️ मौसम पूर्वानुमान (AI मॉडल)",
+        'pest_prediction': "#### 🐛 कीट/रोग पूर्वानुमान (AI मॉडल)",
+        'details': "विवरण:",
+        'crop_rotation_planner': "🌱 फसल चक्र योजना",
+        'fertilizer_optimization': "🧪 उर्वरक अनुकूलन कैलकुलेटर",
+        'previous_recommendations': "📜 पिछली सिफारिशें",
+        'voice_assistant': "🎤 वॉयस असिस्टेंट",
+        'built_with': "सस्टेनेबल फार्मिंग के लिए प्यार से बनाया गया",
+        'last_updated': "अंतिम बार अपडेट किया गया: "
+    },
+    'French': {
+        'title': "Système de recommandation agricole durable",
+        'farm_details': "📏 Détails de la ferme",
+        'crop_preference': "🌱 Préférence de culture",
+        'soil_analysis': "🗺️ Analyse du sol",
+        'upload_photo': "📸 Télécharger une photo",
+        'manual_selection': "📝 Sélection manuelle",
+        'select_soil_type': "Sélectionnez le type de sol",
+        'generate_recommendation': "💡 Générer une recommandation intelligente",
+        'personalized_recommendation': "### 🎯 Votre recommandation personnalisée",
+        'weather_forecast': "#### 🌤️ Prévision météo (modèle IA)",
+        'pest_prediction': "#### 🐛 Prévision des ravageurs/maladies (modèle IA)",
+        'details': "Détails:",
+        'crop_rotation_planner': "🌱 Planificateur de rotation des cultures",
+        'fertilizer_optimization': "🧪 Calculateur d'optimisation des engrais",
+        'previous_recommendations': "📜 Recommandations précédentes",
+        'voice_assistant': "🎤 Assistant vocal",
+        'built_with': "Construit avec ❤️ pour une agriculture durable",
+        'last_updated': "Dernière mise à jour: "
+    },
+    'Spanish': {
+        'title': "Sistema de Recomendación de Agricultura Sostenible",
+        'farm_details': "📏 Detalles de la granja",
+        'crop_preference': "🌱 Preferencia de cultivo",
+        'soil_analysis': "🗺️ Análisis del suelo",
+        'upload_photo': "📸 Subir foto",
+        'manual_selection': "📝 Selección manual",
+        'select_soil_type': "Seleccione el tipo de suelo",
+        'generate_recommendation': "💡 Generar recomendación inteligente",
+        'personalized_recommendation': "### 🎯 Su recomendación personalizada",
+        'weather_forecast': "#### 🌤️ Pronóstico del tiempo (modelo IA)",
+        'pest_prediction': "#### 🐛 Pronóstico de plagas/enfermedades (modelo IA)",
+        'details': "Detalles:",
+        'crop_rotation_planner': "🌱 Planificador de rotación de cultivos",
+        'fertilizer_optimization': "🧪 Calculadora de optimización de fertilizantes",
+        'previous_recommendations': "📜 Recomendaciones anteriores",
+        'voice_assistant': "🎤 Asistente de voz",
+        'built_with': "Construido con ❤️ para la agricultura sostenible",
+        'last_updated': "Última actualización: "
+    },
+    'Tamil': {
+        'title': "திடமான விவசாய பரிந்துரை அமைப்பு",
+        'farm_details': "📏 விவசாய விவரங்கள்",
+        'crop_preference': "🌱 பயிர் விருப்பம்",
+        'soil_analysis': "🗺️ மண் பகுப்பாய்வு",
+        'upload_photo': "📸 புகைப்படத்தை பதிவேற்றவும்",
+        'manual_selection': "📝 கைமுறையிலான தேர்வு",
+        'select_soil_type': "மண் வகையைத் தேர்ந்தெடுக்கவும்",
+        'generate_recommendation': "💡 ஸ்மார்ட் பரிந்துரையை உருவாக்கவும்",
+        'personalized_recommendation': "### 🎯 உங்கள் தனிப்பட்ட பரிந்துரை",
+        'weather_forecast': "#### 🌤️ வானிலை முன்னறிவு (AI மாதிரி)",
+        'pest_prediction': "#### 🐛 பூச்சி/நோய் முன்னறிவு (AI மாதிரி)",
+        'details': "விவரங்கள்:",
+        'crop_rotation_planner': "🌱 பயிர் சுழற்சி திட்டம்",
+        'fertilizer_optimization': "🧪 உரம் மேம்பாட்டு கணிப்பான்",
+        'previous_recommendations': "📜 முந்தைய பரிந்துரைகள்",
+        'voice_assistant': "🎤 குரல் உதவியாளர்",
+        'built_with': "திடமான விவசாயத்திற்கு அன்புடன் உருவாக்கப்பட்டது",
+        'last_updated': "கடைசியாக புதுப்பிக்கப்பட்டது: "
+    },
+    'Malayalam': {
+        'title': "സ്ഥിരമായ കൃഷി ശുപാർശ സംവിധാനം",
+        'farm_details': "📏 കൃഷി വിശദാംശങ്ങൾ",
+        'crop_preference': "🌱 വിളയുടെ മുൻഗണന",
+        'soil_analysis': "🗺️ മണ്ണ് വിശകലനം",
+        'upload_photo': "📸 ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക",
+        'manual_selection': "📝 മാനുവൽ തിരഞ്ഞെടുപ്പ്",
+        'select_soil_type': "മണ്ണിന്റെ തരം തിരഞ്ഞെടുക്കുക",
+        'generate_recommendation': "💡 സ്മാർട്ട് ശുപാർശ സൃഷ്ടിക്കുക",
+        'personalized_recommendation': "### 🎯 നിങ്ങളുടെ വ്യക്തിഗത ശുപാർശ",
+        'weather_forecast': "#### 🌤️ കാലാവസ്ഥ പ്രവചനം (AI മോഡൽ)",
+        'pest_prediction': "#### 🐛 കീടം/രോഗം പ്രവചനം (AI മോഡൽ)",
+        'details': "വിശദാംശങ്ങൾ:",
+        'crop_rotation_planner': "🌱 വിള ചക്ര പദ്ധതി",
+        'fertilizer_optimization': "🧪 വളം ഓപ്റ്റിമൈസേഷൻ കാൽക്കുലേറ്റർ",
+        'previous_recommendations': "📜 മുമ്പത്തെ ശുപാർശകൾ",
+        'voice_assistant': "🎤 വോയ്സ് അസിസ്റ്റന്റ്",
+        'built_with': "സ്ഥിരമായ കൃഷിക്ക് സ്നേഹത്തോടെ നിർമ്മിച്ചു",
+        'last_updated': "അവസാനമായി പുതുക്കിയത്: "
+    },
+    'Marathi': {
+        'title': "शाश्वत शेती शिफारस प्रणाली",
+        'farm_details': "📏 शेती तपशील",
+        'crop_preference': "🌱 पिक प्राधान्य",
+        'soil_analysis': "🗺️ माती विश्लेषण",
+        'upload_photo': "📸 फोटो अपलोड करा",
+        'manual_selection': "📝 मॅन्युअल निवड",
+        'select_soil_type': "मातीचा प्रकार निवडा",
+        'generate_recommendation': "💡 स्मार्ट शिफारस तयार करा",
+        'personalized_recommendation': "### 🎯 आपली वैयक्तिक शिफारस",
+        'weather_forecast': "#### 🌤️ हवामान अंदाज (AI मॉडेल)",
+        'pest_prediction': "#### 🐛 कीटक/रोग अंदाज (AI मॉडेल)",
+        'details': "तपशील:",
+        'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
+        'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
+        'previous_recommendations': "📜 मागील शिफारसी",
+        'voice_assistant': "🎤 व्हॉइस असिस्टंट",
+        'built_with': "शाश्वत शेतीसाठी प्रेमाने तयार केले",
+        'last_updated': "शेवटचे अद्यतन: "
+    },
+    'Konkani': {
+        'title': "सस्टेनेबल फार्मिंग रेकमेंडेशन सिस्टिम",
+        'farm_details': "📏 शेतीचे तपशील",
+        'crop_preference': "🌱 पिकाची प्राधान्य",
+        'soil_analysis': "🗺️ मातीचे विश्लेषण",
+        'upload_photo': "📸 फोटो अपलोड करा",
+        'manual_selection': "📝 मॅन्युअल निवड",
+        'select_soil_type': "मातीचा प्रकार निवडा",
+        'generate_recommendation': "💡 स्मार्ट शिफारस तयार करा",
+        'personalized_recommendation': "### 🎯 तुमची वैयक्तिक शिफारस",
+        'weather_forecast': "#### 🌤️ हवामानाचा अंदाज (AI मॉडेल)",
+        'pest_prediction': "#### 🐛 कीटक/रोगाचा अंदाज (AI मॉडेल)",
+        'details': "तपशील:",
+        'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
+        'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
+        'previous_recommendations': "📜 मागील शिफारसी",
+        'voice_assistant': "🎤 व्हॉइस असिस्टंट",
+        'built_with': "सस्टेनेबल फार्मिंगसाठी प्रेमाने तयार केले",
+        'last_updated': "शेवटचे अद्यतन: "
+    },
+    'Urdu': {
+        'title': "پائیدار زراعت کی سفارشات کا نظام",
+        'farm_details': "📏 زرعی تفصیلات",
+        'crop_preference': "🌱 فصل کی ترجیح",
+        'soil_analysis': "🗺️ مٹی کا تجزیہ",
+        'upload_photo': "📸 تصویر اپ لوڈ کریں",
+        'manual_selection': "📝 دستی انتخاب",
+        'select_soil_type': "مٹی کی قسم منتخب کریں",
+        'generate_recommendation': "💡 اسمارٹ سفارش تیار کریں",
+        'personalized_recommendation': "### 🎯 آپ کی ذاتی سفارش",
+        'weather_forecast': "#### 🌤️ موسم کی پیش گوئی (AI ماڈل)",
+        'pest_prediction': "#### 🐛 کیڑوں/بیماری کی پیش گوئی (AI ماڈل)",
+        'details': "تفصیلات:",
+        'crop_rotation_planner': "🌱 فصل کی گردش کا منصوبہ",
+        'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
+        'previous_recommendations': "📜 پچھلی سفارشات",
+        'voice_assistant': "🎤 وائس اسسٹنٹ",
+        'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
+        'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
+    }
+    # Add more languages here
+}
+
+
+# --- Language Selection ---
+lang = st.sidebar.selectbox("🌐 Select Language / భాషను ఎంచుకోండి", list(LANGUAGES.keys()), index=0)
+T = LANGUAGES[lang]
+
 # Set page config as the first Streamlit command
-st.set_page_config(page_title="Sustainable Farming Recommendation System", page_icon="🌾")
+st.set_page_config(page_title=T['title'], page_icon="🌾")
 
 # Add the 'agents' directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
@@ -58,28 +288,7 @@ def analyze_soil_from_photo(uploaded_file):
         st.error(f"Error processing image: {str(e)}")
         return None
 
-# --- Voice Input/Output Utilities ---
-def recognize_speech_from_mic():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-    with mic as source:
-        st.info("Listening... Please speak now.")
-        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-    try:
-        st.info("Transcribing...")
-        text = recognizer.recognize_google(audio)
-        return text
-    except sr.UnknownValueError:
-        st.warning("Sorry, I could not understand the audio.")
-        return None
-    except sr.RequestError as e:
-        st.error(f"Could not request results from Google Speech Recognition service; {e}")
-        return None
 
-def speak_text(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
 
 # --- Recommendation Parsing ---
 def parse_recommendation(recommendation_text):
@@ -129,9 +338,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Main Content ---
-st.markdown("""
+st.markdown(f"""
 <div class='recommendation-box' style='background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); color: white;'>
-    <h2 style='color: white; font-size: 2.5em; margin-bottom: 20px;'>🌾 Smart Farming Assistant</h2>
+    <h2 style='color: white; font-size: 2.5em; margin-bottom: 20px;'>🌾 {T['title']}</h2>
     <p style='font-size: 1.2em; margin-bottom: 15px;'>Get AI-powered recommendations based on:</p>
     <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;'>
         <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>📊 Market Analysis</div>
@@ -145,42 +354,43 @@ st.markdown("""
 col1, col2 = st.columns(2, gap="large")
 
 with col1:
-    st.markdown("<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>📏 Farm Details</h3></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>{T['farm_details']}</h3></div>", unsafe_allow_html=True)
     land_size = st.select_slider("Farm size (hectares)", options=[1, 2, 5, 8, 10, 15, 20], value=8, help="Slide to select your farm size")
 
 with col2:
-    st.markdown("<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>🌱 Crop Preference</h3></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>{T['crop_preference']}</h3></div>", unsafe_allow_html=True)
     crop_preference = st.selectbox("What would you like to grow?", options=["Grains", "Vegetables", "Fruits"], help="Choose your preferred crop type")
 
-# --- Soil Type Input with Both Options ---
-st.markdown("### 🗺️ Soil Analysis")
-soil_type = None
-soil_option = st.radio("How would you like to determine your soil type?", ["📸 Upload a photo", "📝 Manual selection"], horizontal=True)
 
-if soil_option == "📸 Upload a photo":
-    soil_photo = st.file_uploader("Upload soil photo", type=["jpg", "jpeg", "png"], key="soil_photo_uploader")
+# --- Soil Type Input with Both Options ---
+st.markdown(f"### {T['soil_analysis']}")
+soil_type = None
+soil_option = st.radio(f"How would you like to determine your soil type?", [T['upload_photo'], T['manual_selection']], horizontal=True)
+
+if soil_option == T['upload_photo']:
+    soil_photo = st.file_uploader(T['upload_photo'], type=["jpg", "jpeg", "png"], key="soil_photo_uploader")
     if soil_photo:
         soil_type = analyze_soil_from_photo(soil_photo)
         if soil_type:
             st.success(f"✅ Detected soil type: {soil_type}")
-            st.success(f"✅ Detected soil type: {soil_type}")
         else:
             st.warning("⚠️ Could not determine soil type from photo. Please select manually.")
-            soil_type = st.selectbox("Select soil type", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+            soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
     else:
-        soil_type = st.selectbox("Select soil type", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback")
-elif soil_option == "📝 Manual selection":
-    soil_type = st.selectbox("Select soil type", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+        soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback")
+elif soil_option == T['manual_selection']:
+    soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
 
 # Initialize database if it doesn't exist
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
 if not os.path.exists(db_path):
     initialize_db()
 
+
 # --- Recommendation Generation ---
 st.markdown("<br>", unsafe_allow_html=True)
 
-if st.button("💡 Generate Smart Recommendation", type="primary"):
+if st.button(T['generate_recommendation'], type="primary"):
     with st.spinner("🔄 Analyzing your farm conditions..."):
         try:
             result = run_agent_collaboration(land_size=land_size, soil_type=soil_type, crop_preference=crop_preference)
@@ -194,7 +404,7 @@ if st.button("💡 Generate Smart Recommendation", type="primary"):
             fertilizer = 50
             pesticide = 5
             weather_forecast = weather_analyst.forecast(soil_ph, soil_moisture, fertilizer, pesticide)
-            st.markdown("#### 🌤️ Weather Forecast (AI Model)")
+            st.markdown(T['weather_forecast'])
             st.info(f"Predicted Temperature: {weather_forecast['temperature'][0]:.1f}°C, Predicted Rainfall: {weather_forecast['rainfall'][0]:.1f} mm")
 
             # --- Pest/Disease Prediction (using PestDiseasePredictor) ---
@@ -206,14 +416,14 @@ if st.button("💡 Generate Smart Recommendation", type="primary"):
                 temperature=weather_forecast['temperature'][0],
                 rainfall=weather_forecast['rainfall'][0]
             )
-            st.markdown("#### 🐛 Pest/Disease Prediction (AI Model)")
+            st.markdown(T['pest_prediction'])
             st.info(pest_prediction)
 
-            st.markdown("### 🎯 Your Personalized Recommendation")
+            st.markdown(T['personalized_recommendation'])
 
             details = result['recommendation'].split("Details:")[1].strip()
             details_html = details.replace('\n', '<br>')
-            st.markdown(f"<div class='recommendation-box'><strong>Details:</strong><br>{details_html}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='recommendation-box'><strong>{T['details']}</strong><br>{details_html}</div>", unsafe_allow_html=True)
 
             # --- Weather Forecasting Display (from agent, if present) ---
             if 'Weather Forecast' in result and result['Weather Forecast']:
@@ -265,9 +475,8 @@ from crop_rotation_planner import CropRotationPlanner
 
 # ... (existing code up to the recommendation generation)
 
-# --- Crop Rotation Planner Section ---
 st.markdown("<hr>", unsafe_allow_html=True)
-st.header("🌱 Crop Rotation Planner")
+st.header(T['crop_rotation_planner'])
 planner = CropRotationPlanner(db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db')))
 try:
     with sqlite3.connect(os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))) as conn:
@@ -290,9 +499,8 @@ from fertilizer_optimizer import FertilizerOptimizer
 
 # ... (existing code up to the crop rotation planner)
 
-# --- Fertilizer Optimization Calculator Section ---
 st.markdown("<hr>", unsafe_allow_html=True)
-st.header("🧪 Fertilizer Optimization Calculator")
+st.header(T['fertilizer_optimization'])
 with st.form("fertilizer_form"):
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -312,9 +520,8 @@ if submitted and 'fert_soil' in st.session_state and 'fert_crop' in st.session_s
     st.caption("*This recommendation factors in sustainability by reducing excess fertilizer to lower carbon footprint.")
 
 
-# --- Past Recommendations ---
-st.markdown("<h3 class='score-header'>📜 Previous Recommendations</h3>", unsafe_allow_html=True)
-st.subheader("Past Recommendations", divider="green")
+st.markdown(f"<h3 class='score-header'>{T['previous_recommendations']}</h3>", unsafe_allow_html=True)
+st.subheader(T['previous_recommendations'], divider="green")
 try:
     with sqlite3.connect(db_path) as conn:
         past_recommendations = pd.read_sql("SELECT * FROM recommendations ORDER BY timestamp DESC LIMIT 5", conn)
@@ -338,45 +545,15 @@ try:
 except Exception as e:
     st.warning(f"Could not load past recommendations: {str(e)}")
 
-# --- Voice Assistant Sidebar ---
-st.sidebar.header("🎤 Voice Assistant")
-if st.sidebar.button("Start Voice Input", key="voice_input_btn_sidebar"):
-    try:
-        user_query = recognize_speech_from_mic()
-        if user_query:
-            st.sidebar.success(f"You said: {user_query}")
-            land_size = 8
-            crop_preference = "Grains"
-            soil_type = "Loamy"
-            size_match = re.search(r'(\d+)[- ]*hectare', user_query)
-            if size_match:
-                land_size = int(size_match.group(1))
-            for pref in ["grains", "vegetables", "fruits"]:
-                if pref in user_query.lower():
-                    crop_preference = pref.capitalize()
-            for s in ["loamy", "sandy", "clay"]:
-                if s in user_query.lower():
-                    soil_type = s.capitalize()
-            result = run_agent_collaboration(land_size=land_size, soil_type=soil_type, crop_preference=crop_preference)
-            rec_text = result['recommendation'].split("\n")[1] if '\n' in result['recommendation'] else result['recommendation']
-            speak_text(rec_text)
-            st.sidebar.success(f"Recommendation: {rec_text}")
-    except Exception as e:
-        st.sidebar.error(f"Voice input error: {str(e)}")
-if st.sidebar.button("Test Voice Output", key="voice_output_btn_sidebar"):
-    try:
-        speak_text("I recommend planting soybeans with a final score of 0.69.")
-        st.sidebar.success("Voice output played.")
-    except Exception as e:
-        st.sidebar.error(f"Voice output error: {str(e)}")
+
 
 # --- Footer ---
 current_time = datetime.now().strftime("%B %d, %Y at %I:%M %p IST")
 st.markdown(f"""
 ---
 <div style='text-align: center; color: #666;'>
-    <p>Built with ❤️ for sustainable farming</p>
-    <p><small>Last updated: {current_time}</small></p>
+    <p>{T['built_with']}</p>
+    <p><small>{T['last_updated']} {current_time}</small></p>
 </div>
 
 """, unsafe_allow_html=True)
