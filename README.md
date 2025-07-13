@@ -5,6 +5,8 @@ sdk: streamlit
 emoji: 🌱
 colorFrom: green
 colorTo: yellow
+sdk_version: "1.38.0"
+app_file: app.py
 pinned: false
 short_description: Multi agentic AI for sustainable farming
 ---
