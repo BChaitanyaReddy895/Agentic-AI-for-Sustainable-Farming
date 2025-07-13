@@ -1,5 +1,6 @@
 narwhals==1.41.0
 speechrecognition
+pyttsx3
 packaging==24.1
 pandas==2.2.2
 plotly==6.1.2
