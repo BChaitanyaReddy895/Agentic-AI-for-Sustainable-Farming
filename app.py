@@ -1,3 +1,4 @@
+
 import streamlit as st
 import sys
 import os
@@ -9,6 +10,14 @@ import plotly.graph_objects as go
 from PIL import Image
 import numpy as np
 import re
+
+# --- Multilingual Support ---
+LANGUAGES = {
+    ... # existing LANGUAGES dictionary
+}
+
+# Set page config FIRST, before any other Streamlit command
+st.set_page_config(page_title=LANGUAGES['English']['title'], page_icon="🌾")
 
 # --- Multilingual Support ---
 LANGUAGES = {
@@ -223,19 +232,15 @@ LANGUAGES = {
     }
 }
 
-# Language selection at the very top, before any other Streamlit commands
+
+# Language selection (after set_page_config)
 lang = st.selectbox(
     "Select Language / భాషను ఎంచుకోండి / ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ / भाषा चुनें / Sélectionnez la langue / Seleccione el idioma / மொழியைத் தேர்ந்தெடுக்கவும் / ഭാഷ തിരഞ്ഞെടുക്കുക / भाषा निवडा / Konkani: भाषा निवडा / زبان منتخب کریں",
     options=list(LANGUAGES.keys()),
     index=0,  # Default to English
     key="language_selector"
 )
-
-# Now get the translation dictionary for the selected language
 T = LANGUAGES[lang]
-
-# Set page config as the first Streamlit command after language selection
-st.set_page_config(page_title=T['title'], page_icon="🌾")
 
 # Add the 'agents' directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
