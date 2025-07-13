@@ -210,8 +210,10 @@ if st.button("💡 Generate Smart Recommendation", type="primary"):
             st.info(pest_prediction)
 
             st.markdown("### 🎯 Your Personalized Recommendation")
+
             details = result['recommendation'].split("Details:")[1].strip()
-            st.markdown(f"<div class='recommendation-box'><strong>Details:</strong><br>{details.replace('\n', '<br>')}</div>", unsafe_allow_html=True)
+            details_html = details.replace('\n', '<br>')
+            st.markdown(f"<div class='recommendation-box'><strong>Details:</strong><br>{details_html}</div>", unsafe_allow_html=True)
 
             # --- Weather Forecasting Display (from agent, if present) ---
             if 'Weather Forecast' in result and result['Weather Forecast']:
