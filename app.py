@@ -1,5 +1,16 @@
 
+
 import streamlit as st
+
+# --- Language Selection (for page config) ---
+LANGUAGES = {
+    'English': {}, 'Telugu': {}, 'Kannada': {}, 'Hindi': {}, 'French': {}, 'Spanish': {}, 'Tamil': {}, 'Malayalam': {}, 'Marathi': {}, 'Konkani': {}, 'Urdu': {}
+}
+lang = st.sidebar.selectbox("🌐 Select Language / భాషను ఎంచుకోండి", list(LANGUAGES.keys()), index=0)
+# Set page config as the very first Streamlit command
+st.set_page_config(page_title=lang, page_icon="🌾")
+
+# Now import the rest
 import sys
 import os
 import sqlite3
@@ -29,7 +40,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Crop Rotation Planner",
         'fertilizer_optimization': "🧪 Fertilizer Optimization Calculator",
         'previous_recommendations': "📜 Previous Recommendations",
-        'voice_assistant': "🎤 Voice Assistant",
+        # 'voice_assistant': "🎤 Voice Assistant",  # Removed voice feature
         'built_with': "Built with ❤️ for sustainable farming",
         'last_updated': "Last updated: "
     },
@@ -49,7 +60,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 పంట మార్పిడి ప్రణాళిక",
         'fertilizer_optimization': "🧪 ఎరువు ఆప్టిమైజేషన్ కాలిక్యులేటర్",
         'previous_recommendations': "📜 గత సూచనలు",
-        'voice_assistant': "🎤 వాయిస్ అసిస్టెంట్",
+        # 'voice_assistant': "🎤 వాయిస్ అసిస్టెంట్",  # Removed voice feature
         'built_with': "సస్టైనబుల్ వ్యవసాయం కోసం ప్రేమతో నిర్మించబడింది",
         'last_updated': "చివరిగా నవీకరించబడింది: "
     }
@@ -70,7 +81,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 ಬೆಳೆ ಪರಿವರ್ತನೆ ಯೋಜನೆ",
         'fertilizer_optimization': "🧪 ರಸಗೊಬ್ಬರ ಆಪ್ಟಿಮೈಸೇಶನ್ ಕ್ಯಾಲ್ಕ್ಯುಲೇಟರ್",
         'previous_recommendations': "📜 ಹಿಂದಿನ ಶಿಫಾರಸುಗಳು",
-        'voice_assistant': "🎤 ಧ್ವನಿ ಸಹಾಯಕ",
+        # 'voice_assistant': "🎤 ಧ್ವನಿ ಸಹಾಯಕ",  # Removed voice feature
         'built_with': "ಸ್ಥಿರ ಕೃಷಿಗಾಗಿ ಪ್ರೀತಿಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ",
         'last_updated': "ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: "
     },
@@ -90,7 +101,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 फसल चक्र योजना",
         'fertilizer_optimization': "🧪 उर्वरक अनुकूलन कैलकुलेटर",
         'previous_recommendations': "📜 पिछली सिफारिशें",
-        'voice_assistant': "🎤 वॉयस असिस्टेंट",
+        # 'voice_assistant': "🎤 वॉयस असिस्टेंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंग के लिए प्यार से बनाया गया",
         'last_updated': "अंतिम बार अपडेट किया गया: "
     },
@@ -110,7 +121,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificateur de rotation des cultures",
         'fertilizer_optimization': "🧪 Calculateur d'optimisation des engrais",
         'previous_recommendations': "📜 Recommandations précédentes",
-        'voice_assistant': "🎤 Assistant vocal",
+        # 'voice_assistant': "🎤 Assistant vocal",  # Removed voice feature
         'built_with': "Construit avec ❤️ pour une agriculture durable",
         'last_updated': "Dernière mise à jour: "
     },
@@ -130,7 +141,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificador de rotación de cultivos",
         'fertilizer_optimization': "🧪 Calculadora de optimización de fertilizantes",
         'previous_recommendations': "📜 Recomendaciones anteriores",
-        'voice_assistant': "🎤 Asistente de voz",
+        # 'voice_assistant': "🎤 Asistente de voz",  # Removed voice feature
         'built_with': "Construido con ❤️ para la agricultura sostenible",
         'last_updated': "Última actualización: "
     },
@@ -150,7 +161,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 பயிர் சுழற்சி திட்டம்",
         'fertilizer_optimization': "🧪 உரம் மேம்பாட்டு கணிப்பான்",
         'previous_recommendations': "📜 முந்தைய பரிந்துரைகள்",
-        'voice_assistant': "🎤 குரல் உதவியாளர்",
+        # 'voice_assistant': "🎤 குரல் உதவியாளர்",  # Removed voice feature
         'built_with': "திடமான விவசாயத்திற்கு அன்புடன் உருவாக்கப்பட்டது",
         'last_updated': "கடைசியாக புதுப்பிக்கப்பட்டது: "
     },
@@ -170,7 +181,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 വിള ചക്ര പദ്ധതി",
         'fertilizer_optimization': "🧪 വളം ഓപ്റ്റിമൈസേഷൻ കാൽക്കുലേറ്റർ",
         'previous_recommendations': "📜 മുമ്പത്തെ ശുപാർശകൾ",
-        'voice_assistant': "🎤 വോയ്സ് അസിസ്റ്റന്റ്",
+        # 'voice_assistant': "🎤 വോയ്സ് അസിസ്റ്റന്റ്",  # Removed voice feature
         'built_with': "സ്ഥിരമായ കൃഷിക്ക് സ്നേഹത്തോടെ നിർമ്മിച്ചു",
         'last_updated': "അവസാനമായി പുതുക്കിയത്: "
     },
@@ -190,7 +201,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        'voice_assistant': "🎤 व्हॉइस असिस्टंट",
+        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "शाश्वत शेतीसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -210,7 +221,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        'voice_assistant': "🎤 व्हॉइस असिस्टंट",
+        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंगसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -230,7 +241,7 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 فصل کی گردش کا منصوبہ",
         'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
         'previous_recommendations': "📜 پچھلی سفارشات",
-        'voice_assistant': "🎤 وائس اسسٹنٹ",
+        # 'voice_assistant': "🎤 وائس اسسٹنٹ",  # Removed voice feature
         'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
         'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
     }
@@ -238,8 +249,8 @@ LANGUAGES = {
 }
 
 
-# --- Language Selection ---
-lang = st.sidebar.selectbox("🌐 Select Language / భాషను ఎంచుకోండి", list(LANGUAGES.keys()), index=0)
+
+# Now get the translation dictionary for the selected language
 T = LANGUAGES[lang]
 
 # Set page config as the first Streamlit command
