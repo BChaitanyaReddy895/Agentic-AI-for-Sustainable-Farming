@@ -11,6 +11,5 @@ scikit-learn==1.5.0
 streamlit==1.38.0
 statsmodels==0.14.4
 pulp==2.9.0
-pyaudio
 langchain==0.3.4
 Pillow==10.4.0
