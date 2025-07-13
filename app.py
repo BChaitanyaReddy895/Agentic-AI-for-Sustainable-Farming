@@ -1,16 +1,5 @@
 
-
 import streamlit as st
-
-# --- Language Selection (for page config) ---
-LANGUAGES = {
-    'English': {}, 'Telugu': {}, 'Kannada': {}, 'Hindi': {}, 'French': {}, 'Spanish': {}, 'Tamil': {}, 'Malayalam': {}, 'Marathi': {}, 'Konkani': {}, 'Urdu': {}
-}
-lang = st.sidebar.selectbox("🌐 Select Language / భాషను ఎంచుకోండి", list(LANGUAGES.keys()), index=0)
-# Set page config as the very first Streamlit command
-st.set_page_config(page_title=lang, page_icon="🌾")
-
-# Now import the rest
 import sys
 import os
 import sqlite3
@@ -21,6 +10,14 @@ import plotly.graph_objects as go
 from PIL import Image
 import numpy as np
 import re
+
+# --- Multilingual Support ---
+LANGUAGES = {
+    ... # existing LANGUAGES dictionary
+}
+
+# Set page config FIRST, before any other Streamlit command
+st.set_page_config(page_title=LANGUAGES['English']['title'], page_icon="🌾")
 
 # --- Multilingual Support ---
 LANGUAGES = {
@@ -40,7 +37,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Crop Rotation Planner",
         'fertilizer_optimization': "🧪 Fertilizer Optimization Calculator",
         'previous_recommendations': "📜 Previous Recommendations",
-        # 'voice_assistant': "🎤 Voice Assistant",  # Removed voice feature
         'built_with': "Built with ❤️ for sustainable farming",
         'last_updated': "Last updated: "
     },
@@ -60,11 +56,9 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 పంట మార్పిడి ప్రణాళిక",
         'fertilizer_optimization': "🧪 ఎరువు ఆప్టిమైజేషన్ కాలిక్యులేటర్",
         'previous_recommendations': "📜 గత సూచనలు",
-        # 'voice_assistant': "🎤 వాయిస్ అసిస్టెంట్",  # Removed voice feature
         'built_with': "సస్టైనబుల్ వ్యవసాయం కోసం ప్రేమతో నిర్మించబడింది",
         'last_updated': "చివరిగా నవీకరించబడింది: "
-    }
-    ,
+    },
     'Kannada': {
         'title': "ಸ್ಥಿರ ಕೃಷಿ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",
         'farm_details': "📏 ಕೃಷಿ ವಿವರಗಳು",
@@ -81,7 +75,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 ಬೆಳೆ ಪರಿವರ್ತನೆ ಯೋಜನೆ",
         'fertilizer_optimization': "🧪 ರಸಗೊಬ್ಬರ ಆಪ್ಟಿಮೈಸೇಶನ್ ಕ್ಯಾಲ್ಕ್ಯುಲೇಟರ್",
         'previous_recommendations': "📜 ಹಿಂದಿನ ಶಿಫಾರಸುಗಳು",
-        # 'voice_assistant': "🎤 ಧ್ವನಿ ಸಹಾಯಕ",  # Removed voice feature
         'built_with': "ಸ್ಥಿರ ಕೃಷಿಗಾಗಿ ಪ್ರೀತಿಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ",
         'last_updated': "ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: "
     },
@@ -101,7 +94,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 फसल चक्र योजना",
         'fertilizer_optimization': "🧪 उर्वरक अनुकूलन कैलकुलेटर",
         'previous_recommendations': "📜 पिछली सिफारिशें",
-        # 'voice_assistant': "🎤 वॉयस असिस्टेंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंग के लिए प्यार से बनाया गया",
         'last_updated': "अंतिम बार अपडेट किया गया: "
     },
@@ -121,7 +113,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificateur de rotation des cultures",
         'fertilizer_optimization': "🧪 Calculateur d'optimisation des engrais",
         'previous_recommendations': "📜 Recommandations précédentes",
-        # 'voice_assistant': "🎤 Assistant vocal",  # Removed voice feature
         'built_with': "Construit avec ❤️ pour une agriculture durable",
         'last_updated': "Dernière mise à jour: "
     },
@@ -141,7 +132,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 Planificador de rotación de cultivos",
         'fertilizer_optimization': "🧪 Calculadora de optimización de fertilizantes",
         'previous_recommendations': "📜 Recomendaciones anteriores",
-        # 'voice_assistant': "🎤 Asistente de voz",  # Removed voice feature
         'built_with': "Construido con ❤️ para la agricultura sostenible",
         'last_updated': "Última actualización: "
     },
@@ -161,7 +151,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 பயிர் சுழற்சி திட்டம்",
         'fertilizer_optimization': "🧪 உரம் மேம்பாட்டு கணிப்பான்",
         'previous_recommendations': "📜 முந்தைய பரிந்துரைகள்",
-        # 'voice_assistant': "🎤 குரல் உதவியாளர்",  # Removed voice feature
         'built_with': "திடமான விவசாயத்திற்கு அன்புடன் உருவாக்கப்பட்டது",
         'last_updated': "கடைசியாக புதுப்பிக்கப்பட்டது: "
     },
@@ -181,7 +170,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 വിള ചക്ര പദ്ധതി",
         'fertilizer_optimization': "🧪 വളം ഓപ്റ്റിമൈസേഷൻ കാൽക്കുലേറ്റർ",
         'previous_recommendations': "📜 മുമ്പത്തെ ശുപാർശകൾ",
-        # 'voice_assistant': "🎤 വോയ്സ് അസിസ്റ്റന്റ്",  # Removed voice feature
         'built_with': "സ്ഥിരമായ കൃഷിക്ക് സ്നേഹത്തോടെ നിർമ്മിച്ചു",
         'last_updated': "അവസാനമായി പുതുക്കിയത്: "
     },
@@ -201,7 +189,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "शाश्वत शेतीसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -221,7 +208,6 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
         'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
         'previous_recommendations': "📜 मागील शिफारसी",
-        # 'voice_assistant': "🎤 व्हॉइस असिस्टंट",  # Removed voice feature
         'built_with': "सस्टेनेबल फार्मिंगसाठी प्रेमाने तयार केले",
         'last_updated': "शेवटचे अद्यतन: "
     },
@@ -241,24 +227,23 @@ LANGUAGES = {
         'crop_rotation_planner': "🌱 فصل کی گردش کا منصوبہ",
         'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
         'previous_recommendations': "📜 پچھلی سفارشات",
-        # 'voice_assistant': "🎤 وائس اسسٹنٹ",  # Removed voice feature
         'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
         'last_updated': "آخری بار اپ ڈیٹ کیا گیا: "
     }
-    # Add more languages here
 }
 
 
-
-# Now get the translation dictionary for the selected language
+# Language selection (after set_page_config)
+lang = st.selectbox(
+    "Select Language / భాషను ఎంచుకోండి / ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ / भाषा चुनें / Sélectionnez la langue / Seleccione el idioma / மொழியைத் தேர்ந்தெடுக்கவும் / ഭാഷ തിരഞ്ഞെടുക്കുക / भाषा निवडा / Konkani: भाषा निवडा / زبان منتخب کریں",
+    options=list(LANGUAGES.keys()),
+    index=0,  # Default to English
+    key="language_selector"
+)
 T = LANGUAGES[lang]
-
-# Set page config as the first Streamlit command
-st.set_page_config(page_title=T['title'], page_icon="🌾")
 
 # Add the 'agents' directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
-
 
 # Import the run_agent_collaboration function from agent_setup
 from agents.agent_setup import run_agent_collaboration
@@ -266,6 +251,8 @@ from agents.agent_setup import run_agent_collaboration
 # Import WeatherAnalyst and PestDiseasePredictor
 from models.weather_Analyst import WeatherAnalyst
 from models.pest_disease_predictor import PestDiseasePredictor
+from crop_rotation_planner import CropRotationPlanner
+from fertilizer_optimizer import FertilizerOptimizer
 
 # --- Soil Analysis Function ---
 def analyze_soil_from_photo(uploaded_file):
@@ -298,8 +285,6 @@ def analyze_soil_from_photo(uploaded_file):
     except Exception as e:
         st.error(f"Error processing image: {str(e)}")
         return None
-
-
 
 # --- Recommendation Parsing ---
 def parse_recommendation(recommendation_text):
@@ -372,7 +357,6 @@ with col2:
     st.markdown(f"<div style='background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'><h3 style='color: #2E7D32;'>{T['crop_preference']}</h3></div>", unsafe_allow_html=True)
     crop_preference = st.selectbox("What would you like to grow?", options=["Grains", "Vegetables", "Fruits"], help="Choose your preferred crop type")
 
-
 # --- Soil Type Input with Both Options ---
 st.markdown(f"### {T['soil_analysis']}")
 soil_type = None
@@ -397,7 +381,6 @@ db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 's
 if not os.path.exists(db_path):
     initialize_db()
 
-
 # --- Recommendation Generation ---
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -409,7 +392,6 @@ if st.button(T['generate_recommendation'], type="primary"):
 
             # --- Weather Forecasting (using WeatherAnalyst) ---
             weather_analyst = WeatherAnalyst()
-            # Example: use default or dummy values for demonstration; replace with real user input if available
             soil_ph = 6.5
             soil_moisture = 25
             fertilizer = 50
@@ -436,22 +418,18 @@ if st.button(T['generate_recommendation'], type="primary"):
             details_html = details.replace('\n', '<br>')
             st.markdown(f"<div class='recommendation-box'><strong>{T['details']}</strong><br>{details_html}</div>", unsafe_allow_html=True)
 
-            # --- Weather Forecasting Display (from agent, if present) ---
             if 'Weather Forecast' in result and result['Weather Forecast']:
                 st.markdown("#### 🌤️ Weather Forecast (Agent)")
                 st.info(result['Weather Forecast'])
 
-            # --- Pest/Disease Prediction Display (from agent, if present) ---
             if 'Pest/Disease Prediction' in result and result['Pest/Disease Prediction']:
                 st.markdown("#### 🐛 Pest/Disease Prediction (Agent)")
                 st.info(result['Pest/Disease Prediction'])
 
-            # --- Weather Alerts ---
             if 'Warnings' in result and result['Warnings']:
                 for warn in result['Warnings']:
                     st.warning(f"Weather Alert: {warn}")
 
-            # --- Pest/Disease Advice ---
             if 'Pest/Disease Advice' in result and result['Pest/Disease Advice']:
                 st.info(f"Pest/Disease Advice: {result['Pest/Disease Advice']}")
 
@@ -480,11 +458,6 @@ if st.button(T['generate_recommendation'], type="primary"):
 
         except Exception as e:
             st.error(f"⚠️ An error occurred: {str(e)}")
-# ... (existing imports at the top of app.py)
-
-from crop_rotation_planner import CropRotationPlanner
-
-# ... (existing code up to the recommendation generation)
 
 st.markdown("<hr>", unsafe_allow_html=True)
 st.header(T['crop_rotation_planner'])
@@ -503,12 +476,6 @@ try:
         st.info("No crop history found. Generate a recommendation to start building your rotation plan!")
 except Exception as e:
     st.warning(f"Could not load crop rotation plan: {str(e)}")
-
-# ... (existing imports at the top of app.py)
-
-from fertilizer_optimizer import FertilizerOptimizer
-
-# ... (existing code up to the crop rotation planner)
 
 st.markdown("<hr>", unsafe_allow_html=True)
 st.header(T['fertilizer_optimization'])
@@ -529,7 +496,6 @@ if submitted and 'fert_soil' in st.session_state and 'fert_crop' in st.session_s
     st.write(f"- Phosphorus: {result['phosphorus_kg']} kg")
     st.write(f"- Potassium: {result['potassium_kg']} kg")
     st.caption("*This recommendation factors in sustainability by reducing excess fertilizer to lower carbon footprint.")
-
 
 st.markdown(f"<h3 class='score-header'>{T['previous_recommendations']}</h3>", unsafe_allow_html=True)
 st.subheader(T['previous_recommendations'], divider="green")
@@ -556,7 +522,100 @@ try:
 except Exception as e:
     st.warning(f"Could not load past recommendations: {str(e)}")
 
+# --- Sustainability Score Tracker ---
+st.markdown("<hr>", unsafe_allow_html=True)
+st.header("🌱 Sustainability Score Tracker")
 
+# Recommended values (example, adjust as needed)
+RECOMMENDED_WATER = 2.0  # e.g., 2 ML/ha/season
+RECOMMENDED_FERTILIZER = 1.5  # e.g., 1.5 tons/ha/season
+
+# Helper: Calculate sustainability score (realistic)
+def calculate_sustainability_score(row):
+    score = 100
+    water = row.get('water_score', 0)
+    if water > RECOMMENDED_WATER:
+        score -= min(30, 30 * (water - RECOMMENDED_WATER) / RECOMMENDED_WATER)
+    fert = row.get('fertilizer_use', 0)
+    if fert > RECOMMENDED_FERTILIZER:
+        score -= min(30, 30 * (fert - RECOMMENDED_FERTILIZER) / RECOMMENDED_FERTILIZER)
+    if row.get('rotation', False):
+        score += 10
+    else:
+        score -= 10
+    return max(0, min(100, score))
+
+# Ensure table exists
+with sqlite3.connect(db_path) as conn:
+    conn.execute('''CREATE TABLE IF NOT EXISTS sustainability_scores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT,
+        water_score REAL,
+        fertilizer_use REAL,
+        rotation INTEGER,
+        score REAL
+    )''')
+    conn.commit()
+
+# --- User Input for Current Season ---
+with st.form("sustainability_form"):
+    st.markdown("**Log your current season's practices:**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        water_score = st.number_input("Water usage (ML/ha)", min_value=0.0, max_value=10.0, value=RECOMMENDED_WATER, step=0.1)
+    with col2:
+        fertilizer_use = st.number_input("Fertilizer use (tons/ha)", min_value=0.0, max_value=10.0, value=RECOMMENDED_FERTILIZER, step=0.1)
+    with col3:
+        rotation = st.checkbox("Practiced crop rotation?", value=True)
+    submitted = st.form_submit_button("Log Season")
+
+if submitted:
+    score = calculate_sustainability_score({'water_score': water_score, 'fertilizer_use': fertilizer_use, 'rotation': rotation})
+    ts = datetime.now().strftime("%Y-%m-%d")
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("INSERT INTO sustainability_scores (timestamp, water_score, fertilizer_use, rotation, score) VALUES (?, ?, ?, ?, ?)",
+                     (ts, water_score, fertilizer_use, int(rotation), score))
+        conn.commit()
+    st.success(f"Logged! Your sustainability score for this season: {score:.1f}")
+
+# Fetch all scores
+with sqlite3.connect(db_path) as conn:
+    df_scores = pd.read_sql("SELECT * FROM sustainability_scores ORDER BY timestamp ASC", conn)
+
+# Plot trend chart
+if not df_scores.empty:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_scores['timestamp'], y=df_scores['score'], mode='lines+markers', name='Sustainability Score', line=dict(color='#4caf50', width=3)))
+    fig.update_layout(title="Sustainability Score Over Time", xaxis_title="Season", yaxis_title="Score", height=350)
+    st.plotly_chart(fig, use_container_width=True)
+
+    if len(df_scores) > 1:
+        prev = df_scores['score'].iloc[-2]
+        curr = df_scores['score'].iloc[-1]
+        pct = ((curr - prev) / prev) * 100 if prev != 0 else 0
+        if pct > 0:
+            st.success(f"Your sustainability score has improved by {pct:.1f}% since last season!")
+        elif pct < 0:
+            st.warning(f"Your sustainability score has decreased by {abs(pct):.1f}% since last season.")
+        else:
+            st.info("Your sustainability score is unchanged since last season.")
+
+    tips = []
+    last = df_scores.iloc[-1]
+    if last['fertilizer_use'] > RECOMMENDED_FERTILIZER:
+        tips.append(f"Reduce fertilizer use to below {RECOMMENDED_FERTILIZER} tons/ha. Try organic options.")
+    if last['water_score'] > RECOMMENDED_WATER:
+        tips.append(f"Reduce water usage to below {RECOMMENDED_WATER} ML/ha. Consider drip irrigation or mulching.")
+    if not last['rotation']:
+        tips.append("Practice crop rotation next season to improve soil health and sustainability.")
+    if tips:
+        st.markdown("**Tips to improve your score:**")
+        for tip in tips:
+            st.info(tip)
+    else:
+        st.success("Great job! Your practices are highly sustainable.")
+else:
+    st.info("No sustainability score data found. Log your first season above!")
 
 # --- Footer ---
 current_time = datetime.now().strftime("%B %d, %Y at %I:%M %p IST")
@@ -566,5 +625,4 @@ st.markdown(f"""
     <p>{T['built_with']}</p>
     <p><small>{T['last_updated']} {current_time}</small></p>
 </div>
-
 """, unsafe_allow_html=True)
