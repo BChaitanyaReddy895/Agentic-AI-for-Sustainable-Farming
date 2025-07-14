@@ -473,11 +473,11 @@ if soil_option == T['upload_photo']:
             st.success(f"✅ {T.get('detected_soil_type', 'Detected soil type')}: {soil_type}")
         else:
             st.warning(T.get('could_not_detect_soil', "⚠️ Could not determine soil type from photo. Please select manually."))
-            soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+            soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_1")
     else:
-        soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback")
+        soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback_1")
 elif soil_option == T['manual_selection']:
-    soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+    soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_2")
 
 st.markdown(f"""
 <div class='card-section'>
@@ -509,18 +509,18 @@ soil_type = None
 soil_option = st.radio(f"How would you like to determine your soil type?", [T['upload_photo'], T['manual_selection']], horizontal=True)
 
 if soil_option == T['upload_photo']:
-    soil_photo = st.file_uploader(T['upload_photo'], type=["jpg", "jpeg", "png"], key="soil_photo_uploader")
+    soil_photo = st.file_uploader(T['upload_photo'], type=["jpg", "jpeg", "png"], key="soil_photo_uploader_2")
     if soil_photo:
         soil_type = analyze_soil_from_photo(soil_photo)
         if soil_type:
             st.success(f"✅ Detected soil type: {soil_type}")
         else:
             st.warning("⚠️ Could not determine soil type from photo. Please select manually.")
-            soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+            soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_3")
     else:
-        soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback")
+        soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback_2")
 elif soil_option == T['manual_selection']:
-    soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+    soil_type = st.selectbox(T['select_soil_type'], options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_4")
 
 # Initialize database if it doesn't exist
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
