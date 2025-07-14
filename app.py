@@ -306,6 +306,7 @@ def parse_recommendation(recommendation_text):
     return crops_data
 
 
+
 # --- Modern & Responsive Custom CSS ---
 st.markdown("""
     <style>
@@ -333,16 +334,41 @@ st.markdown("""
         transform: translateY(-2px) scale(1.03);
         box-shadow: 0 8px 24px rgba(24,90,157,0.15);
     }
-    .recommendation-box {
+    .card-section {
         background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
-        border-left: 6px solid #43cea2;
-        padding: 28px;
         border-radius: 18px;
-        margin: 24px 0;
+        margin: 28px 0;
         box-shadow: 0 8px 24px rgba(24,90,157,0.08);
+        padding: 2.2rem 1.5rem 1.5rem 1.5rem;
         transition: transform 0.3s;
+        position: relative;
     }
-    .recommendation-box:hover { transform: translateY(-5px) scale(1.01); }
+    .card-section:hover { transform: translateY(-5px) scale(1.01); }
+    .section-step {
+        position: absolute;
+        top: -22px;
+        left: 24px;
+        background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.1em;
+        border-radius: 50px;
+        padding: 0.4em 1.2em;
+        box-shadow: 0 2px 8px rgba(24,90,157,0.10);
+        letter-spacing: 1px;
+    }
+    .section-icon {
+        font-size: 2em;
+        margin-right: 0.5em;
+        vertical-align: middle;
+    }
+    .section-instructions {
+        color: #185a9d;
+        font-size: 1.08em;
+        margin-bottom: 1em;
+        margin-top: 0.5em;
+        font-weight: 500;
+    }
     .score-header {
         text-align: center;
         color: #185a9d;
@@ -351,57 +377,118 @@ st.markdown("""
         font-size: 2em;
         text-shadow: 1px 1px 2px rgba(24,90,157,0.08);
     }
-    .stRadio>label, .stSelectbox, .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background: #fff;
-        padding: 12px 18px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(24,90,157,0.04);
-        margin: 6px;
-        font-size: 1.05em;
-    }
-    .stFileUploader { background: #fff; padding: 22px; border-radius: 12px; border: 2px dashed #43cea2; }
-    .stSuccess { background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); padding: 22px; border-radius: 12px; color: white; }
-    .stWarning { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); padding: 22px; border-radius: 12px; color: white; }
-    .dataframe { border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(24,90,157,0.08); }
-    hr { border: none; height: 3px; background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%); margin: 2rem 0; }
     @media (max-width: 900px) {
-        .recommendation-box, .score-header { font-size: 1em !important; }
+        .card-section, .score-header { font-size: 1em !important; }
         .stButton>button { font-size: 1em; }
     }
     @media (max-width: 600px) {
-        .recommendation-box { padding: 12px; font-size: 0.95em; }
+        .card-section { padding: 1rem; font-size: 0.95em; }
         .score-header { font-size: 1.1em !important; }
         .stButton>button { font-size: 0.95em; padding: 0.7rem; }
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Modern Welcome & Instructions ---
+
+# --- Hero Section ---
 st.markdown("""
-<div style='background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%); border-radius: 18px; padding: 2.5rem 1.5rem 1.5rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 8px 24px rgba(24,90,157,0.10); color: white;'>
-    <h1 style='font-size:2.5em; margin-bottom: 0.5em;'>🌾 Sustainable Farming AI Platform</h1>
-    <p style='font-size:1.2em; margin-bottom: 0.7em;'>Welcome! This platform provides <b>real-time, AI-powered recommendations</b> for sustainable farming. Easily plan your crops, optimize fertilizer, and track your sustainability progress.</p>
-    <ul style='font-size:1.1em; margin-bottom: 0.7em;'>
-        <li><b>Step 1:</b> Select your language at the top for a personalized experience.</li>
-        <li><b>Step 2:</b> Enter your farm details and crop preferences.</li>
-        <li><b>Step 3:</b> Analyze your soil (upload a photo or select manually).</li>
-        <li><b>Step 4:</b> Generate recommendations and review AI insights.</li>
-        <li><b>Step 5:</b> Log your sustainability practices and track your progress over time.</li>
-    </ul>
-    <p style='font-size:1.05em; margin-bottom: 0;'>Need help? Look for <b>tips and instructions</b> in each section below.</p>
+<div style='background: linear-gradient(120deg, #43cea2 0%, #185a9d 100%), url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80"); background-size: cover; background-blend-mode: multiply; border-radius: 22px; padding: 3.5rem 1.5rem 2.5rem 1.5rem; margin-bottom: 2.5rem; box-shadow: 0 8px 32px rgba(24,90,157,0.18); color: white; text-align: center;'>
+    <h1 style='font-size:2.8em; margin-bottom: 0.4em; letter-spacing: 1px;'>🌾 Sustainable Farming AI Platform</h1>
+    <p style='font-size:1.25em; margin-bottom: 1.2em; max-width: 600px; margin-left:auto; margin-right:auto;'>Empowering farmers with <b>real-time, AI-powered recommendations</b> for a greener, more profitable future. Plan, optimize, and track your farm with ease—on any device.</p>
+    <div style='display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2em; margin-bottom: 1.2em;'>
+        <div style='background: rgba(255,255,255,0.13); border-radius: 12px; padding: 1em 1.5em; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em;'><span style='font-size:1.5em;'>🌱</span> Crop Planning</div>
+        <div style='background: rgba(255,255,255,0.13); border-radius: 12px; padding: 1em 1.5em; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em;'><span style='font-size:1.5em;'>🧪</span> Fertilizer Optimization</div>
+        <div style='background: rgba(255,255,255,0.13); border-radius: 12px; padding: 1em 1.5em; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em;'><span style='font-size:1.5em;'>📊</span> Sustainability Tracking</div>
+        <div style='background: rgba(255,255,255,0.13); border-radius: 12px; padding: 1em 1.5em; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em;'><span style='font-size:1.5em;'>🤖</span> AI Insights</div>
+    </div>
+    <div style='margin-top: 1.2em; font-size: 1.1em; background: rgba(255,255,255,0.10); border-radius: 8px; display: inline-block; padding: 0.7em 1.5em;'>
+        <b>Get started below — follow the steps for a seamless experience!</b>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Main Content ---
+
+
+# --- Main Content (Multilingual, Stepwise, Iconic, Visual) ---
 st.markdown(f"""
-<div class='recommendation-box' style='background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); color: white;'>
-    <h2 style='color: white; font-size: 2.5em; margin-bottom: 20px;'>🌾 {T['title']}</h2>
-    <p style='font-size: 1.2em; margin-bottom: 15px;'>Get AI-powered recommendations based on:</p>
-    <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;'>
-        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>📊 Market Analysis</div>
-        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>🌤️ Weather Patterns</div>
-        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>🌱 Sustainability Metrics</div>
-        <div style='background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;'>🌍 Environmental Impact</div>
+<div class='card-section'>
+    <span class='section-step'>1</span>
+    <span class='section-icon'>📏</span>
+    <b style='font-size:1.3em'>{T['farm_details']}</b>
+    <div class='section-instructions'>{T.get('farm_details_instruction', 'Enter your farm size below.')}</div>
+    <div style='display:flex;gap:2em;justify-content:center;margin-top:1em;'>
+        <div style='text-align:center;'>
+            <span style='font-size:2.5em;'>🌾</span><br><span style='font-size:1.1em;'>{T.get('farm_size_label', 'Farm size')}</span>
+        </div>
+        <div style='text-align:center;'>
+            <span style='font-size:2.5em;'>🌱</span><br><span style='font-size:1.1em;'>{T.get('crop_preference_label', 'Crop type')}</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2, gap="large")
+with col1:
+    land_size = st.select_slider(
+        f"🌾 {T.get('farm_size_label', 'Farm size (hectares)')}",
+        options=[1, 2, 5, 8, 10, 15, 20],
+        value=8,
+        help=T.get('farm_size_help', "Slide to select your farm size")
+    )
+with col2:
+    crop_preference = st.selectbox(
+        f"🌱 {T.get('crop_preference_label', 'What would you like to grow?')}",
+        options=["Grains", "Vegetables", "Fruits"],
+        help=T.get('crop_preference_help', "Choose your preferred crop type")
+    )
+
+st.markdown(f"""
+<div class='card-section'>
+    <span class='section-step'>2</span>
+    <span class='section-icon'>🗺️</span>
+    <b style='font-size:1.3em'>{T['soil_analysis']}</b>
+    <div class='section-instructions'>{T.get('soil_analysis_instruction', 'Analyze your soil by uploading a photo or selecting manually.')}</div>
+    <div style='display:flex;gap:2em;justify-content:center;margin-top:1em;'>
+        <div style='text-align:center;'>
+            <span style='font-size:2.5em;'>📸</span><br><span style='font-size:1.1em;'>{T['upload_photo']}</span>
+        </div>
+        <div style='text-align:center;'>
+            <span style='font-size:2.5em;'>📝</span><br><span style='font-size:1.1em;'>{T['manual_selection']}</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+soil_type = None
+soil_option = st.radio(
+    f"🗺️ {T.get('soil_option_label', 'How would you like to determine your soil type?')}",
+    [T['upload_photo'], T['manual_selection']],
+    horizontal=True
+)
+if soil_option == T['upload_photo']:
+    soil_photo = st.file_uploader(f"📸 {T['upload_photo']}", type=["jpg", "jpeg", "png"], key="soil_photo_uploader")
+    if soil_photo:
+        soil_type = analyze_soil_from_photo(soil_photo)
+        if soil_type:
+            st.success(f"✅ {T.get('detected_soil_type', 'Detected soil type')}: {soil_type}")
+        else:
+            st.warning(T.get('could_not_detect_soil', "⚠️ Could not determine soil type from photo. Please select manually."))
+            soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+    else:
+        soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select_fallback")
+elif soil_option == T['manual_selection']:
+    soil_type = st.selectbox(f"📝 {T['select_soil_type']}", options=["Loamy", "Sandy", "Clay"], key="manual_soil_select")
+
+st.markdown(f"""
+<div class='card-section'>
+    <span class='section-step'>3</span>
+    <span class='section-icon'>💡</span>
+    <b style='font-size:1.3em'>{T['generate_recommendation']}</b>
+    <div class='section-instructions'>{T.get('recommendation_instruction', 'Click the button below to get your personalized AI-powered recommendation!')}</div>
+    <div style='display:flex;gap:2em;justify-content:center;margin-top:1em;'>
+        <div style='text-align:center;'>
+            <span style='font-size:2.5em;'>🤖</span><br><span style='font-size:1.1em;'>{T['generate_recommendation']}</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
