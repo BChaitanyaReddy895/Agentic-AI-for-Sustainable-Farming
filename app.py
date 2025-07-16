@@ -384,8 +384,7 @@ st.set_page_config(page_title=LANGUAGES['English']['title'], page_icon="🌾")
 
 # Initialize database
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database', 'sustainable_farming.db'))
-if not os.path.exists(db_path):
-    initialize_db()
+initialize_db()
 
 # Update initialize_db to include users table
 def initialize_db():
