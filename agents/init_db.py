@@ -61,7 +61,15 @@ def initialize_db():
                 erosion_score REAL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
+            
         """)
+        cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            farm_name TEXT,
+            profile_picture TEXT,
+            created_at TEXT
+        )''')
         
         # Check if farmer_advisor table is empty and populate with sample data
         cursor.execute("SELECT COUNT(*) FROM farmer_advisor")
