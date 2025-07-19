@@ -4,7 +4,7 @@ pyttsx3
 packaging==24.1
 pandas==2.2.2
 plotly==6.1.2
-pyautogen==0.9.1a1
+ag2==0.9.1a1
 joblib==1.4.2
 numpy==1.26.4
 scikit-learn==1.5.0
