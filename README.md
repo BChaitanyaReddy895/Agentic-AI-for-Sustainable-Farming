@@ -1,5 +1,7 @@
 # 🌾 Agentic AI for Sustainable Farming
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 **Agentic AI for Sustainable Farming** is a multi-agent AI system designed to revolutionize agriculture by promoting collaboration between key stakeholders — farmers, weather stations, and agricultural experts. The project fosters sustainable farming practices through intelligent decision-making, optimized resource usage, and enhanced productivity.
 
 ---
