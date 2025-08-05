@@ -78,5 +78,3 @@ By 2050, global food demand is expected to rise by 50%. Our AI-driven approach e
 - Worked on frontend integration and overall UI refinement  
 
 ---
-
-## 📁 Repository Structure
