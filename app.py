@@ -11,6 +11,7 @@ import numpy as np
 import re
 import base64
 import io
+import time
 
 # --- Multilingual Support ---
 LANGUAGES = {
@@ -527,6 +528,17 @@ else:
         st.session_state['user'] = None
         st.rerun()
 
+    # Sidebar quick panel
+    with st.sidebar:
+        st.markdown("### 🌾 Quick Panel")
+        st.markdown(f"{display_base64_image(user['profile_picture'], size=36)} <b>{user['username']}</b><br><small>{user['farm_name']}</small>", unsafe_allow_html=True)
+        st.divider()
+        st.markdown("- Generate a new recommendation below\n- Log sustainability in the tracker")
+        # Offer CSV download of last 5 recommendations when available later
+        st.session_state.setdefault('last_recs_csv', None)
+        if st.session_state['last_recs_csv']:
+            st.download_button("⬇️ Download recent recommendations", data=st.session_state['last_recs_csv'], file_name="recent_recommendations.csv", mime="text/csv")
+
     # Add the 'agents' directory to the Python path
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'agents')))
 
@@ -779,9 +791,15 @@ else:
 
     # --- Recommendation Generation ---
     if st.button(T['generate_recommendation'], type="primary"):
+        # Progress feedback
+        progress = st.progress(0)
+        for i in range(0, 61, 12):
+            time.sleep(0.05)
+            progress.progress(min(i, 60))
         with st.spinner("🔄 Analyzing your farm conditions..."):
             try:
                 result = run_agent_collaboration(land_size=land_size, soil_type=soil_type, crop_preference=crop_preference)
+                progress.progress(80)
                 crops_data = parse_recommendation(result['recommendation'])
 
                 # --- Weather Forecasting (using WeatherAnalyst) ---
@@ -791,8 +809,12 @@ else:
                 fertilizer = 50
                 pesticide = 5
                 weather_forecast = weather_analyst.forecast(soil_ph, soil_moisture, fertilizer, pesticide)
-                st.markdown(T['weather_forecast'])
-                st.info(f"Predicted Temperature: {weather_forecast['temperature'][0]:.1f}°C, Predicted Rainfall: {weather_forecast['rainfall'][0]:.1f} mm")
+                # Organize results into tabs
+                tab_summary, tab_charts, tab_details = st.tabs(["Summary", "Charts", "Details"])
+
+                with tab_summary:
+                    st.markdown(T['weather_forecast'])
+                    st.info(f"Predicted Temperature: {weather_forecast['temperature'][0]:.1f}°C, Predicted Rainfall: {weather_forecast['rainfall'][0]:.1f} mm")
 
                 # --- Pest/Disease Prediction (using PestDiseasePredictor) ---
                 pest_predictor = PestDiseasePredictor()
@@ -803,52 +825,71 @@ else:
                     temperature=weather_forecast['temperature'][0],
                     rainfall=weather_forecast['rainfall'][0]
                 )
-                st.markdown(T['pest_prediction'])
-                st.info(pest_prediction)
+                with tab_summary:
+                    st.markdown(T['pest_prediction'])
+                    st.info(pest_prediction)
 
-                st.markdown(T['personalized_recommendation'])
+                    st.markdown(T['personalized_recommendation'])
 
-                details = result['recommendation'].split("Details:")[1].strip()
-                details_html = details.replace('\n', '<br>')
-                st.markdown(f"<div class='card-section'><strong>{T['details']}</strong><br>{details_html}</div>", unsafe_allow_html=True)
+                    # Download button for full recommendation text
+                    st.download_button(
+                        label="⬇️ Download Recommendation",
+                        data=result['recommendation'],
+                        file_name="recommendation.txt",
+                        mime="text/plain"
+                    )
 
                 if 'Weather Forecast' in result and result['Weather Forecast']:
-                    st.markdown("#### 🌤️ Weather Forecast (Agent)")
-                    st.info(result['Weather Forecast'])
+                    with tab_summary:
+                        st.markdown("#### 🌤️ Weather Forecast (Agent)")
+                        st.info(result['Weather Forecast'])
 
                 if 'Pest/Disease Prediction' in result and result['Pest/Disease Prediction']:
-                    st.markdown("#### 🐛 Pest/Disease Prediction (Agent)")
-                    st.info(result['Pest/Disease Prediction'])
+                    with tab_summary:
+                        st.markdown("#### 🐛 Pest/Disease Prediction (Agent)")
+                        st.info(result['Pest/Disease Prediction'])
 
                 if 'Warnings' in result and result['Warnings']:
-                    for warn in result['Warnings']:
-                        st.warning(f"Weather Alert: {warn}")
+                    with tab_summary:
+                        for warn in result['Warnings']:
+                            st.warning(f"Weather Alert: {warn}")
 
                 if 'Pest/Disease Advice' in result and result['Pest/Disease Advice']:
-                    st.info(f"Pest/Disease Advice: {result['Pest/Disease Advice']}")
+                    with tab_summary:
+                        st.info(f"Pest/Disease Advice: {result['Pest/Disease Advice']}")
 
-                for crop_data in crops_data:
-                    crop = crop_data['crop']
-                    scores = crop_data['scores']
-                    market_price = crop_data['market_price']
-                    labels = list(scores.keys())
-                    values = [score * 100 for score in scores.values()]
-                    fig = go.Figure(data=[go.Bar(y=labels, x=values, orientation='h', marker=dict(color=[
-                        "#4caf50", "#2196f3", "#ff9800", "#607d8b", "#00bcd4", "#795548", "#e91e63"
-                    ]), text=[f"{val:.1f}%" for val in values], textposition='auto')])
-                    fig.update_layout(title=f"{crop.capitalize()} Scores (Market Price: ${market_price:.2f}/ton)", title_x=0.5, xaxis_title="Score (%)", yaxis_title="Category", xaxis=dict(range=[0, 100]), margin=dict(l=0, r=0, t=40, b=0), height=400)
-                    st.plotly_chart(fig, use_container_width=True)
+                with tab_charts:
+                    for crop_data in crops_data:
+                        crop = crop_data['crop']
+                        scores = crop_data['scores']
+                        market_price = crop_data['market_price']
+                        labels = list(scores.keys())
+                        values = [score * 100 for score in scores.values()]
+                        fig = go.Figure(data=[go.Bar(y=labels, x=values, orientation='h', marker=dict(color=[
+                            "#4caf50", "#2196f3", "#ff9800", "#607d8b", "#00bcd4", "#795548", "#e91e63"
+                        ]), text=[f"{val:.1f}%" for val in values], textposition='auto')])
+                        fig.update_layout(title=f"{crop.capitalize()} Scores (Market Price: ${market_price:.2f}/ton)", title_x=0.5, xaxis_title="Score (%)", yaxis_title="Category", xaxis=dict(range=[0, 100]), margin=dict(l=0, r=0, t=40, b=0), height=400)
+                        st.plotly_chart(fig, use_container_width=True)
 
-                st.markdown("<h3 class='score-header'>📊 Detailed Score Analysis</h3>", unsafe_allow_html=True)
-                for chart in result['chart_data']:
-                    crop = chart['crop']
-                    labels = chart['labels']
-                    values = chart['values']
-                    fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='label+percent', hoverinfo='label+value', marker=dict(colors=[
-                        "#4caf50", "#2196f3", "#ff9800", "#607d8b", "#00bcd4", "#795548", "#e91e63"
-                    ]))])
-                    fig.update_layout(title=f"{crop.capitalize()} Score Distribution", title_x=0.5, margin=dict(l=0, r=0, t=40, b=0), legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
-                    st.plotly_chart(fig, use_container_width=True)
+                with tab_charts:
+                    st.markdown("<h3 class='score-header'>📊 Detailed Score Analysis</h3>", unsafe_allow_html=True)
+                    for chart in result['chart_data']:
+                        crop = chart['crop']
+                        labels = chart['labels']
+                        values = chart['values']
+                        fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='label+percent', hoverinfo='label+value', marker=dict(colors=[
+                            "#4caf50", "#2196f3", "#ff9800", "#607d8b", "#00bcd4", "#795548", "#e91e63"
+                        ]))])
+                        fig.update_layout(title=f"{crop.capitalize()} Score Distribution", title_x=0.5, margin=dict(l=0, r=0, t=40, b=0), legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+                        st.plotly_chart(fig, use_container_width=True)
+
+                with tab_details:
+                    details = result['recommendation'].split("Details:")[1].strip()
+                    details_html = details.replace('\n', '<br>')
+                    st.markdown(f"<div class='card-section'><strong>{T['details']}</strong><br>{details_html}</div>", unsafe_allow_html=True)
+
+                progress.progress(100)
+                st.balloons()
 
             except Exception as e:
                 st.error(f"⚠️ An error occurred: {str(e)}")
@@ -911,6 +952,8 @@ else:
                 },
                 hide_index=True
             )
+            # Update sidebar CSV download
+            st.session_state['last_recs_csv'] = past_recommendations.to_csv(index=False)
         else:
             st.info("No past recommendations found.")
     except Exception as e:
