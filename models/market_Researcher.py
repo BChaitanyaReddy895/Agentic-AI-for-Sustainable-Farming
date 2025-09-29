@@ -8,7 +8,11 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 class MarketResearcher:
     def __init__(self, db_path="Models/database/sustainable_farming.db"):
-        self.db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
+        # Prefer explicitly provided db_path if it exists; else fall back to project default
+        provided_path = db_path if db_path else ""
+        default_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
+        resolved_path = os.path.abspath(provided_path)
+        self.db_path = resolved_path if os.path.exists(resolved_path) else default_path
         self.models = {}
         self.encoders = {}
         self.scalers = {}

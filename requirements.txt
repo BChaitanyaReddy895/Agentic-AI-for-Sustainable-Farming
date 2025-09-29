@@ -1,15 +1,23 @@
 narwhals==1.41.0
-speechrecognition
-pyttsx3
 packaging==24.1
 pandas==2.2.2
 plotly==6.1.2
-pyautogen==0.9.1a1
 joblib==1.4.2
 numpy==1.26.4
 scikit-learn==1.5.0
 streamlit==1.38.0
 statsmodels==0.14.4
 pulp==2.9.0
-langchain==0.3.4
 Pillow==10.4.0
+requests==2.31.0
+python-dotenv==1.0.0
+speechrecognition==3.10.0
+# Voice features
+# pyttsx3==2.90  # optional offline TTS (local only)
+# pyaudio==0.2.11  # native mic (disabled on server; WebRTC used instead)
+gTTS==2.4.0
+pydub==0.25.1
+folium==0.20.0
+streamlit-folium==0.25.2
+streamlit-webrtc==0.47.7
+# pipwin  # Uncomment and install if pyaudio fails on Windows
