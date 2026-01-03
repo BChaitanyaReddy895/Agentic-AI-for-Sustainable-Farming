@@ -9,6 +9,8 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 from agents.init_db import initialize_db
+# Import StreamlitTranslator for dynamic NLP translation
+# from i18n import StreamlitTranslator
 import plotly.graph_objects as go
 from PIL import Image
 import numpy as np
@@ -62,375 +64,14 @@ except ImportError as e:
     st.error(f"Could not import SpeechInterface: {e}")
     SpeechInterface = None
 
-# --- Multilingual Support ---
-LANGUAGES = {
-    'English': {
-        'title': "Sustainable Farming Recommendation System",
-        'farm_details': "📏 Farm Details",
-        'crop_preference': "🌱 Crop Preference",
-        'soil_analysis': "🗺️ Soil Analysis",
-        'upload_photo': "📸 Upload a photo",
-        'manual_selection': "📝 Manual selection",
-        'select_soil_type': "Select soil type",
-        'generate_recommendation': "💡 Generate Smart Recommendation",
-        'personalized_recommendation': "### 🎯 Your Personalized Recommendation",
-        'weather_forecast': "#### 🌤️ Weather Forecast (AI Model)",
-        'pest_prediction': "#### 🐛 Pest/Disease Prediction (AI Model)",
-        'details': "Details:",
-        'crop_rotation_planner': "🌱 Crop Rotation Planner",
-        'fertilizer_optimization': "🧪 Fertilizer Optimization Calculator",
-        'previous_recommendations': "📜 Previous Recommendations",
-        'built_with': "Built with ❤️ for sustainable farming",
-        'last_updated': "Last updated: ",
-        'signup_title': "🌾 Join the Farming Community",
-        'login_title': "🌾 Welcome Back",
-        'username': "👤 Farmer Name",
-        'farm_name': "🏡 Farm Name",
-        'profile_picture': "📷 Profile Picture (Optional)",
-        'signup_button': "✅ Join Now",
-        'login_button': "✅ Login",
-        'signup_instruction': "Fill in your details to get started!",
-        'login_instruction': "Select your farmer profile to continue.",
-        'no_account': "No account yet? Sign up!",
-        'signup_success': "Welcome, {username}! Your account is created.",
-        'login_success': "Welcome back, {username}!",
-        'username_exists': "⚠️ Farmer name already taken. Try another.",
-        'no_users': "No farmers registered yet. Sign up to start!"
-    },
-    'Telugu': {
-        'title': "సస్టైనబుల్ వ్యవసాయ సూచన వ్యవస్థ",
-        'farm_details': "📏 వ్యవసాయ వివరాలు",
-        'crop_preference': "🌱 పంట ప్రాధాన్యత",
-        'soil_analysis': "🗺️ నేల విశ్లేషణ",
-        'upload_photo': "📸 ఫోటోను అప్‌లోడ్ చేయండి",
-        'manual_selection': "📝 మాన్యువల్ ఎంపిక",
-        'select_soil_type': "నేల రకాన్ని ఎంచుకోండి",
-        'generate_recommendation': "💡 స్మార్ట్ సూచనను రూపొందించండి",
-        'personalized_recommendation': "### 🎯 మీ వ్యక్తిగత సూచన",
-        'weather_forecast': "#### 🌤️ వాతావరణ సూచన (AI మోడల్)",
-        'pest_prediction': "#### 🐛 తెగులు/పురుగు సూచన (AI మోడల్)",
-        'details': "వివరాలు:",
-        'crop_rotation_planner': "🌱 పంట మార్పిడి ప్రణాళిక",
-        'fertilizer_optimization': "🧪 ఎరువు ఆప్టిమైజేషన్ కాలిక్యులేటర్",
-        'previous_recommendations': "📜 గత సూచనలు",
-        'built_with': "సస్టైనబుల్ వ్యవసాయం కోసం ప్రేమతో నిర్మించబడింది",
-        'last_updated': "చివరిగా నవీకరించబడింది: ",
-        'signup_title': "🌾 వ్యవసాయ సమాజంలో చేరండి",
-        'login_title': "🌾 తిరిగి స్వాగతం",
-        'username': "👤 రైతు పేరు",
-        'farm_name': "🏡 వ్యవసాయం పేరు",
-        'profile_picture': "📷 ప్రొఫైల్ చిత్రం (ఐచ్ఛికం)",
-        'signup_button': "✅ ఇప్పుడు చేరండి",
-        'login_button': "✅ లాగిన్",
-        'signup_instruction': "మీ వివరాలను నమోదు చేయండి!",
-        'login_instruction': "మీ రైతు ప్రొఫైల్‌ను ఎంచుకోండి.",
-        'no_account': "ఇంకా ఖాతా లేదా? సైన్ అప్ చేయండి!",
-        'signup_success': "స్వాగతం, {username}! మీ ఖాతా సృష్టించబడింది.",
-        'login_success': "తిరిగి స్వాగతం, {username}!",
-        'username_exists': "⚠️ రైతు పేరు ఇప్పటికే తీసుకోబడింది. వేరొకటి ప్రయత్నించండి.",
-        'no_users': "ఇంకా రైతులు నమోదు కాలేదు. సైన్ అప్ చేయండి!"
-    },
-    'Kannada': {
-        'title': "ಸ್ಥಿರ ಕೃಷಿ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",
-        'farm_details': "📏 ಕೃಷಿ ವಿವರಗಳು",
-        'crop_preference': "🌱 ಬೆಳೆ ಆದ್ಯತೆ",
-        'soil_analysis': "🗺️ ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ",
-        'upload_photo': "📸 ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
-        'manual_selection': "📝 ಕೈಯಾರೆ ಆಯ್ಕೆ",
-        'select_soil_type': "ಮಣ್ಣಿನ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
-        'generate_recommendation': "💡 ಸ್ಮಾರ್ಟ್ ಶಿಫಾರಸು ರಚಿಸಿ",
-        'personalized_recommendation': "### 🎯 ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಶಿಫಾರಸು",
-        'weather_forecast': "#### 🌤️ ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ (AI ಮಾದರಿ)",
-        'pest_prediction': "#### 🐛 ಕೀಟ/ರೋಗ ಮುನ್ಸೂಚನೆ (AI ಮಾದರಿ)",
-        'details': "ವಿವರಗಳು:",
-        'crop_rotation_planner': "🌱 ಬೆಳೆ ಪರಿವರ್ತನೆ ಯೋಜನೆ",
-        'fertilizer_optimization': "🧪 ರಸಗೊಬ್ಬರ ಆಪ್ಟಿಮೈಸೇಶನ್ ಕ್ಯಾಲ್ಕ್ಯುಲೇಟರ್",
-        'previous_recommendations': "📜 ಹಿಂದಿನ ಶಿಫಾರಸುಗಳು",
-        'built_with': "ಸ್ಥಿರ ಕೃಷಿಗಾಗಿ ಪ್ರೀತಿಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ",
-        'last_updated': "ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: ",
-        'signup_title': "🌾 ಕೃಷಿ ಸಮುದಾಯಕ್ಕೆ ಸೇರಿಕೊಳ್ಳಿ",
-        'login_title': "🌾 ಮತ್ತೆ ಸ್ವಾಗತ",
-        'username': "👤 ರೈತನ ಹೆಸರು",
-        'farm_name': "🏡 ಕೃಷಿ ಹೆಸರು",
-        'profile_picture': "📷 ಪ್ರೊಫೈಲ್ ಚಿತ್ರ (ಐಚ್ಛಿಕ)",
-        'signup_button': "✅ ಈಗ ಸೇರಿಕೊಳ್ಳಿ",
-        'login_button': "✅ ಲಾಗಿನ್",
-        'signup_instruction': "ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ವಿವರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ!",
-        'login_instruction': "ಮುಂದುವರಿಯಲು ನಿಮ್ಮ ರೈತ ಪ್ರೊಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.",
-        'no_account': "ಇನ್ನೂ ಖಾತೆ ಇಲ್ಲವೇ? ಸೈನ್ ಅಪ್ ಮಾಡಿ!",
-        'signup_success': "ಸ್ವಾಗತ, {username}! ನಿಮ್ಮ ಖಾತೆ ರಚಿಸಲಾಗಿದೆ.",
-        'login_success': "ಮತ್ತೆ ಸ್ವಾಗತ, {username}!",
-        'username_exists': "⚠️ ರೈತನ ಹೆಸರು ಈಗಾಗಲೇ ತೆಗೆದುಕೊಳ್ಳಲಾಗಿದೆ. ಬೇರೆಯೊಂದನ್ನು ಪ್ರಯತ್ನಿಸಿ.",
-        'no_users': "ಇನ್ನೂ ರೈತರು ನೋಂದಾಯಿಸಿಲ್ಲ. ಪ್ರಾರಂಭಿಸಲು ಸೈನ್ ಅಪ್ ಮಾಡಿ!"
-    },
-    'Hindi': {
-        'title': "सस्टेनेबल फार्मिंग सिफारिश प्रणाली",
-        'farm_details': "📏 कृषि विवरण",
-        'crop_preference': "🌱 फसल प्राथमिकता",
-        'soil_analysis': "🗺️ मिट्टी विश्लेषण",
-        'upload_photo': "📸 फोटो अपलोड करें",
-        'manual_selection': "📝 मैन्युअल चयन",
-        'select_soil_type': "मिट्टी का प्रकार चुनें",
-        'generate_recommendation': "💡 स्मार्ट सिफारिश उत्पन्न करें",
-        'personalized_recommendation': "### 🎯 आपकी व्यक्तिगत सिफारिश",
-        'weather_forecast': "#### 🌤️ मौसम पूर्वानुमान (AI मॉडल)",
-        'pest_prediction': "#### 🐛 कीट/रोग पूर्वानुमान (AI मॉडल)",
-        'details': "विवरण:",
-        'crop_rotation_planner': "🌱 फसल चक्र योजना",
-        'fertilizer_optimization': "🧪 उर्वरक अनुकूलन कैलकुलेटर",
-        'previous_recommendations': "📜 पिछली सिफारिशें",
-        'built_with': "सस्टेनेबल फार्मिंग के लिए प्यार से बनाया गया",
-        'last_updated': "अंतिम बार अपडेट किया गया: ",
-        'signup_title': "🌾 कृषक समुदाय में शामिल हों",
-        'login_title': "🌾 वापस स्वागत है",
-        'username': "👤 किसान का नाम",
-        'farm_name': "🏡 खेत का नाम",
-        'profile_picture': "📷 प्रोफाइल चित्र (वैकल्पिक)",
-        'signup_button': "✅ अब शामिल हों",
-        'login_button': "✅ लॉगिन",
-        'signup_instruction': "शुरू करने के लिए अपनी जानकारी भरें!",
-        'login_instruction': "जारी रखने के लिए अपनी किसान प्रोफाइल चुनें।",
-        'no_account': "अभी तक कोई खाता नहीं है? साइन अप करें!",
-        'signup_success': "स्वागत है, {username}! आपका खाता बन गया है।",
-        'login_success': "वापस स्वागत है, {username}!",
-        'username_exists': "⚠️ किसान का नाम पहले से लिया गया है। दूसरा नाम आज़माएं।",
-        'no_users': "अभी तक कोई किसान पंजीकृत नहीं है। शुरू करने के लिए साइन अप करें!"
-    },
-    'French': {
-        'title': "Système de recommandation agricole durable",
-        'farm_details': "📏 Détails de la ferme",
-        'crop_preference': "🌱 Préférence de culture",
-        'soil_analysis': "🗺️ Analyse du sol",
-        'upload_photo': "📸 Télécharger une photo",
-        'manual_selection': "📝 Sélection manuelle",
-        'select_soil_type': "Sélectionnez le type de sol",
-        'generate_recommendation': "💡 Générer une recommandation intelligente",
-        'personalized_recommendation': "### 🎯 Votre recommandation personnalisée",
-        'weather_forecast': "#### 🌤️ Prévision météo (modèle IA)",
-        'pest_prediction': "#### 🐛 Prévision des ravageurs/maladies (modèle IA)",
-        'details': "Détails:",
-        'crop_rotation_planner': "🌱 Planificateur de rotation des cultures",
-        'fertilizer_optimization': "🧪 Calculateur d'optimisation des engrais",
-        'previous_recommendations': "📜 Recommandations précédentes",
-        'built_with': "Construit avec ❤️ pour une agriculture durable",
-        'last_updated': "Dernière mise à jour: ",
-        'signup_title': "🌾 Rejoignez la communauté agricole",
-        'login_title': "🌾 Bienvenue à nouveau",
-        'username': "👤 Nom de l'agriculteur",
-        'farm_name': "🏡 Nom de la ferme",
-        'profile_picture': "📷 Photo de profil (facultatif)",
-        'signup_button': "✅ S'inscrire maintenant",
-        'login_button': "✅ Connexion",
-        'signup_instruction': "Remplissez vos informations pour commencer !",
-        'login_instruction': "Sélectionnez votre profil d'agriculteur pour continuer.",
-        'no_account': "Pas encore de compte ? Inscrivez-vous !",
-        'signup_success': "Bienvenue, {username} ! Votre compte a été créé.",
-        'login_success': "Bon retour, {username} !",
-        'username_exists': "⚠️ Nom d'agriculteur déjà pris. Essayez un autre.",
-        'no_users': "Aucun agriculteur enregistré pour le moment. Inscrivez-vous pour commencer !"
-    },
-    'Spanish': {
-        'title': "Sistema de Recomendación de Agricultura Sostenible",
-        'farm_details': "📏 Detalles de la granja",
-        'crop_preference': "🌱 Preferencia de cultivo",
-        'soil_analysis': "🗺️ Análisis del suelo",
-        'upload_photo': "📸 Subir foto",
-        'manual_selection': "📝 Selección manual",
-        'select_soil_type': "Seleccione el tipo de suelo",
-        'generate_recommendation': "💡 Generar recomendación inteligente",
-        'personalized_recommendation': "### 🎯 Su recomendación personalizada",
-        'weather_forecast': "#### 🌤️ Pronóstico del tiempo (modelo IA)",
-        'pest_prediction': "#### 🐛 Pronóstico de plagas/enfermedades (modelo IA)",
-        'details': "Detalles:",
-        'crop_rotation_planner': "🌱 Planificador de rotación de cultivos",
-        'fertilizer_optimization': "🧪 Calculadora de optimización de fertilizantes",
-        'previous_recommendations': "📜 Recomendaciones anteriores",
-        'built_with': "Construido con ❤️ para la agricultura sostenible",
-        'last_updated': "Última actualización: ",
-        'signup_title': "🌾 Únete a la comunidad agrícola",
-        'login_title': "🌾 Bienvenido de nuevo",
-        'username': "👤 Nombre del agricultor",
-        'farm_name': "🏡 Nombre de la granja",
-        'profile_picture': "📷 Foto de perfil (opcional)",
-        'signup_button': "✅ Únete ahora",
-        'login_button': "✅ Iniciar sesión",
-        'signup_instruction': "¡Completa tus datos para empezar!",
-        'login_instruction': "Selecciona tu perfil de agricultor para continuar.",
-        'no_account': "¿Aún no tienes cuenta? ¡Regístrate!",
-        'signup_success': "¡Bienvenido, {username}! Tu cuenta ha sido creada.",
-        'login_success': "¡Bienvenido de nuevo, {username}!",
-        'username_exists': "⚠️ Nombre de agricultor ya tomado. Prueba con otro.",
-        'no_users': "Aún no hay agricultores registrados. ¡Regístrate para comenzar!"
-    },
-    'Tamil': {
-        'title': "திடமான விவசாய பரிந்துரை அமைப்பு",
-        'farm_details': "📏 விவசாய விவரங்கள்",
-        'crop_preference': "🌱 பயிர் விருப்பம்",
-        'soil_analysis': "🗺️ மண் பகுப்பாய்வு",
-        'upload_photo': "📸 புகைப்படத்தை பதிவேற்றவும்",
-        'manual_selection': "📝 கைமுறையிலான தேர்வு",
-        'select_soil_type': "மண் வகையைத் தேர்ந்தெடுக்கவும்",
-        'generate_recommendation': "💡 ஸ்மார்ட் பரிந்துரையை உருவாக்கவும்",
-        'personalized_recommendation': "### 🎯 உங்கள் தனிப்பட்ட பரிந்துரை",
-        'weather_forecast': "#### 🌤️ வானிலை முன்னறிவு (AI மாதிரி)",
-        'pest_prediction': "#### 🐛 பூச்சி/நோய் முன்னறிவு (AI மாதிரி)",
-        'details': "விவரங்கள்:",
-        'crop_rotation_planner': "🌱 பயிர் சுழற்சி திட்டம்",
-        'fertilizer_optimization': "🧪 உரம் மேம்பாட்டு கணிப்பான்",
-        'previous_recommendations': "📜 முந்தைய பரிந்துரைகள்",
-        'built_with': "திடமான விவசாயத்திற்கு அன்புடன் உருவாக்கப்பட்டது",
-        'last_updated': "கடைசியாக புதுப்பிக்கப்பட்டது: ",
-        'signup_title': "🌾 விவசாய சமூகத்தில் சேரவும்",
-        'login_title': "🌾 மீண்டும் வரவேற்கிறோம்",
-        'username': "👤 விவசாயி பெயர்",
-        'farm_name': "🏡 பண்ணை பெயர்",
-        'profile_picture': "📷 சுயவிவர படம் (விருப்பமானது)",
-        'signup_button': "✅ இப்போது சேரவும்",
-        'login_button': "✅ உள்நுழை",
-        'signup_instruction': "தொடங்க உங்கள் விவரங்களை நிரப்பவும்!",
-        'login_instruction': "தொடர உங்கள் விவசாயி சுயவிவரத்தைத் தேர்ந்தெடுக்கவும்.",
-        'no_account': "இன்னும் கணக்கு இல்லையா? பதிவு செய்யவும்!",
-        'signup_success': "வரவேற்கிறோம், {username}! உங்கள் கணக்கு உருவாக்கப்பட்டது.",
-        'login_success': "மீண்டும் வரவேற்கிறோம், {username}!",
-        'username_exists': "⚠️ விவசாயி பெயர் ஏற்கனவே எடுக்கப்பட்டுள்ளது. வேறு ஒரு பெயரை முயற்சிக்கவும்.",
-        'no_users': "இன்னும் விவசாயிகள் பதிவு செய்யப்படவில்லை. தொடங்க பதிவு செய்யவும்!"
-    },
-    'Malayalam': {
-        'title': "സ്ഥിരമായ കൃഷി ശുപാർശ സംവിധാനം",
-        'farm_details': "📏 കൃഷി വിശദാംശങ്ങൾ",
-        'crop_preference': "🌱 വിളയുടെ മുൻഗണന",
-        'soil_analysis': "🗺️ മണ്ണ് വിശകലനം",
-        'upload_photo': "📸 ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക",
-        'manual_selection': "📝 മാനുവൽ തിരഞ്ഞെടുപ്പ്",
-        'select_soil_type': "മണ്ണിന്റെ തരം തിരഞ്ഞെടുക്കുക",
-        'generate_recommendation': "💡 സ്മാർട്ട് ശുപാർശ സൃഷ്ടിക്കുക",
-        'personalized_recommendation': "### 🎯 നിങ്ങളുടെ വ്യക്തിഗത ശുപാർശ",
-        'weather_forecast': "#### 🌤️ കാലാവസ്ഥ പ്രവചനം (AI മോഡൽ)",
-        'pest_prediction': "#### 🐛 കീടം/രോഗം പ്രവചനം (AI മോഡൽ)",
-        'details': "വിശദാംശങ്ങൾ:",
-        'crop_rotation_planner': "🌱 വിള ചക്ര പദ്ധതി",
-        'fertilizer_optimization': "🧪 വളം ഓപ്റ്റിമൈസേഷൻ കാൽക്കുലേറ്റർ",
-        'previous_recommendations': "📜 മുമ്പത്തെ ശുപാർശകൾ",
-        'built_with': "സ്ഥിരമായ കൃഷിക്ക് സ്നേഹത്തോടെ നിർമ്മിച്ചു",
-        'last_updated': "അവസാനമായി പുതുക്കിയത്: ",
-        'signup_title': "🌾 കൃഷി സമൂഹത്തിൽ ചേരുക",
-        'login_title': "🌾 വീണ്ടും സ്വാഗതം",
-        'username': "👤 കർഷകന്റെ പേര്",
-        'farm_name': "🏡 കൃഷിസ്ഥലത്തിന്റെ പേര്",
-        'profile_picture': "📷 പ്രൊഫൈൽ ചിത്രം (ഓപ്ഷണൽ)",
-        'signup_button': "✅ ഇപ്പോൾ ചേരുക",
-        'login_button': "✅ ലോഗിൻ",
-        'signup_instruction': "തുടങ്ങാൻ നിന്റെ വിശദാംശങ്ങൾ നൽകുക!",
-        'login_instruction': "തുടരാൻ നിന്റെ കർഷക പ്രൊഫൈൽ തിരഞ്ഞെടുക്കുക.",
-        'no_account': "ഇതുവരെ അക്കൗണ്ട് ഇല്ലേ? സൈൻ അപ്പ് ചെയ്യുക!",
-        'signup_success': "സ്വാഗതം, {username}! നിന്റെ അക്കൗണ്ട് സൃഷ്ടിച്ചു.",
-        'login_success': "വീണ്ടും സ്വാഗതം, {username}!",
-        'username_exists': "⚠️ കർഷകന്റെ പേര് ഇതിനകം എടുത്തിട്ടുണ്ട്. മറ്റൊരു പേര് പരീക്ഷിക്കുക.",
-        'no_users': "ഇതുവരെ കർഷകർ രജിസ്റ്റർ ചെയ്തിട്ടില്ല. തുടങ്ങാൻ സൈൻ അപ്പ് ചെയ്യുക!"
-    },
-    'Marathi': {
-        'title': "शाश्वत शेती शिफारस प्रणाली",
-        'farm_details': "📏 शेती तपशील",
-        'crop_preference': "🌱 पिक प्राधान्य",
-        'soil_analysis': "🗺️ माती विश्लेषण",
-        'upload_photo': "📸 फोटो अपलोड करा",
-        'manual_selection': "📝 मॅन्युअल निवड",
-        'select_soil_type': "मातीचा प्रकार निवडा",
-        'generate_recommendation': "💡 स्मार्ट शिफारस तयार करा",
-        'personalized_recommendation': "### 🎯 आपली वैयक्तिक शिफारस",
-        'weather_forecast': "#### 🌤️ हवामान अंदाज (AI मॉडेल)",
-        'pest_prediction': "#### 🐛 कीटक/रोग अंदाज (AI मॉडेल)",
-        'details': "तपशील:",
-        'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
-        'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
-        'previous_recommendations': "📜 मागील शिफारसी",
-        'built_with': "शाश्वत शेतीसाठी प्रेमाने तयार केले",
-        'last_updated': "शेवटचे अद्यतन: ",
-        'signup_title': "🌾 शेती समुदायात सामील व्हा",
-        'login_title': "🌾 परत स्वागत आहे",
-        'username': "👤 शेतकऱ्याचे नाव",
-        'farm_name': "🏡 शेताचे नाव",
-        'profile_picture': "📷 प्रोफाइल चित्र (पर्यायी)",
-        'signup_button': "✅ आता सामील व्हा",
-        'login_button': "✅ लॉगिन",
-        'signup_instruction': "सुरू करण्यासाठी आपले तपशील भरा!",
-        'login_instruction': "पुढे जाण्यासाठी आपले शेतकरी प्रोफाइल निवडा.",
-        'no_account': "अजून खाते नाही? साइन अप करा!",
-        'signup_success': "स्वागत आहे, {username}! आपले खाते तयार झाले आहे.",
-        'login_success': "परत स्वागत आहे, {username}!",
-        'username_exists': "⚠️ शेतकऱ्याचे नाव आधीच घेतले आहे. दुसरे नाव वापरून पहा.",
-        'no_users': "अजून कोणतेही शेतकरी नोंदणीकृत नाहीत. सुरू करण्यासाठी साइन अप करा!"
-    },
-    'Konkani': {
-        'title': "सस्टेनेबल फार्मिंग रेकमेंडेशन सिस्टिम",
-        'farm_details': "📏 शेतीचे तपशील",
-        'crop_preference': "🌱 पिकाची प्राधान्य",
-        'soil_analysis': "🗺️ मातीचे विश्लेषण",
-        'upload_photo': "📸 फोटो अपलोड करा",
-        'manual_selection': "📝 मॅन्युअल निवड",
-        'select_soil_type': "मातीचा प्रकार निवडा",
-        'generate_recommendation': "💡 स्मार्ट शिफारस तयार करा",
-        'personalized_recommendation': "### 🎯 तुमची वैयक्तिक शिफारस",
-        'weather_forecast': "#### 🌤️ हवामानाचा अंदाज (AI मॉडेल)",
-        'pest_prediction': "#### 🐛 कीटक/रोगाचा अंदाज (AI मॉडेल)",
-        'details': "तपशील:",
-        'crop_rotation_planner': "🌱 पिक फेरपालट नियोजक",
-        'fertilizer_optimization': "🧪 खत ऑप्टिमायझेशन कॅल्क्युलेटर",
-        'previous_recommendations': "📜 मागील शिफारसी",
-        'built_with': "सस्टेनेबल फार्मिंगसाठी प्रेमाने तयार केले",
-        'last_updated': "शेवटचे अद्यतन: ",
-        'signup_title': "🌾 शेती समुदायात सामील व्हा",
-        'login_title': "🌾 परत स्वागत आहे",
-        'username': "👤 शेतकऱ्याचे नाव",
-        'farm_name': "🏡 शेताचे नाव",
-        'profile_picture': "📷 प्रोफाइल चित्र (पर्यायी)",
-        'signup_button': "✅ आता सामील व्हा",
-        'login_button': "✅ लॉगिन",
-        'signup_instruction': "सुरू करण्यासाठी आपले तपशील भरा!",
-        'login_instruction': "पुढे जाण्यासाठी आपले शेतकरी प्रोफाइल निवडा.",
-        'no_account': "अजून खाते नाही? साइन अप करा!",
-        'signup_success': "स्वागत आहे, {username}! आपले खाते तयार झाले आहे.",
-        'login_success': "परत स्वागत आहे, {username}!",
-        'username_exists': "⚠️ शेतकऱ्याचे नाव आधीच घेतले आहे. दुसरे नाव वापरून पहा.",
-        'no_users': "अजून कोणतेही शेतकरी नोंदणीकृत नाहीत. सुरू करण्यासाठी साइन अप करा!"
-    },
-    'Urdu': {
-        'title': "پائیدار زراعت کی سفارشات کا نظام",
-        'farm_details': "📏 زرعی تفصیلات",
-        'crop_preference': "🌱 فصل کی ترجیح",
-        'soil_analysis': "🗺️ مٹی کا تجزیہ",
-        'upload_photo': "📸 تصویر اپ لوڈ کریں",
-        'manual_selection': "📝 دستی انتخاب",
-        'select_soil_type': "مٹی کی قسم منتخب کریں",
-        'generate_recommendation': "💡 اسمارٹ سفارش تیار کریں",
-        'personalized_recommendation': "### 🎯 آپ کی ذاتی سفارش",
-        'weather_forecast': "#### 🌤️ موسم کی پیش گوئی (AI ماڈل)",
-        'pest_prediction': "#### 🐛 کیڑوں/بیماری کی پیش گوئی (AI ماڈل)",
-        'details': "تفصیلات:",
-        'crop_rotation_planner': "🌱 فصل کی گردش کا منصوبہ",
-        'fertilizer_optimization': "🧪 کھاد کی اصلاح کیلکولیٹر",
-        'previous_recommendations': "📜 پچھلی سفارشات",
-        'built_with': "پائیدار زراعت کے لیے محبت سے تیار کیا گیا",
-        'last_updated': "آخری بار اپ ڈیٹ کیا گیا: ",
-        'signup_title': "🌾 زرعی برادری میں شامل ہوں",
-        'login_title': "🌾 واپس خوش آمدید",
-        'username': "👤 کسان کا نام",
-        'farm_name': "🏡 کھیت کا نام",
-        'profile_picture': "📷 پروفائل تصویر (اختیاری)",
-        'signup_button': "✅ ابھی شامل ہوں",
-        'login_button': "✅ لاگ ان",
-        'signup_instruction': "شروع کرنے کے لیے اپنی تفصیلات پُر کریں!",
-        'login_instruction': "جاری رکھنے کے لیے اپنا کسان پروفائل منتخب کریں۔",
-        'no_account': "ابھی تک کوئی اکاؤنٹ نہیں ہے؟ سائن اپ کریں!",
-        'signup_success': "خوش آمدید، {username}! آپ کا اکاؤنٹ بن گیا ہے۔",
-        'login_success': "واپس خوش آمدید، {username}!",
-        'username_exists': "⚠️ کسان کا نام پہلے سے لیا جا چکا ہے۔ کوئی اور نام آزمائیں۔",
-        'no_users': "ابھی تک کوئی کسان رجسٹرڈ نہیں ہیں۔ شروع کرنے کے لیے سائن اپ کریں!"
-    }
-}
+# --- Dynamic Multilingual Support with NLP Translation (NO HARDCODING) ---
+# Initialize StreamlitTranslator for real-time dynamic translation to ALL languages
+# This replaces the old hardcoded LANGUAGES dictionary
+if 'translator' not in st.session_state:
+    st.session_state['translator'] = StreamlitTranslator(backend='libre')
 
-# Set page config FIRST, before any other Streamlit command
-## st.set_page_config moved to top of file
+translator = st.session_state['translator']
+
 
 # Update initialize_db to include users table and new features
 def initialize_db():
@@ -653,21 +294,110 @@ def generate_chatbot_response(query):
     else:
         return "I'm here to help with all your farming questions! I can assist with soil management, crop selection, pest control, irrigation, weather planning, and much more. Could you be more specific about what you'd like to know?"
 
-# --- Authentication ---
+# --- Dynamic Multilingual Support with NLP Translation (NO HARDCODING) ---
+# Initialize StreamlitTranslator for real-time dynamic translation to all languages
+if 'translator' not in st.session_state:
+    st.session_state['translator'] = StreamlitTranslator(backend='libre')
+
+translator = st.session_state['translator']
+
+# --- Authentication & Language Selection ---
 if 'user' not in st.session_state:
     st.session_state['user'] = None
 if 'lang' not in st.session_state:
     st.session_state['lang'] = 'English'
 
-# Language selection
-lang = st.selectbox(
-    "🌐 " + LANGUAGES[st.session_state['lang']].get('select_language', 'Select Language'),
-    options=list(LANGUAGES.keys()),
-    index=list(LANGUAGES.keys()).index(st.session_state['lang']),
-    key="language_selector"
+# Add language selector in sidebar
+with st.sidebar:
+    st.markdown("### 🌐 Select Language / భాష ఎంచుకోండి / ಭಾಷೆ ಆಯ್ಕೆ")
+    selected_lang = translator.set_language_selector(key="main_language")
+    st.session_state['lang'] = selected_lang
+    st.divider()
+
+# Get translator instance for current session language
+# Normalize language keys in session state so all code paths can access the value
+current_lang = (
+    st.session_state.get('lang')
+    or st.session_state.get('language')
+    or st.session_state.get('current_language')
+    or 'English'
 )
-st.session_state['lang'] = lang
-T = LANGUAGES[lang]
+# Keep session_state consistent for different naming conventions used across the app
+st.session_state['lang'] = current_lang
+st.session_state['language'] = current_lang
+st.session_state['current_language'] = current_lang
+# Expose a concise variable for voice/TTS APIs that expect 'lang'
+lang = current_lang
+
+# Create a compatibility dict T that uses the translator for all strings
+# This maps all the old hardcoded keys to dynamically translated text
+class TranslatorCompat:
+    """Compatibility layer that bridges old hardcoded T dictionary with dynamic translator"""
+    def __init__(self, translator, language):
+        self.translator = translator
+        self.language = language
+        self._cache = {}
+    
+    def __getitem__(self, key):
+        """Get translation for a key"""
+        if key in self._cache:
+            return self._cache[key]
+        
+        # Map old keys to English text for translation
+        key_mappings = {
+            'title': 'Sustainable Farming Recommendation System',
+            'farm_details': 'Farm Details',
+            'crop_preference': 'Crop Preference',
+            'soil_analysis': 'Soil Analysis',
+            'upload_photo': 'Upload a photo',
+            'manual_selection': 'Manual selection',
+            'select_soil_type': 'Select soil type',
+            'generate_recommendation': 'Generate Smart Recommendation',
+            'personalized_recommendation': 'Your Personalized Recommendation',
+            'weather_forecast': 'Weather Forecast (AI Model)',
+            'pest_prediction': 'Pest/Disease Prediction (AI Model)',
+            'details': 'Details:',
+            'crop_rotation_planner': 'Crop Rotation Planner',
+            'fertilizer_optimization': 'Fertilizer Optimization Calculator',
+            'previous_recommendations': 'Previous Recommendations',
+            'built_with': 'Built with love for sustainable farming',
+            'last_updated': 'Last updated: ',
+            'signup_title': 'Join the Farming Community',
+            'login_title': 'Welcome Back',
+            'username': 'Farmer Name',
+            'farm_name': 'Farm Name',
+            'profile_picture': 'Profile Picture (Optional)',
+            'signup_button': 'Join Now',
+            'login_button': 'Login',
+            'signup_instruction': 'Fill in your details to get started!',
+            'login_instruction': 'Select your farmer profile to continue.',
+            'no_account': 'No account yet? Sign up!',
+            'signup_success': 'Welcome! Your account is created.',
+            'login_success': 'Welcome back!',
+            'username_exists': 'Farmer name already taken. Try another.',
+            'no_users': 'No farmers registered yet. Sign up to start!'
+        }
+        
+        english_text = key_mappings.get(key, key)
+        
+        # Translate to selected language if not English
+        if self.language != 'English':
+            translated = self.translator.translate(english_text, target_language=self.language)
+            self._cache[key] = translated
+            return translated
+        else:
+            self._cache[key] = english_text
+            return english_text
+    
+    def get(self, key, default=None):
+        """Get with default value"""
+        try:
+            return self[key]
+        except:
+            return default
+
+# Create T as the compatibility layer
+T = TranslatorCompat(translator, current_lang)
 
 # Check if user is logged in
 if not st.session_state['user']:

@@ -21,3 +21,9 @@ folium==0.20.0
 streamlit-folium==0.25.2
 streamlit-webrtc==0.47.7
 # pipwin  # Uncomment and install if pyaudio fails on Windows
+
+# NLP Translation Libraries (Dynamic multilingual support - 25+ languages)
+googletrans==4.0.0rc1
+LibreTranslate==1.0.0
+textblob==0.17.1
+cachetools==5.3.2

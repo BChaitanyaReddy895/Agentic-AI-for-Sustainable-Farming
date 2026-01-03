@@ -1,8 +1,10 @@
 import sqlite3
+# from i18n import get_translation
 
 class FertilizerOptimizer:
-    def __init__(self, db_path="database/sustainable_farming.db"):
+    def __init__(self, db_path="database/sustainable_farming.db", language="English"):
         self.db_path = db_path
+        self.language = language
 
     def calculate_fertilizer(self, land_size, soil_type, crop_type):
         """Calculate optimal fertilizer amounts with sustainability adjustments."""
@@ -34,4 +36,13 @@ class FertilizerOptimizer:
             "nitrogen_kg": round(nitrogen, 2),
             "phosphorus_kg": round(phosphorus, 2),
             "potassium_kg": round(potassium, 2)
+        }
+    
+    def get_fertilizer_info(self):
+        """Get translated fertilizer information"""
+        return {
+            'nitrogen': 'Nitrogen',
+            'phosphorus': 'Phosphorus',
+            'potassium': 'Potassium',
+            'fertilizer_note': 'Fertilizer note'
         }

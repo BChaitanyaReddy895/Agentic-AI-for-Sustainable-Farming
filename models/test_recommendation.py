@@ -1,4 +1,4 @@
-from Models.central_coordinator import CentralCoordinator
+from models.central_coordinator import CentralCoordinator
 
 # Initialize the CentralCoordinator
 coordinator = CentralCoordinator()

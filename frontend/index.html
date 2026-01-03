@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustainable Farming Recommendation System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="farm-bg">
+        <img src="https://img.icons8.com/color/96/tractor.png" style="left:5vw;top:12vh;width:64px;animation-delay:0s;">
+        <img src="https://img.icons8.com/color/96/wheat.png" style="left:80vw;top:18vh;width:56px;animation-delay:2s;">
+        <img src="https://img.icons8.com/color/96/sun.png" style="left:50vw;top:5vh;width:48px;animation-delay:1s;">
+        <img src="https://img.icons8.com/color/96/cow.png" style="left:20vw;top:70vh;width:60px;animation-delay:3s;">
+        <img src="https://img.icons8.com/color/96/plant-under-sun.png" style="left:60vw;top:80vh;width:52px;animation-delay:4s;">
+    </div>
+    <nav style="background:linear-gradient(90deg,#4caf50 0%,#00bfff 100%);padding:18px 0 12px 0;text-align:center;box-shadow:0 2px 12px rgba(0,191,255,0.10);margin-bottom:24px;position:relative;z-index:2;">
+        <span style="font-size:2em;font-weight:700;color:#fff;letter-spacing:1px;">🌾 Sustainable Farming Platform</span>
+    </nav>
+    <div id="app" style="margin-bottom:40px;position:relative;z-index:2;">
+        <!-- Main UI will be rendered here by JavaScript -->
+    </div>
+    <footer style="text-align:center;color:#888;font-size:1em;margin-top:40px;padding:16px 0 8px 0;background:#f9fff9;border-top:1px solid #e0ffe0;position:relative;z-index:2;">
+        Built with ❤️ for farmers | <b>Modern AI Platform</b> | <span id="footer-year"></span>
+    </footer>
+    <script>
+        document.getElementById('footer-year').innerText = new Date().getFullYear();
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/i18next@21.6.16/dist/umd/i18next.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="app.js"></script>
+</body>
+</html>

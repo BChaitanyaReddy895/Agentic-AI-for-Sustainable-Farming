@@ -7,11 +7,45 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'm
 from autogen import AssistantAgent, GroupChat, GroupChatManager
 import sqlite3
 import pandas as pd
-from farmer_advisor import FarmerAdvisor
-from market_Researcher import MarketResearcher
-from weather_Analyst import WeatherAnalyst
-from sustainability_Expert import SustainabilityExpert
+from models.farmer_advisor import FarmerAdvisor
+from models.market_Researcher import MarketResearcher
+from models.weather_Analyst import WeatherAnalyst
+from models.sustainability_Expert import SustainabilityExpert
 import re  # For parsing market prices from the message
+
+# Google Gemini integration for versatile Q&A
+import requests
+
+GEMINI_API_KEY = "AIzaSyAc6h2kfVtvwcVJchGp-saN2sgw2tJVDJc"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+
+def get_gemini_response(prompt):
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    params = {"key": GEMINI_API_KEY}
+    try:
+        response = requests.post(GEMINI_API_URL, headers=headers, params=params, json=data, timeout=15)
+        response.raise_for_status()
+        result = response.json()
+        # Debug: Log the full Gemini API response
+        print("[Gemini API raw response]", result)
+        # Extract the text from the Gemini response
+        if "candidates" in result and result["candidates"]:
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+        else:
+            print("[Gemini API error] No candidates in response.")
+            return "Sorry, I couldn't find an answer to your question right now. (No candidates from Gemini)"
+    except requests.exceptions.Timeout:
+        print("[Gemini API error] Request timed out.")
+        return "Sorry, the AI service timed out. Please try again."
+    except requests.exceptions.RequestException as e:
+        print(f"[Gemini API error] RequestException: {e}")
+        return f"Sorry, there was a problem reaching the AI service: {e}"
+    except Exception as e:
+        print(f"[Gemini API error] Unexpected: {e}")
+        return f"Sorry, an unexpected error occurred: {e}"
 
 # Custom AssistantAgent class to override generate_reply
 class CustomAssistantAgent(AssistantAgent):
@@ -45,6 +79,7 @@ class CustomAssistantAgent(AssistantAgent):
         self.sustainability_metrics = {}  # To store overall sustainability scores and new metrics
         self.final_result = None  # To store the final recommendation and chart data
 
+
     def generate_reply(self, messages=None, sender=None):
         if messages is None and sender is not None:
             messages = self.chat_messages.get(sender, [])
@@ -52,6 +87,17 @@ class CustomAssistantAgent(AssistantAgent):
         # Responses for each agent
         if self.name == "FarmerAdvisor":
             response = self.farmer_advisor_response(messages)
+            # If the rule-based response is generic or not helpful, use Gemini
+            if response.strip().lower() in [
+                "no farm inputs provided to suggest crops.",
+                "i'm here to help with all your farming questions! i can assist with soil management, crop selection, pest control, irrigation, weather planning, and much more. could you be more specific about what you'd like to know?",
+                "no valid response generated.",
+                "no response available."
+            ] or response.strip().startswith("FarmerAdvisor:"):
+                # Use the latest user message as prompt
+                user_msg = next((msg["content"] for msg in reversed(messages) if msg["name"] == "user"), None)
+                if user_msg:
+                    response = get_gemini_response(user_msg)
         elif self.name == "MarketResearcher":
             response = self.market_researcher_response(messages)
         elif self.name == "WeatherAnalyst":

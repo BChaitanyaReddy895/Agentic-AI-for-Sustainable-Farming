@@ -1,10 +1,12 @@
 import sqlite3
 from datetime import datetime, timedelta
-import plotly.graph_objects as go  # Add this import
+import plotly.graph_objects as go
+# from i18n import get_translation
 
 class CropRotationPlanner:
-    def __init__(self, db_path="database/sustainable_farming.db"):
+    def __init__(self, db_path="database/sustainable_farming.db", language="English"):
         self.db_path = db_path
+        self.language = language
 
     def get_historical_crops(self):
         """Retrieve past crops from recommendations table."""
@@ -49,11 +51,17 @@ class CropRotationPlanner:
         """Create a Plotly timeline for the rotation plan."""
         years = [item[0] for item in plan]
         crops = [item[1] for item in plan]
+        
+        # Get translated title
+        title = 'Crop Rotation Planner'
+        year_label = 'Year'
+        crop_label = 'Crop'
+        
         fig = go.Figure(data=[go.Scatter(x=years, y=crops, mode='lines+markers+text', text=crops, textposition="top center")])
         fig.update_layout(
-            title="Crop Rotation Plan",
-            xaxis_title="Year",
-            yaxis_title="Crop",
+            title=title,
+            xaxis_title=year_label,
+            yaxis_title=crop_label,
             height=400,
             margin=dict(l=0, r=0, t=40, b=0)
         )
