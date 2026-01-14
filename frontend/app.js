@@ -27,10 +27,40 @@ let currentLanguage = localStorage.getItem('agrismart-language') || 'hi';
 let recommendations = [];
 let weatherData = null;
 let farmLocation = null;
-let isOffline = !navigator.onLine;
+let isOffline = false; // Default to online, will check properly
 let currentUser = JSON.parse(localStorage.getItem('agrismart-user')) || null;
 
-// Check network status
+// Better network check - try actual request
+async function checkNetworkStatus() {
+    try {
+        // Try to reach the API
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(`${API_BASE}/health`, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        isOffline = false;
+        document.body.classList.remove('offline');
+        console.log('✅ Network check: Online');
+        return true;
+    } catch (e) {
+        // Fallback to navigator.onLine
+        isOffline = !navigator.onLine;
+        console.log('⚠️ Network check fallback:', navigator.onLine ? 'Online' : 'Offline');
+        return navigator.onLine;
+    }
+}
+
+// Check network on app start
+checkNetworkStatus();
+
+// Check network status on events
 window.addEventListener('online', () => { 
     isOffline = false; 
     document.body.classList.remove('offline');
@@ -44,11 +74,8 @@ window.addEventListener('offline', () => {
 
 // ==================== ENHANCED API WITH OFFLINE FALLBACK ====================
 async function api(endpoint, method = 'GET', data = null) {
-    // Check offline first
-    if (isOffline) {
-        console.log('📴 Offline mode - using cached data for:', endpoint);
-        return getOfflineData(endpoint, data);
-    }
+    // Always try the API first, don't check isOffline flag
+    // This ensures we try to connect even if the flag is wrong
     
     try {
         const options = {
@@ -56,8 +83,7 @@ async function api(endpoint, method = 'GET', data = null) {
             headers: { 
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            },
-            timeout: 15000 // 15 second timeout
+            }
         };
         
         if (data && method !== 'GET') {
@@ -80,12 +106,17 @@ async function api(endpoint, method = 'GET', data = null) {
         const result = await response.json();
         console.log(`📥 API Response:`, result);
         
+        // Mark as online since API worked
+        isOffline = false;
+        document.body.classList.remove('offline');
+        
         // Cache successful responses
         cacheResponse(endpoint, result);
         
         return result;
     } catch (error) {
         console.warn('⚠️ API call failed, trying offline:', error.message);
+        isOffline = true;
         return getOfflineData(endpoint, data);
     }
 }

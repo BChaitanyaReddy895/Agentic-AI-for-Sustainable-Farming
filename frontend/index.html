@@ -1563,13 +1563,33 @@
         }
         
         function toggleVoiceInterface() {
-            const voicePanel = document.querySelector('.voice-assistant-container');
+            const voicePanel = document.getElementById('voice-panel');
+            const voiceBtn = document.getElementById('voice-btn');
+            
             if (voicePanel) {
                 voicePanel.classList.toggle('active');
+                voicePanel.style.display = voicePanel.classList.contains('active') ? 'block' : 'none';
             }
-            // Also trigger voice recognition
+            
+            // Trigger voice recognition
             if (window.voiceInterface) {
-                window.voiceInterface.startListening();
+                if (window.voiceInterface.isListening) {
+                    window.voiceInterface.stopListening();
+                } else {
+                    window.voiceInterface.startListening();
+                }
+            } else {
+                // Try to initialize voice interface
+                if (window.initVoiceInterface) {
+                    window.voiceInterface = window.initVoiceInterface();
+                    setTimeout(() => {
+                        if (window.voiceInterface) {
+                            window.voiceInterface.startListening();
+                        }
+                    }, 500);
+                } else {
+                    alert('Voice not supported on this device');
+                }
             }
         }
         
