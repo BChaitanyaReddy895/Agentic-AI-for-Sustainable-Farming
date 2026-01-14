@@ -9,8 +9,7 @@ const AppConfig = {
         // Check if running in Capacitor (mobile app)
         if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
             console.log('📱 Mobile app detected - using deployed server');
-            // ⚠️ REPLACE THIS WITH YOUR RENDER URL AFTER DEPLOYMENT
-            return 'https://agrismart-api.onrender.com';
+            return 'https://agrismart-api-m8nz.onrender.com';
         }
         
         // Check if running on localhost

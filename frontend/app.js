@@ -1151,7 +1151,25 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupEventListeners();
     startAnimations();
+    
+    // Auto-start app if user is authenticated
+    const isAuthenticated = localStorage.getItem('authenticated') === 'true';
+    const userPhone = localStorage.getItem('userPhone');
+    
+    if (isAuthenticated && userPhone) {
+        startApp();
+    }
 });
+
+// Start app - hide welcome overlay and navigate to home
+function startApp() {
+    const welcomeOverlay = document.getElementById('welcome-overlay');
+    if (welcomeOverlay) {
+        welcomeOverlay.classList.add('hidden');
+        welcomeOverlay.style.display = 'none';
+    }
+    navigate('home');
+}
 
 function initializeApp() {
     navigate('home');
