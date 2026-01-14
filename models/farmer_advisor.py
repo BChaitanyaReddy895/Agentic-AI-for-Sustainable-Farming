@@ -2,26 +2,41 @@ import sqlite3
 import pandas as pd
 import joblib
 from sklearn.tree import DecisionTreeClassifier, export_text
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import warnings
 import os
+import numpy as np
 
 class FarmerAdvisor:
     def __init__(self, db_path='Models/database/sustainable_farming.db'):
         self.db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
+        self.models_dir = os.path.dirname(__file__)  # Save in the same models folder
         self.model = None
-        self.encoders = {}
-        model_path = 'models/farmer_advisor_model.pkl'
-        encoder_path = 'models/farmer_encoders.pkl'
-        if os.path.exists(model_path) and os.path.exists(encoder_path):
+        self.scaler = None
+        self.encoder = None
+        self.encoders = {}  # For backward compatibility
+        
+        # Load NEW retrained models (from 1/13/2026)
+        model_path = os.path.join(self.models_dir, 'farmer_advisor_model.pkl')
+        scaler_path = os.path.join(self.models_dir, 'farmer_advisor_scaler.pkl')
+        encoder_path = os.path.join(self.models_dir, 'farmer_advisor_encoder.pkl')
+        
+        if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(encoder_path):
+            print("🌾 Loading NEW retrained Farmer Advisor model...")
             self.model = joblib.load(model_path)
-            self.encoders = joblib.load(encoder_path)
+            self.scaler = joblib.load(scaler_path)
+            self.encoder = joblib.load(encoder_path)
+            # Set encoders for backward compatibility
+            self.encoders = {'crop': self.encoder}
+            print(f"✅ Loaded retrained model - Classes: {list(self.encoder.classes_)}")
         else:
-            self._load_data()
-            self._preprocess()
-            self._train_model()
+            print("⚠️ New models not found, using fallback mode")
+            self.model = None
+            self.scaler = None
+            self.encoder = None
+            self.encoders = {}
 
     def _load_data(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -58,18 +73,26 @@ class FarmerAdvisor:
         # Prepare features and target
         X = self.df[feature_cols].fillna(0)
         y = self.df['Crop_encoded']
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, stratify=y, random_state=42
-        )
+        
+        # Handle case where dataset is too small or classes have few samples
+        if len(X) < 5:
+            X_train, y_train = X, y
+            X_test, y_test = X, y
+        else:
+            # Check if stratify is possible (each class needs at least 2 samples)
+            class_counts = y.value_counts()
+            can_stratify = all(class_counts >= 2)
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, stratify=y if can_stratify else None, random_state=42
+            )
         self.model = DecisionTreeClassifier(
             max_depth=8,
             min_samples_split=6,
             random_state=42
         )
         self.model.fit(X_train, y_train)
-        os.makedirs('models', exist_ok=True)
-        joblib.dump(self.model, 'models/farmer_advisor_model.pkl')
-        joblib.dump(self.encoders, 'models/farmer_encoders.pkl')
+        joblib.dump(self.model, os.path.join(self.models_dir, 'farmer_advisor_model.pkl'))
+        joblib.dump(self.encoders, os.path.join(self.models_dir, 'farmer_encoders.pkl'))
         # Only print accuracy and rules if running as a script (not imported)
         if __name__ == "__main__":
             y_pred = self.model.predict(X_test)
@@ -83,18 +106,31 @@ class FarmerAdvisor:
 
     def recommend(self, soil_ph, soil_moisture, temp, rainfall, fertilizer, pesticide, crop_yield,
                   carbon_score=None, water_score=None, erosion_score=None):
-        if self.model is None:
-            self.model = joblib.load('models/farmer_advisor_model.pkl')
-        if not self.encoders:
-            self.encoders = joblib.load('models/farmer_encoders.pkl')
-
-        input_df = pd.DataFrame([[
-            soil_ph, soil_moisture, temp, rainfall,
-            fertilizer, pesticide, crop_yield
-        ]], columns=[
-            'Soil_pH', 'Soil_Moisture', 'Temperature_C', 'Rainfall_mm',
-            'Fertilizer_Usage_kg', 'Pesticide_Usage_kg', 'Crop_Yield_ton'
-        ])
-
-        crop_code = self.model.predict(input_df)[0]
-        return self.encoders['crop'].inverse_transform([crop_code])[0]
+        
+        # Return fallback if no model available
+        if self.model is None or self.encoder is None:
+            print("⚠️ Model not available, using fallback crop")
+            return "wheat"
+            
+        try:
+            # Create input data with proper feature names
+            input_df = pd.DataFrame([[
+                soil_ph, soil_moisture, temp, rainfall,
+                fertilizer, pesticide, crop_yield
+            ]], columns=[
+                'Soil_pH', 'Soil_Moisture', 'Temperature_C', 'Rainfall_mm',
+                'Fertilizer_Usage_kg', 'Pesticide_Usage_kg', 'Crop_Yield_ton'
+            ])
+            
+            print(f"📊 Input features: pH={soil_ph}, moisture={soil_moisture}, temp={temp}°C, rainfall={rainfall}mm")
+            
+            # Get prediction
+            crop_code = self.model.predict(input_df)[0]
+            predicted_crop = self.encoder.inverse_transform([crop_code])[0]
+            
+            print(f"🌾 Model predicted: {predicted_crop} (code: {crop_code})")
+            return predicted_crop
+            
+        except Exception as e:
+            print(f"❌ Model prediction failed: {e}")
+            return "wheat"

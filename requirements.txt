@@ -5,25 +5,25 @@ plotly==6.1.2
 joblib==1.4.2
 numpy==1.26.4
 scikit-learn==1.5.0
-streamlit==1.38.0
 statsmodels==0.14.4
 pulp==2.9.0
 Pillow==10.4.0
 requests==2.31.0
 python-dotenv==1.0.0
-speechrecognition==3.10.0
-# Voice features
-# pyttsx3==2.90  # optional offline TTS (local only)
-# pyaudio==0.2.11  # native mic (disabled on server; WebRTC used instead)
+
+# FastAPI Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Voice features (cloud compatible)
 gTTS==2.4.0
 pydub==0.25.1
-folium==0.20.0
-streamlit-folium==0.25.2
-streamlit-webrtc==0.47.7
-# pipwin  # Uncomment and install if pyaudio fails on Windows
 
-# NLP Translation Libraries (Dynamic multilingual support - 25+ languages)
+# Maps
+folium==0.20.0
+
+# NLP Translation
 googletrans==4.0.0rc1
-LibreTranslate==1.0.0
 textblob==0.17.1
 cachetools==5.3.2

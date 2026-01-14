@@ -2,34 +2,1730 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sustainable Farming Recommendation System</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#22c55e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AgriSmart">
+    <meta name="description" content="AI-powered farming assistant with voice support and offline capabilities for Indian farmers">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <title>AgriSmart AI - Smart Farming Assistant</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    
+    <!-- Stylesheets -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles_modern.css">
+    <link rel="stylesheet" href="voice-styles.css">
+    <link rel="stylesheet" href="mobile-styles.css">
+    
+    <!-- Scripts (defer for performance) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" defer></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
+    <script src="config.js"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+                    .catch(err => console.log('❌ Service Worker failed:', err));
+            });
+        }
+    </script>
 </head>
 <body>
-    <div class="farm-bg">
-        <img src="https://img.icons8.com/color/96/tractor.png" style="left:5vw;top:12vh;width:64px;animation-delay:0s;">
-        <img src="https://img.icons8.com/color/96/wheat.png" style="left:80vw;top:18vh;width:56px;animation-delay:2s;">
-        <img src="https://img.icons8.com/color/96/sun.png" style="left:50vw;top:5vh;width:48px;animation-delay:1s;">
-        <img src="https://img.icons8.com/color/96/cow.png" style="left:20vw;top:70vh;width:60px;animation-delay:3s;">
-        <img src="https://img.icons8.com/color/96/plant-under-sun.png" style="left:60vw;top:80vh;width:52px;animation-delay:4s;">
+    <!-- Animated Background Particles -->
+    <div class="particles-bg" id="particles-bg"></div>
+    
+    <!-- Auth Modal -->
+    <div class="auth-modal" id="auth-modal">
+        <div class="auth-container">
+            <button class="auth-close" onclick="closeAuthModal()">&times;</button>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <h2>Welcome Back! 🌾</h2>
+                <p class="auth-subtitle">Login to access your farm dashboard</p>
+                
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="login-phone" placeholder="+91 9876543210" required pattern="[0-9]{10}">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="login-password" placeholder="Enter password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('login-password')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-auth">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                
+                <div class="auth-divider">
+                    <span>or login with</span>
+                </div>
+                
+                <button type="button" class="btn-otp" onclick="requestOTP()">
+                    <i class="fas fa-mobile-alt"></i> Login with OTP
+                </button>
+                
+                <p class="auth-footer">
+                    Don't have an account? <a href="#" onclick="switchAuthTab('signup')">Sign up</a>
+                </p>
+            </form>
+            
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
+                <h2>Create Account 🌱</h2>
+                <p class="auth-subtitle">Join thousands of smart farmers</p>
+                
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="signup-name" placeholder="Enter your name" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="signup-phone" placeholder="+91 9876543210" required pattern="[0-9]{10}">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Village/District</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <input type="text" id="signup-location" placeholder="Enter your location" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="signup-password" placeholder="Create password" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('signup-password')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-auth">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+                
+                <p class="auth-footer">
+                    Already have an account? <a href="#" onclick="switchAuthTab('login')">Login</a>
+                </p>
+            </form>
+            
+            <!-- OTP Verification -->
+            <div id="otp-form" class="auth-form">
+                <h2>Verify OTP 📱</h2>
+                <p class="auth-subtitle">Enter the 6-digit code sent to your phone</p>
+                
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 1)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 2)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 3)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 4)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 5)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveToNext(this, 6)">
+                </div>
+                
+                <button type="button" class="btn-auth" onclick="verifyOTP()">
+                    <i class="fas fa-check"></i> Verify
+                </button>
+                
+                <p class="resend-timer">Resend OTP in <span id="otp-timer">30</span>s</p>
+                <button type="button" class="btn-resend" id="resend-btn" onclick="resendOTP()" disabled>
+                    Resend OTP
+                </button>
+            </div>
+        </div>
     </div>
-    <nav style="background:linear-gradient(90deg,#4caf50 0%,#00bfff 100%);padding:18px 0 12px 0;text-align:center;box-shadow:0 2px 12px rgba(0,191,255,0.10);margin-bottom:24px;position:relative;z-index:2;">
-        <span style="font-size:2em;font-weight:700;color:#fff;letter-spacing:1px;">🌾 Sustainable Farming Platform</span>
-    </nav>
-    <div id="app" style="margin-bottom:40px;position:relative;z-index:2;">
-        <!-- Main UI will be rendered here by JavaScript -->
+
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <div class="lang-dropdown">
+            <button class="lang-btn" onclick="toggleLanguageDropdown()">
+                <i class="fas fa-globe"></i>
+                <span id="current-lang">English</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="lang-menu" id="lang-menu">
+                <div class="lang-option" onclick="changeLanguage('en', 'English')">
+                    <span class="flag">🇺🇸</span> English
+                </div>
+                <div class="lang-option" onclick="changeLanguage('hi', 'हिंदी')">
+                    <span class="flag">🇮🇳</span> हिंदी
+                </div>
+                <div class="lang-option" onclick="changeLanguage('kn', 'ಕನ್ನಡ')">
+                    <span class="flag">🇮🇳</span> ಕನ್ನಡ
+                </div>
+                <div class="lang-option" onclick="changeLanguage('ta', 'தமிழ்')">
+                    <span class="flag">🇮🇳</span> தமிழ்
+                </div>
+                <div class="lang-option" onclick="changeLanguage('te', 'తెలుగు')">
+                    <span class="flag">🇮🇳</span> తెలుగు
+                </div>
+                <div class="lang-option" onclick="changeLanguage('bn', 'বাংলা')">
+                    <span class="flag">🇮🇳</span> বাংলা
+                </div>
+                <div class="lang-option" onclick="changeLanguage('gu', 'ગુજરાતી')">
+                    <span class="flag">🇮🇳</span> ગુજરાતી
+                </div>
+                <div class="lang-option" onclick="changeLanguage('mr', 'मराठी')">
+                    <span class="flag">🇮🇳</span> मराठी
+                </div>
+                <div class="lang-option" onclick="changeLanguage('pa', 'ਪੰਜਾਬੀ')">
+                    <span class="flag">🇮🇳</span> ਪੰਜਾਬੀ
+                </div>
+            </div>
+        </div>
     </div>
-    <footer style="text-align:center;color:#888;font-size:1em;margin-top:40px;padding:16px 0 8px 0;background:#f9fff9;border-top:1px solid #e0ffe0;position:relative;z-index:2;">
-        Built with ❤️ for farmers | <b>Modern AI Platform</b> | <span id="footer-year"></span>
-    </footer>
-    <script>
-        document.getElementById('footer-year').innerText = new Date().getFullYear();
-    </script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-    <script src="https://unpkg.com/i18next@21.6.16/dist/umd/i18next.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- Modern Header -->
+    <header class="modern-header">
+        <nav class="nav-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-seedling"></i>
+                    <span>AgriSmart AI</span>
+                </div>
+                <div class="tagline" data-translate="Modern Farming Intelligence">Modern Farming Intelligence</div>
+            </div>
+            
+            <div class="nav-links">
+                <a href="#home" onclick="navigate('home')" class="nav-link active">
+                    <i class="fas fa-home"></i>
+                    <span data-translate="Home">Home</span>
+                </a>
+                <a href="#recommendation" onclick="navigate('recommendation')" class="nav-link">
+                    <i class="fas fa-robot"></i>
+                    <span data-translate="AI Assistant">AI Assistant</span>
+                </a>
+                <a href="#tools" onclick="showToolsDropdown()" class="nav-link dropdown-trigger">
+                    <i class="fas fa-tools"></i>
+                    <span data-translate="Smart Tools">Smart Tools</span>
+                    <i class="fas fa-chevron-down"></i>
+                </a>
+                <a href="#analytics" onclick="navigate('analytics')" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span data-translate="Analytics">Analytics</span>
+                </a>
+                <a href="#profile" onclick="navigate('profile')" class="nav-link">
+                    <i class="fas fa-user"></i>
+                    <span data-translate="Profile">Profile</span>
+                </a>
+            </div>
+
+            <!-- Tools Dropdown -->
+            <div class="tools-dropdown" id="tools-dropdown">
+                <div class="dropdown-grid">
+                    <div class="dropdown-item" onclick="navigate('soil-analysis')">
+                        <i class="fas fa-vial"></i>
+                        <div>
+                            <h4 data-translate="Soil Analysis">Soil Analysis</h4>
+                            <p data-translate="AI-powered soil testing">AI-powered soil testing</p>
+                        </div>
+                    </div>
+                    <div class="dropdown-item" onclick="navigate('pest-prediction')">
+                        <i class="fas fa-bug"></i>
+                        <div>
+                            <h4 data-translate="Pest Prediction">Pest Prediction</h4>
+                            <p data-translate="Early pest detection">Early pest detection</p>
+                        </div>
+                    </div>
+                    <div class="dropdown-item" onclick="navigate('weather')">
+                        <i class="fas fa-cloud-sun"></i>
+                        <div>
+                            <h4 data-translate="Weather Analysis">Weather Analysis</h4>
+                            <p data-translate="Agricultural weather insights">Agricultural weather insights</p>
+                        </div>
+                    </div>
+                    <div class="dropdown-item" onclick="navigate('fertilizer')">
+                        <i class="fas fa-flask"></i>
+                        <div>
+                            <h4 data-translate="Fertilizer Optimizer">Fertilizer Optimizer</h4>
+                            <p data-translate="Optimal nutrient planning">Optimal nutrient planning</p>
+                        </div>
+                    </div>
+                    <div class="dropdown-item" onclick="navigate('rotation')">
+                        <i class="fas fa-recycle"></i>
+                        <div>
+                            <h4 data-translate="Crop Rotation">Crop Rotation</h4>
+                            <p data-translate="Sustainable crop planning">Sustainable crop planning</p>
+                        </div>
+                    </div>
+                    <div class="dropdown-item" onclick="navigate('sustainability')">
+                        <i class="fas fa-leaf"></i>
+                        <div>
+                            <h4 data-translate="Sustainability">Sustainability</h4>
+                            <p data-translate="Environmental impact analysis">Environmental impact analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+        <!-- Home Page -->
+        <section id="home-page" class="page active">
+            <!-- Hero Section -->
+            <div class="hero-section">
+                <div class="hero-background">
+                    <div class="gradient-overlay"></div>
+                </div>
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <h1 class="hero-title" data-translate="Transform Your Farming with AI Intelligence">
+                            Transform Your Farming with 
+                            <span class="highlight">AI Intelligence</span>
+                        </h1>
+                        <p class="hero-subtitle" data-translate="Get personalized crop recommendations, soil analysis, pest predictions, and market insights powered by advanced machine learning algorithms.">
+                            Get personalized crop recommendations, soil analysis, pest predictions, and market insights powered by advanced machine learning algorithms.
+                        </p>
+                        <div class="hero-buttons">
+                            <button class="btn btn-primary hero-btn" onclick="navigate('recommendation')">
+                                <i class="fas fa-rocket"></i>
+                                <span data-translate="Start AI Analysis">Start AI Analysis</span>
+                            </button>
+                            <button class="btn btn-secondary hero-btn" onclick="navigate('soil-analysis')">
+                                <i class="fas fa-play"></i>
+                                <span data-translate="Watch Demo">Watch Demo</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="hero-image">
+                        <div class="hero-card floating">
+                            <div class="card-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h3 data-translate="AI-Powered Analysis">AI-Powered Analysis</h3>
+                            <p data-translate="Advanced machine learning algorithms analyze your farm data">Advanced machine learning algorithms analyze your farm data</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Section -->
+            <div class="stats-section">
+                <div class="container">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-number" data-count="50000">0</div>
+                            <div class="stat-label" data-translate="Active Farmers">Active Farmers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+                            <div class="stat-number" data-count="1000000">0</div>
+                            <div class="stat-label" data-translate="Acres Analyzed">Acres Analyzed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-number" data-count="35">0</div>
+                            <div class="stat-suffix">%</div>
+                            <div class="stat-label" data-translate="Yield Increase">Yield Increase</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-leaf"></i>
+                            </div>
+                            <div class="stat-number" data-count="25">0</div>
+                            <div class="stat-suffix">%</div>
+                            <div class="stat-label" data-translate="Resource Savings">Resource Savings</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="features-section">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title" data-translate="Powerful Features for Modern Farming">Powerful Features for Modern Farming</h2>
+                        <p class="section-subtitle" data-translate="Our AI-powered platform provides comprehensive tools to optimize your farming operations">Our AI-powered platform provides comprehensive tools to optimize your farming operations</p>
+                    </div>
+                    
+                    <div class="features-grid">
+                        <div class="feature-card" onclick="navigate('recommendation')">
+                            <div class="feature-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h3 data-translate="Multi-Agent AI System">Multi-Agent AI System</h3>
+                            <p data-translate="4 specialized AI agents collaborate to provide comprehensive crop recommendations">4 specialized AI agents collaborate to provide comprehensive crop recommendations</p>
+                            <div class="feature-link">
+                                <span data-translate="Try Now">Try Now</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card" onclick="navigate('soil-analysis')">
+                            <div class="feature-icon">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <h3 data-translate="Smart Soil Analysis">Smart Soil Analysis</h3>
+                            <p data-translate="Upload photos for instant AI-powered soil type identification and recommendations">Upload photos for instant AI-powered soil type identification and recommendations</p>
+                            <div class="feature-link">
+                                <span data-translate="Analyze Soil">Analyze Soil</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card" onclick="navigate('weather')">
+                            <div class="feature-icon">
+                                <i class="fas fa-cloud-sun"></i>
+                            </div>
+                            <h3 data-translate="Weather Intelligence">Weather Intelligence</h3>
+                            <p data-translate="Real-time weather data with agricultural insights and risk assessments">Real-time weather data with agricultural insights and risk assessments</p>
+                            <div class="feature-link">
+                                <span data-translate="Check Weather">Check Weather</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card" onclick="navigate('market')">
+                            <div class="feature-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h3 data-translate="Market Analysis">Market Analysis</h3>
+                            <p data-translate="Live market prices, trends, and demand forecasting for better decision making">Live market prices, trends, and demand forecasting for better decision making</p>
+                            <div class="feature-link">
+                                <span data-translate="View Markets">View Markets</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card" onclick="navigate('pest-prediction')">
+                            <div class="feature-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <h3 data-translate="Pest Prediction">Pest Prediction</h3>
+                            <p data-translate="Early warning system for pest and disease outbreaks with prevention strategies">Early warning system for pest and disease outbreaks with prevention strategies</p>
+                            <div class="feature-link">
+                                <span data-translate="Predict Pests">Predict Pests</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card" onclick="navigate('sustainability')">
+                            <div class="feature-icon">
+                                <i class="fas fa-leaf"></i>
+                            </div>
+                            <h3 data-translate="Sustainability Tracker">Sustainability Tracker</h3>
+                            <p data-translate="Monitor environmental impact and get recommendations for sustainable farming">Monitor environmental impact and get recommendations for sustainable farming</p>
+                            <div class="feature-link">
+                                <span data-translate="Track Impact">Track Impact</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works Section -->
+            <div class="how-it-works-section">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title" data-translate="How AgriSmart AI Works">How AgriSmart AI Works</h2>
+                        <p class="section-subtitle" data-translate="Simple steps to optimize your farming with artificial intelligence">Simple steps to optimize your farming with artificial intelligence</p>
+                    </div>
+                    
+                    <div class="steps-timeline">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3 data-translate="Input Farm Data">Input Farm Data</h3>
+                                <p data-translate="Provide soil conditions, location, and farming preferences">Provide soil conditions, location, and farming preferences</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3 data-translate="AI Analysis">AI Analysis</h3>
+                                <p data-translate="Our 4 AI agents analyze weather, market, sustainability, and farming data">Our 4 AI agents analyze weather, market, sustainability, and farming data</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3 data-translate="Get Recommendations">Get Recommendations</h3>
+                                <p data-translate="Receive personalized crop recommendations and farming strategies">Receive personalized crop recommendations and farming strategies</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3 data-translate="Implement & Monitor">Implement & Monitor</h3>
+                                <p data-translate="Apply recommendations and track progress with continuous monitoring">Apply recommendations and track progress with continuous monitoring</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Recommendation Page -->
+        <section id="recommendation-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-robot"></i>
+                        <span data-translate="Multi-Agent AI Crop Recommendation">Multi-Agent AI Crop Recommendation</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Our team of 4 specialized AI agents will analyze your farm data and provide personalized recommendations">Our team of 4 specialized AI agents will analyze your farm data and provide personalized recommendations</p>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="recommendation-layout">
+                    <div class="input-section">
+                        <div class="modern-card">
+                            <div class="card-header">
+                                <h2 data-translate="Farm Information">Farm Information</h2>
+                                <p data-translate="Provide your farm details for AI analysis">Provide your farm details for AI analysis</p>
+                            </div>
+                            <div class="input-grid">
+                                <div class="input-group">
+                                    <label data-translate="Nitrogen (N) - kg/ha">Nitrogen (N) - kg/ha</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-flask"></i>
+                                        <input type="number" id="nitrogen" value="40" min="0" max="200">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Phosphorus (P) - kg/ha">Phosphorus (P) - kg/ha</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-vial"></i>
+                                        <input type="number" id="phosphorus" value="30" min="0" max="200">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Potassium (K) - kg/ha">Potassium (K) - kg/ha</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-atom"></i>
+                                        <input type="number" id="potassium" value="30" min="0" max="200">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Temperature (°C)">Temperature (°C)</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-thermometer-half"></i>
+                                        <input type="number" id="temperature" value="25" min="-10" max="50" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Humidity (%)">Humidity (%)</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-tint"></i>
+                                        <input type="number" id="humidity" value="60" min="0" max="100">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="pH Level">pH Level</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-balance-scale"></i>
+                                        <input type="number" id="ph" value="6.5" min="0" max="14" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Rainfall (mm)">Rainfall (mm)</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-cloud-rain"></i>
+                                        <input type="number" id="rainfall" value="500" min="0" max="3000">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Land Size (hectares)">Land Size (hectares)</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-expand-arrows-alt"></i>
+                                        <input type="number" id="land-size" value="5" min="0.1" max="1000" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Soil Type">Soil Type</label>
+                                    <div class="select-with-icon">
+                                        <i class="fas fa-mountain"></i>
+                                        <select id="soil-type">
+                                            <option value="Loamy">Loamy</option>
+                                            <option value="Sandy">Sandy</option>
+                                            <option value="Clay">Clay</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label data-translate="Crop Preference">Crop Preference</label>
+                                    <div class="select-with-icon">
+                                        <i class="fas fa-seedling"></i>
+                                        <select id="crop-preference">
+                                            <option value="Grains">Grains (Wheat, Rice, Corn, Barley)</option>
+                                            <option value="Vegetables">Vegetables (Tomato, Potato)</option>
+                                            <option value="Fruits">Fruits</option>
+                                            <option value="Cash Crops">Cash Crops (Cotton, Sugarcane, Soybean)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-large" onclick="getRecommendation()">
+                                <i class="fas fa-magic"></i>
+                                <span data-translate="Get AI Recommendation">Get AI Recommendation</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="results-section">
+                        <div id="recommendation-results" class="results-container">
+                            <div class="placeholder-state">
+                                <div class="placeholder-icon">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <h3 data-translate="AI Analysis Ready">AI Analysis Ready</h3>
+                                <p data-translate="Fill in your farm details and click 'Get AI Recommendation' to receive personalized insights from our expert AI agents.">Fill in your farm details and click "Get AI Recommendation" to receive personalized insights from our expert AI agents.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Additional Pages will be similar modern redesigns... -->
+        <!-- For brevity, I'll add the key pages. Each will follow the same modern design pattern -->
+
+        <!-- Soil Analysis Page -->
+        <section id="soil-analysis-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-vial"></i>
+                        <span data-translate="Smart Soil Analysis">Smart Soil Analysis</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Upload a photo of your soil for instant AI-powered analysis">Upload a photo of your soil for instant AI-powered analysis</p>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="analysis-layout">
+                    <div class="upload-section">
+                        <div class="modern-card">
+                            <div class="upload-area" id="soil-upload-area">
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <h3 data-translate="Upload Soil Photo">Upload Soil Photo</h3>
+                                <p data-translate="Drag and drop your soil image here or click to browse">Drag and drop your soil image here or click to browse</p>
+                                <input type="file" id="soil-photo" accept="image/*" style="display: none;">
+                                <button class="btn btn-outline" onclick="document.getElementById('soil-photo').click()">
+                                    <i class="fas fa-folder-open"></i>
+                                    <span data-translate="Choose File">Choose File</span>
+                                </button>
+                            </div>
+                            <button class="btn btn-primary btn-large" onclick="analyzeSoil()">
+                                <i class="fas fa-microscope"></i>
+                                <span data-translate="Analyze Soil">Analyze Soil</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="results-section">
+                        <div id="soil-results" class="results-container">
+                            <div class="placeholder-state">
+                                <div class="placeholder-icon">
+                                    <i class="fas fa-microscope"></i>
+                                </div>
+                                <h3 data-translate="Ready for Analysis">Ready for Analysis</h3>
+                                <p data-translate="Upload a clear photo of your soil sample for detailed analysis">Upload a clear photo of your soil sample for detailed analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Page with Charts -->
+        <section id="analytics-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-chart-line"></i>
+                        <span data-translate="Analytics Dashboard">Analytics Dashboard</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Visual insights and performance metrics for your farm">Visual insights and performance metrics for your farm</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="analytics-grid">
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-seedling"></i> Crop Performance Analysis</h3>
+                        <div id="crop-performance-chart" class="chart-container"></div>
+                    </div>
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-chart-pie"></i> Soil Composition</h3>
+                        <div id="soil-composition-chart" class="chart-container"></div>
+                    </div>
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-cloud-sun"></i> Weather Trends</h3>
+                        <div id="weather-trends-chart" class="chart-container"></div>
+                    </div>
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-leaf"></i> Sustainability Score</h3>
+                        <div id="sustainability-chart" class="chart-container"></div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="refreshAnalytics()">
+                    <i class="fas fa-sync"></i> Refresh Analytics
+                </button>
+            </div>
+        </section>
+
+        <!-- Weather Page -->
+        <section id="weather-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-cloud-sun"></i>
+                        <span data-translate="Weather Intelligence">Weather Intelligence</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Real-time weather data with agricultural insights">Real-time weather data with agricultural insights</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="weather-layout">
+                    <div class="weather-input modern-card">
+                        <h3>Enter Location</h3>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label>Latitude</label>
+                                <input type="number" id="weather-lat" value="12.9716" step="0.0001">
+                            </div>
+                            <div class="input-group">
+                                <label>Longitude</label>
+                                <input type="number" id="weather-lon" value="77.5946" step="0.0001">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="getWeatherForecast()">
+                            <i class="fas fa-cloud-sun"></i> Get Weather Forecast
+                        </button>
+                    </div>
+                    <div id="weather-results" class="results-container">
+                        <div class="placeholder-state">
+                            <div class="placeholder-icon"><i class="fas fa-cloud-sun"></i></div>
+                            <h3>Weather Analysis Ready</h3>
+                            <p>Enter your location to get agricultural weather insights</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modern-card chart-card" style="margin-top: 2rem;">
+                    <h3><i class="fas fa-temperature-high"></i> 7-Day Weather Forecast</h3>
+                    <div id="weather-forecast-chart" class="chart-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Dashboard Page -->
+        <section id="market-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-chart-line"></i>
+                        <span data-translate="Market Dashboard">Market Dashboard</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="AI-powered market price predictions and trends">AI-powered market price predictions and trends</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="market-controls modern-card">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label>Select Crop</label>
+                            <select id="market-crop">
+                                <option value="Rice">Rice</option>
+                                <option value="Wheat">Wheat</option>
+                                <option value="Corn">Corn</option>
+                                <option value="Soybean">Soybean</option>
+                                <option value="Tomato">Tomato</option>
+                                <option value="Cotton">Cotton</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Forecast Period</label>
+                            <select id="forecast-period">
+                                <option value="3">3 Months</option>
+                                <option value="6">6 Months</option>
+                                <option value="12">12 Months</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="generateMarketForecast()">
+                        <i class="fas fa-chart-line"></i> Generate Price Forecast
+                    </button>
+                </div>
+                <div class="market-grid" style="margin-top: 2rem;">
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-rupee-sign"></i> Price Forecast</h3>
+                        <div id="market-price-chart" class="chart-container"></div>
+                    </div>
+                    <div class="modern-card" id="market-insights">
+                        <h3><i class="fas fa-lightbulb"></i> Market Insights</h3>
+                        <div class="insight-placeholder">
+                            <p>Generate a forecast to see market insights</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sustainability Tracker Page -->
+        <section id="sustainability-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-leaf"></i>
+                        <span data-translate="Sustainability Tracker">Sustainability Tracker</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Monitor and improve your environmental impact">Monitor and improve your environmental impact</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="sustainability-input modern-card">
+                    <h3>Log Season Practices</h3>
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label>Water Usage (ML/ha)</label>
+                            <input type="number" id="water-usage" value="2.0" step="0.1" min="0" max="10">
+                        </div>
+                        <div class="input-group">
+                            <label>Fertilizer Use (tons/ha)</label>
+                            <input type="number" id="fertilizer-use" value="1.5" step="0.1" min="0" max="10">
+                        </div>
+                        <div class="input-group">
+                            <label>Crop Rotation</label>
+                            <select id="crop-rotation">
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="logSustainability()">
+                        <i class="fas fa-save"></i> Log Season Data
+                    </button>
+                </div>
+                <div class="sustainability-results" style="margin-top: 2rem;">
+                    <div class="modern-card chart-card">
+                        <h3><i class="fas fa-chart-area"></i> Sustainability Score Over Time</h3>
+                        <div id="sustainability-trend-chart" class="chart-container"></div>
+                    </div>
+                    <div class="modern-card" id="sustainability-tips">
+                        <h3><i class="fas fa-lightbulb"></i> Improvement Tips</h3>
+                        <div class="tips-content">
+                            <p>Log your data to receive personalized sustainability tips</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fertilizer Optimizer Page -->
+        <section id="fertilizer-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-flask"></i>
+                        <span data-translate="Fertilizer Optimizer">Fertilizer Optimizer</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Calculate optimal fertilizer requirements">Calculate optimal fertilizer requirements</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="fertilizer-layout">
+                    <div class="modern-card">
+                        <h3>Farm Details</h3>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label>Soil Type</label>
+                                <select id="fert-soil">
+                                    <option value="Loamy">Loamy</option>
+                                    <option value="Sandy">Sandy</option>
+                                    <option value="Clay">Clay</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Crop Type</label>
+                                <select id="fert-crop">
+                                    <option value="Wheat">Wheat</option>
+                                    <option value="Corn">Corn</option>
+                                    <option value="Rice">Rice</option>
+                                    <option value="Tomatoes">Tomatoes</option>
+                                    <option value="Soybeans">Soybeans</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Land Size (hectares)</label>
+                                <input type="number" id="fert-land" value="8" min="1" max="100">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="calculateFertilizer()">
+                            <i class="fas fa-calculator"></i> Calculate Optimal Fertilizer
+                        </button>
+                    </div>
+                    <div id="fertilizer-results" class="results-container modern-card">
+                        <div class="placeholder-state">
+                            <div class="placeholder-icon"><i class="fas fa-flask"></i></div>
+                            <h3>Ready to Calculate</h3>
+                            <p>Enter your farm details to get fertilizer recommendations</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modern-card chart-card" style="margin-top: 2rem;">
+                    <h3><i class="fas fa-chart-bar"></i> Nutrient Requirements</h3>
+                    <div id="fertilizer-chart" class="chart-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Crop Rotation Planner Page -->
+        <section id="rotation-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-recycle"></i>
+                        <span data-translate="Crop Rotation Planner">Crop Rotation Planner</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Plan sustainable crop rotations for better yields">Plan sustainable crop rotations for better yields</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="rotation-layout">
+                    <div class="modern-card">
+                        <h3>Current Crop</h3>
+                        <div class="input-group">
+                            <label>Last Planted Crop</label>
+                            <select id="current-crop">
+                                <option value="Wheat">Wheat</option>
+                                <option value="Corn">Corn</option>
+                                <option value="Rice">Rice</option>
+                                <option value="Soybean">Soybean</option>
+                                <option value="Tomato">Tomato</option>
+                                <option value="Cotton">Cotton</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateRotationPlan()">
+                            <i class="fas fa-calendar-alt"></i> Generate Rotation Plan
+                        </button>
+                    </div>
+                    <div id="rotation-results" class="results-container modern-card">
+                        <div class="placeholder-state">
+                            <div class="placeholder-icon"><i class="fas fa-recycle"></i></div>
+                            <h3>Ready to Plan</h3>
+                            <p>Select your current crop to get rotation recommendations</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modern-card chart-card" style="margin-top: 2rem;">
+                    <h3><i class="fas fa-calendar"></i> Rotation Timeline</h3>
+                    <div id="rotation-timeline-chart" class="chart-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pest Prediction Page -->
+        <section id="pest-prediction-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-bug"></i>
+                        <span data-translate="Pest & Disease Prediction">Pest & Disease Prediction</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="AI-powered early warning system for pest outbreaks">AI-powered early warning system for pest outbreaks</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="pest-layout">
+                    <div class="modern-card">
+                        <h3>Farm Conditions</h3>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label>Crop Type</label>
+                                <select id="pest-crop">
+                                    <option value="Wheat">Wheat</option>
+                                    <option value="Rice">Rice</option>
+                                    <option value="Corn">Corn</option>
+                                    <option value="Tomato">Tomato</option>
+                                    <option value="Cotton">Cotton</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Soil Type</label>
+                                <select id="pest-soil">
+                                    <option value="Loamy">Loamy</option>
+                                    <option value="Clay">Clay</option>
+                                    <option value="Sandy">Sandy</option>
+                                    <option value="Silty">Silty</option>
+                                    <option value="Black">Black</option>
+                                    <option value="Red">Red</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Temperature (°C)</label>
+                                <input type="number" id="pest-temp" value="25" min="0" max="50">
+                            </div>
+                            <div class="input-group">
+                                <label>Humidity (%)</label>
+                                <input type="number" id="pest-humidity" value="65" min="0" max="100">
+                            </div>
+                            <div class="input-group">
+                                <label>Rainfall (mm)</label>
+                                <input type="number" id="pest-rainfall" value="500" min="0" max="3000">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="predictPests()">
+                            <i class="fas fa-search"></i> Analyze Pest Risk
+                        </button>
+                    </div>
+                    <div id="pest-results" class="results-container modern-card">
+                        <div class="placeholder-state">
+                            <div class="placeholder-icon"><i class="fas fa-shield-alt"></i></div>
+                            <h3>Ready for Analysis</h3>
+                            <p>Enter conditions to predict pest and disease risks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Chatbot Page -->
+        <section id="chatbot-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-robot"></i>
+                        <span data-translate="AI Farming Assistant">AI Farming Assistant</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Ask any farming question and get instant AI-powered answers">Ask any farming question and get instant AI-powered answers</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="chatbot-container modern-card">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="chat-message ai">
+                            <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI farming assistant. Ask me anything about crops, soil, weather, pests, or farming practices!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type your farming question here..." onkeypress="handleChatKeypress(event)">
+                        <button class="btn btn-primary" onclick="sendChatMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Profile Page -->
+        <section id="profile-page" class="page">
+            <div class="page-header">
+                <div class="container">
+                    <h1 class="page-title">
+                        <i class="fas fa-user"></i>
+                        <span data-translate="My Profile">My Profile</span>
+                    </h1>
+                    <p class="page-subtitle" data-translate="Manage your farm profile and settings">Manage your farm profile and settings</p>
+                </div>
+            </div>
+            <div class="container">
+                <div class="profile-grid">
+                    <div class="modern-card">
+                        <h3><i class="fas fa-user-circle"></i> Farm Information</h3>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label>Farm Name</label>
+                                <input type="text" id="farm-name" value="My Farm">
+                            </div>
+                            <div class="input-group">
+                                <label>Total Land (hectares)</label>
+                                <input type="number" id="total-land" value="10">
+                            </div>
+                            <div class="input-group">
+                                <label>Region</label>
+                                <select id="farm-region">
+                                    <option value="North">North</option>
+                                    <option value="South">South</option>
+                                    <option value="East">East</option>
+                                    <option value="West">West</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveProfile()">
+                            <i class="fas fa-save"></i> Save Profile
+                        </button>
+                    </div>
+                    <div class="modern-card">
+                        <h3><i class="fas fa-history"></i> Recent Recommendations</h3>
+                        <div id="recent-recommendations">
+                            <p class="placeholder-text">No recommendations yet. Start with the AI Assistant!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3 data-translate="Processing...">Processing...</h3>
+            <p data-translate="AI agents are analyzing your data">AI agents are analyzing your data</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="app.js"></script>
+    <script>
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            startStatsAnimation();
+        });
+
+        function initializeApp() {
+            navigate('home');
+            setupEventListeners();
+        }
+
+        function startStatsAnimation() {
+            const statNumbers = document.querySelectorAll('.stat-number');
+            statNumbers.forEach(stat => {
+                const target = parseInt(stat.getAttribute('data-count'));
+                animateCounter(stat, target);
+            });
+        }
+
+        function animateCounter(element, target) {
+            let current = 0;
+            const increment = target / 100;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    element.textContent = target.toLocaleString();
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current).toLocaleString();
+                }
+            }, 20);
+        }
+
+        function setupEventListeners() {
+            // File upload drag and drop
+            const uploadArea = document.getElementById('soil-upload-area');
+            if (uploadArea) {
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('drag-over');
+                });
+                
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('drag-over');
+                });
+                
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('drag-over');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        document.getElementById('soil-photo').files = files;
+                    }
+                });
+            }
+        }
+    </script>
+
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        <i class="fas fa-wifi-slash"></i>
+        <span>You are offline - Working with saved data</span>
+    </div>
+
+    <!-- Online Banner -->
+    <div class="online-banner" id="online-banner">
+        <i class="fas fa-wifi"></i>
+        <span>Back online!</span>
+    </div>
+
+    <!-- Floating Voice Button -->
+    <button class="voice-fab" id="voice-btn" title="Tap to speak">
+        <i class="fas fa-microphone"></i>
+    </button>
+
+    <!-- Voice Indicator Panel -->
+    <div class="voice-indicator-panel" id="voice-panel">
+        <h4><i class="fas fa-microphone-alt"></i> Voice Assistant</h4>
+        <div class="voice-transcript" id="voice-transcript">
+            Tap the microphone and speak your farming question...
+        </div>
+        <div class="voice-status" id="voice-status">
+            <div class="sound-wave" style="display: none;">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+            <span>Ready to listen</span>
+        </div>
+    </div>
+
+    <!-- Visual Navigation Bar for Farmers -->
+    <nav class="visual-nav" id="visual-nav">
+        <div class="visual-nav-item nav-home active" onclick="navigate('home')">
+            <div class="nav-icon"><i class="fas fa-home"></i></div>
+            <span class="nav-label">🏠 Home</span>
+        </div>
+        <div class="visual-nav-item nav-crop" onclick="navigate('recommendation')">
+            <div class="nav-icon"><i class="fas fa-seedling"></i></div>
+            <span class="nav-label">🌾 Crops</span>
+        </div>
+        <div class="visual-nav-item nav-weather" onclick="navigate('weather')">
+            <div class="nav-icon"><i class="fas fa-cloud-sun"></i></div>
+            <span class="nav-label">🌤️ Weather</span>
+        </div>
+        <div class="visual-nav-item nav-pest" onclick="navigate('pest-prediction')">
+            <div class="nav-icon"><i class="fas fa-bug"></i></div>
+            <span class="nav-label">🐛 Pests</span>
+        </div>
+        <div class="visual-nav-item nav-market" onclick="navigate('market')">
+            <div class="nav-icon"><i class="fas fa-store"></i></div>
+            <span class="nav-label">💰 Market</span>
+        </div>
+    </nav>
+
+    <!-- Install App Prompt -->
+    <div class="install-prompt" id="install-prompt">
+        <div class="install-prompt-content">
+            <div class="install-prompt-icon">
+                <i class="fas fa-download"></i>
+            </div>
+            <div class="install-prompt-text">
+                <h4>Install AgriSmart App</h4>
+                <p>Add to home screen for offline access and faster experience</p>
+            </div>
+        </div>
+        <div class="install-prompt-actions">
+            <button class="btn-install" onclick="installApp()">Install Now</button>
+            <button class="btn-later" onclick="dismissInstall()">Later</button>
+        </div>
+    </div>
+
+    <!-- Welcome Overlay (First Time Users) -->
+    <div class="welcome-overlay" id="welcome-overlay">
+        <div class="welcome-logo">🌾</div>
+        <h1 class="welcome-title">AgriSmart AI</h1>
+        <p class="welcome-subtitle">Your intelligent farming assistant with voice support</p>
+        
+        <div class="welcome-features">
+            <div class="welcome-feature">
+                <i class="fas fa-microphone"></i>
+                <span>Voice Control</span>
+            </div>
+            <div class="welcome-feature">
+                <i class="fas fa-wifi-slash"></i>
+                <span>Works Offline</span>
+            </div>
+            <div class="welcome-feature">
+                <i class="fas fa-language"></i>
+                <span>10+ Languages</span>
+            </div>
+        </div>
+
+        <div class="welcome-lang-select">
+            <p>Select your language / अपनी भाषा चुनें:</p>
+            <div class="lang-buttons">
+                <button onclick="setWelcomeLang('en')">English</button>
+                <button onclick="setWelcomeLang('hi')">हिंदी</button>
+                <button onclick="setWelcomeLang('kn')">ಕನ್ನಡ</button>
+                <button onclick="setWelcomeLang('te')">తెలుగు</button>
+                <button onclick="setWelcomeLang('ta')">தமிழ்</button>
+            </div>
+        </div>
+
+        <button class="welcome-start-btn" onclick="startApp()">
+            <i class="fas fa-play"></i>
+            Start Farming!
+        </button>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav" id="mobile-nav">
+        <div class="mobile-nav-item" onclick="navigate('home')" data-page="home">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="mobile-nav-item" onclick="navigate('recommendation')" data-page="recommendation">
+            <i class="fas fa-seedling"></i>
+            <span>Crops</span>
+        </div>
+        <div class="mobile-nav-item center-btn" onclick="toggleVoiceInterface()">
+            <div class="voice-fab">
+                <i class="fas fa-microphone"></i>
+            </div>
+        </div>
+        <div class="mobile-nav-item" onclick="navigate('weather')" data-page="weather">
+            <i class="fas fa-cloud-sun"></i>
+            <span>Weather</span>
+        </div>
+        <div class="mobile-nav-item" onclick="showAuthModal()" data-page="profile">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </div>
+    </nav>
+
+    <!-- Voice Interface Script -->
+    <script src="voice-interface.js"></script>
+    
+    <!-- Offline Data Script -->
+    <script src="offline-data.js"></script>
+
+    <!-- Auth and Mobile Initialization Script -->
+    <script>
+        // ================== AUTH FUNCTIONS ==================
+        let currentUser = null;
+        let otpTimer = null;
+        
+        function showAuthModal() {
+            // Check if already logged in
+            const savedUser = localStorage.getItem('agrismart-user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                navigate('profile');
+                return;
+            }
+            document.getElementById('auth-modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+        
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            
+            document.querySelector(`.auth-tab:${tab === 'login' ? 'first-child' : 'last-child'}`).classList.add('active');
+            document.getElementById(`${tab}-form`).classList.add('active');
+        }
+        
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = input.parentElement.querySelector('.toggle-password i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            const phone = document.getElementById('login-phone').value;
+            const password = document.getElementById('login-password').value;
+            
+            showLoading('Logging in...');
+            
+            try {
+                // Try API login first
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    localStorage.setItem('agrismart-user', JSON.stringify(currentUser));
+                    hideLoading();
+                    closeAuthModal();
+                    showNotification('Login successful! Welcome back 🌾', 'success');
+                    navigate('profile');
+                } else {
+                    throw new Error('Invalid credentials');
+                }
+            } catch (error) {
+                // Fallback to offline login
+                const savedUsers = JSON.parse(localStorage.getItem('agrismart-users') || '[]');
+                const user = savedUsers.find(u => u.phone === phone && u.password === password);
+                
+                if (user) {
+                    currentUser = user;
+                    localStorage.setItem('agrismart-user', JSON.stringify(currentUser));
+                    hideLoading();
+                    closeAuthModal();
+                    showNotification('Login successful (offline mode)! 🌾', 'success');
+                    navigate('profile');
+                } else {
+                    hideLoading();
+                    showNotification('Invalid phone number or password', 'error');
+                }
+            }
+        }
+        
+        async function handleSignup(event) {
+            event.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const phone = document.getElementById('signup-phone').value;
+            const location = document.getElementById('signup-location').value;
+            const password = document.getElementById('signup-password').value;
+            
+            showLoading('Creating your account...');
+            
+            try {
+                // Try API signup first
+                const response = await fetch(`${API_BASE}/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, location, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    localStorage.setItem('agrismart-user', JSON.stringify(currentUser));
+                    hideLoading();
+                    closeAuthModal();
+                    showNotification('Account created successfully! Welcome to AgriSmart 🌱', 'success');
+                    navigate('profile');
+                } else {
+                    throw new Error('Signup failed');
+                }
+            } catch (error) {
+                // Fallback to offline signup
+                const savedUsers = JSON.parse(localStorage.getItem('agrismart-users') || '[]');
+                
+                if (savedUsers.find(u => u.phone === phone)) {
+                    hideLoading();
+                    showNotification('Phone number already registered', 'error');
+                    return;
+                }
+                
+                const newUser = {
+                    id: Date.now().toString(),
+                    name,
+                    phone,
+                    location,
+                    password,
+                    createdAt: new Date().toISOString()
+                };
+                
+                savedUsers.push(newUser);
+                localStorage.setItem('agrismart-users', JSON.stringify(savedUsers));
+                
+                currentUser = newUser;
+                localStorage.setItem('agrismart-user', JSON.stringify(currentUser));
+                
+                hideLoading();
+                closeAuthModal();
+                showNotification('Account created (offline mode)! Welcome 🌱', 'success');
+                navigate('profile');
+            }
+        }
+        
+        function requestOTP() {
+            const phone = document.getElementById('login-phone').value;
+            if (!phone || phone.length < 10) {
+                showNotification('Please enter a valid phone number', 'warning');
+                return;
+            }
+            
+            // Hide login form, show OTP form
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('otp-form').classList.add('active');
+            
+            // Start timer
+            let seconds = 30;
+            document.getElementById('otp-timer').textContent = seconds;
+            document.getElementById('resend-btn').disabled = true;
+            
+            otpTimer = setInterval(() => {
+                seconds--;
+                document.getElementById('otp-timer').textContent = seconds;
+                if (seconds <= 0) {
+                    clearInterval(otpTimer);
+                    document.getElementById('resend-btn').disabled = false;
+                }
+            }, 1000);
+            
+            showNotification(`OTP sent to ${phone}`, 'success');
+        }
+        
+        function moveToNext(input, index) {
+            if (input.value.length === 1) {
+                const inputs = document.querySelectorAll('.otp-input');
+                if (index < inputs.length) {
+                    inputs[index].focus();
+                }
+            }
+        }
+        
+        function verifyOTP() {
+            const inputs = document.querySelectorAll('.otp-input');
+            const otp = Array.from(inputs).map(i => i.value).join('');
+            
+            if (otp.length !== 6) {
+                showNotification('Please enter complete OTP', 'warning');
+                return;
+            }
+            
+            // Simulate OTP verification (always success for demo)
+            showLoading('Verifying OTP...');
+            setTimeout(() => {
+                hideLoading();
+                currentUser = {
+                    id: Date.now().toString(),
+                    phone: document.getElementById('login-phone').value,
+                    name: 'Farmer',
+                    loginMethod: 'otp'
+                };
+                localStorage.setItem('agrismart-user', JSON.stringify(currentUser));
+                closeAuthModal();
+                showNotification('OTP verified successfully! 🎉', 'success');
+                navigate('profile');
+            }, 1500);
+        }
+        
+        function resendOTP() {
+            requestOTP();
+        }
+        
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('agrismart-user');
+            showNotification('Logged out successfully', 'info');
+            navigate('home');
+        }
+        
+        // ================== MOBILE UI FUNCTIONS ==================
+        function updateMobileNav() {
+            document.querySelectorAll('.mobile-nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === currentPage) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        function toggleVoiceInterface() {
+            const voicePanel = document.querySelector('.voice-assistant-container');
+            if (voicePanel) {
+                voicePanel.classList.toggle('active');
+            }
+            // Also trigger voice recognition
+            if (window.voiceInterface) {
+                window.voiceInterface.startListening();
+            }
+        }
+        
+        // ================== PARTICLES ANIMATION ==================
+        function initParticles() {
+            const container = document.getElementById('particles-bg');
+            if (!container) return;
+            
+            const particleCount = window.innerWidth < 768 ? 15 : 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.cssText = `
+                    position: absolute;
+                    width: ${Math.random() * 6 + 2}px;
+                    height: ${Math.random() * 6 + 2}px;
+                    background: rgba(34, 197, 94, ${Math.random() * 0.3 + 0.1});
+                    border-radius: 50%;
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                    animation: float ${Math.random() * 10 + 10}s linear infinite;
+                    animation-delay: -${Math.random() * 10}s;
+                `;
+                container.appendChild(particle);
+            }
+        }
+        
+        // ================== SCROLL ANIMATIONS ==================
+        function initScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            document.querySelectorAll('.feature-card, .tool-card, .agent-card, .stat-card').forEach(el => {
+                observer.observe(el);
+            });
+        }
+        
+        // ================== PWA INSTALL ==================
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+                if (deferredPrompt && !localStorage.getItem('app-installed')) {
+                    document.getElementById('install-prompt').classList.add('show');
+                }
+            }, 30000);
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        localStorage.setItem('app-installed', 'true');
+                        showNotification('App installed successfully!', 'success');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+            document.getElementById('install-prompt').classList.remove('show');
+        }
+
+        function dismissInstall() {
+            document.getElementById('install-prompt').classList.remove('show');
+        }
+
+        // ================== NETWORK STATUS ==================
+        function updateNetworkStatus() {
+            const offlineBanner = document.getElementById('offline-banner');
+            const onlineBanner = document.getElementById('online-banner');
+            
+            if (navigator.onLine) {
+                offlineBanner?.classList.remove('show');
+                onlineBanner?.classList.add('show');
+                setTimeout(() => onlineBanner?.classList.remove('show'), 3000);
+            } else {
+                onlineBanner?.classList.remove('show');
+                offlineBanner?.classList.add('show');
+            }
+        }
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+
+        // ================== WELCOME SCREEN ==================
+        function setWelcomeLang(lang) {
+            localStorage.setItem('preferred-language', lang);
+            document.querySelectorAll('.lang-buttons button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            if (window.voiceInterface) {
+                window.voiceInterface.setLanguage(lang);
+            }
+        }
+
+        function startApp() {
+            localStorage.setItem('app-welcomed', 'true');
+            document.getElementById('welcome-overlay').classList.add('hidden');
+            
+            if (window.voiceInterface) {
+                setTimeout(() => {
+                    window.voiceInterface.speak('Welcome to AgriSmart AI. Tap the green microphone button and speak your farming question.');
+                }, 500);
+            }
+        }
+
+        // ================== INITIALIZATION ==================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize particles
+            initParticles();
+            
+            // Initialize scroll animations
+            initScrollAnimations();
+            
+            // Check if first time user
+            if (localStorage.getItem('app-welcomed')) {
+                document.getElementById('welcome-overlay')?.classList.add('hidden');
+            }
+            
+            // Check login status
+            const savedUser = localStorage.getItem('agrismart-user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+            
+            // Update network status on load
+            if (!navigator.onLine) {
+                document.getElementById('offline-banner')?.classList.add('show');
+            }
+            
+            // Update mobile nav
+            updateMobileNav();
+            
+            console.log('✅ AgriSmart AI initialized');
+            console.log('📱 Platform:', typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform() ? 'Mobile App' : 'Web');
+            console.log('🌐 API URL:', typeof API_BASE !== 'undefined' ? API_BASE : 'Not configured');
+        });
+
+        // Override navigate function to update mobile nav
+        const originalNavigate = window.navigate;
+        window.navigate = function(page) {
+            if (originalNavigate) {
+                originalNavigate(page);
+            }
+            updateMobileNav();
+        };
+    </script>
 </body>
 </html>
