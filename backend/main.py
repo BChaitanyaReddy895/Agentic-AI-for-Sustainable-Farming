@@ -3,7 +3,6 @@ import re
 import os
 import io
 import sys
-import numpy as np
 import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
@@ -12,11 +11,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
-import pandas as pd
 import base64
 import random
 import requests
 from PIL import Image
+
+# Try to import pandas/numpy - if not available, use fallbacks
+try:
+    import numpy as np
+    import pandas as pd
+    HAS_ML = True
+except ImportError:
+    HAS_ML = False
+    np = None
+    pd = None
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
