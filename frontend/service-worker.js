@@ -1,31 +1,20 @@
 // AgriSmart AI - Service Worker for Offline Support
-// Version: 1.0.0 - Production Ready
+// Version: 3.0.0 - Production Ready
 
-const CACHE_NAME = 'agrismart-v1.0.0';
-const OFFLINE_URL = '/offline.html';
+const CACHE_NAME = 'agrismart-v3.0.0';
+const OFFLINE_URL = './index.html';
 
 // Files to cache for offline use
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/offline.html',
-    '/styles_modern.css',
-    '/app.js',
-    '/voice-interface.js',
-    '/offline-data.js',
-    '/manifest.json',
-    // Icons
-    '/icons/icon-72x72.png',
-    '/icons/icon-96x96.png',
-    '/icons/icon-128x128.png',
-    '/icons/icon-144x144.png',
-    '/icons/icon-152x152.png',
-    '/icons/icon-192x192.png',
-    '/icons/icon-384x384.png',
-    '/icons/icon-512x512.png',
-    // External CDN (will be cached on first load)
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap'
+    './',
+    './index.html',
+    './styles_modern.css',
+    './mobile-styles.css',
+    './voice-styles.css',
+    './app.js',
+    './config.js',
+    './manifest.json',
+    './icons/icon.svg'
 ];
 
 // Offline farming data (embedded in service worker)
@@ -78,7 +67,7 @@ self.addEventListener('install', (event) => {
                     const dataResponse = new Response(JSON.stringify(OFFLINE_FARMING_DATA), {
                         headers: { 'Content-Type': 'application/json' }
                     });
-                    return cache.put('/offline-farming-data.json', dataResponse);
+                    return cache.put('./offline-farming-data.json', dataResponse);
                 });
             })
             .then(() => self.skipWaiting())
@@ -199,7 +188,7 @@ async function handleApiRequest(request) {
 // Offline crop recommendation
 async function getOfflineCropRecommendation(request) {
     const cache = await caches.open(CACHE_NAME + '-data');
-    const dataResponse = await cache.match('/offline-farming-data.json');
+    const dataResponse = await cache.match('./offline-farming-data.json');
     const data = dataResponse ? await dataResponse.json() : OFFLINE_FARMING_DATA;
     
     return new Response(JSON.stringify({
@@ -278,8 +267,8 @@ self.addEventListener('push', (event) => {
     const title = data.title || '🌾 AgriSmart Alert';
     const options = {
         body: data.body || 'New farming update available',
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
+        icon: './icons/icon.svg',
+        badge: './icons/icon.svg',
         vibrate: [200, 100, 200],
         tag: data.tag || 'agrismart-notification',
         requireInteraction: true,
@@ -297,8 +286,8 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
     if (event.action === 'view') {
-        event.waitUntil(clients.openWindow('/'));
+        event.waitUntil(clients.openWindow('./'));
     }
 });
 
-console.log('[ServiceWorker] Script loaded');
+console.log('[ServiceWorker] Script loaded v3.0');

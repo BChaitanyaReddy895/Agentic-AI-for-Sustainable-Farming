@@ -7,8 +7,8 @@ const AppConfig = {
         console.log('🔍 Detecting platform...');
         
         // Check if running in Capacitor (mobile app)
-        if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
-            console.log('📱 Mobile app detected - using deployed server');
+        if (typeof Capacitor !== 'undefined') {
+            console.log('📱 Capacitor detected - using deployed server');
             return 'https://agrismart-api-m8nz.onrender.com';
         }
         
@@ -18,14 +18,14 @@ const AppConfig = {
             return 'http://127.0.0.1:8001';
         }
         
-        // For deployed web version
+        // For deployed web version - use the same API
         console.log('🌐 Web deployment detected');
-        return window.location.origin.replace(':3000', ':8001');
+        return 'https://agrismart-api-m8nz.onrender.com';
     },
     
     // Check if running as mobile app
     isMobileApp: function() {
-        return typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+        return typeof Capacitor !== 'undefined';
     },
     
     // Check network status

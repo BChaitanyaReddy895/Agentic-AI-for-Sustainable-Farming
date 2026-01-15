@@ -1,22 +1,24 @@
 // Modern AgriSmart AI - Complete Frontend Application with Multilingual Support
-// Version: 2.1.0 - Production Ready with Offline, Voice & Mobile Support
+// Version: 2.2.0 - Production Ready with Offline, Voice & Mobile Support
 
 // Dynamic API URL - works on mobile and web
 const API_BASE = (function() {
     // Check if running in Capacitor (mobile app)
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-        // For mobile app - use your deployed server
-        // TODO: Replace with your actual production server URL
-        return 'https://agrismart-api.onrender.com';
+        console.log('📱 Running in Capacitor mobile app');
+        return 'https://agrismart-api-m8nz.onrender.com';
+    }
+    // Check for Capacitor without method
+    if (typeof Capacitor !== 'undefined') {
+        console.log('📱 Capacitor detected');
+        return 'https://agrismart-api-m8nz.onrender.com';
     }
     // For localhost development
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://127.0.0.1:8001';
     }
-    // For production web
-    return window.location.origin.includes(':3000') 
-        ? window.location.origin.replace(':3000', ':8001')
-        : window.location.origin + '/api';
+    // For production web - use deployed API
+    return 'https://agrismart-api-m8nz.onrender.com';
 })();
 
 console.log('🌐 API Base URL:', API_BASE);

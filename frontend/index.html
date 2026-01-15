@@ -13,11 +13,11 @@
     <title>AgriSmart AI - Smart Farming Assistant</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     
     <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+    <link rel="apple-touch-icon" href="./icons/icon.svg">
     
     <!-- Stylesheets -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -37,7 +37,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('./service-worker.js')
                     .then(reg => console.log('✅ Service Worker registered:', reg.scope))
                     .catch(err => console.log('❌ Service Worker failed:', err));
             });
@@ -1261,8 +1261,8 @@
         </div>
     </div>
 
-    <!-- Welcome Overlay (First Time Users) - HIDDEN BY DEFAULT -->
-    <div class="welcome-overlay hidden" id="welcome-overlay">
+    <!-- Welcome Overlay (First Time Users) - SHOW BY DEFAULT -->
+    <div class="welcome-overlay" id="welcome-overlay">
         <div class="welcome-logo">🌾</div>
         <h1 class="welcome-title">AgriSmart AI</h1>
         <p class="welcome-subtitle">Your intelligent farming assistant with voice support</p>
@@ -1333,7 +1333,7 @@
     <!-- Auth and Mobile Initialization Script -->
     <script>
         // ================== AUTH FUNCTIONS ==================
-        let currentUser = null;
+        // Note: currentUser is already declared in app.js, reuse it
         let otpTimer = null;
         
         function showAuthModal() {

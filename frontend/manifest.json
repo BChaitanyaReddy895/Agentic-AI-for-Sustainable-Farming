@@ -2,79 +2,33 @@
     "name": "AgriSmart AI - Smart Farming Assistant",
     "short_name": "AgriSmart",
     "description": "AI-powered farming assistant with voice support, offline capabilities, and multilingual interface for Indian farmers",
-    "start_url": "/",
+    "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#0f172a",
     "theme_color": "#22c55e",
     "orientation": "portrait-primary",
-    "scope": "/",
+    "scope": "./",
     "lang": "en-IN",
     "dir": "ltr",
     "categories": ["agriculture", "productivity", "utilities"],
     "icons": [
         {
-            "src": "/icons/icon-72x72.png",
-            "sizes": "72x72",
-            "type": "image/png",
-            "purpose": "maskable any"
+            "src": "./icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
         },
         {
-            "src": "/icons/icon-96x96.png",
-            "sizes": "96x96",
-            "type": "image/png",
-            "purpose": "maskable any"
-        },
-        {
-            "src": "/icons/icon-128x128.png",
-            "sizes": "128x128",
-            "type": "image/png",
-            "purpose": "maskable any"
-        },
-        {
-            "src": "/icons/icon-144x144.png",
-            "sizes": "144x144",
-            "type": "image/png",
-            "purpose": "maskable any"
-        },
-        {
-            "src": "/icons/icon-152x152.png",
-            "sizes": "152x152",
-            "type": "image/png",
-            "purpose": "maskable any"
-        },
-        {
-            "src": "/icons/icon-192x192.png",
+            "src": "./icons/icon.svg",
             "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "maskable any"
+            "type": "image/svg+xml",
+            "purpose": "maskable"
         },
         {
-            "src": "/icons/icon-384x384.png",
-            "sizes": "384x384",
-            "type": "image/png",
-            "purpose": "maskable any"
-        },
-        {
-            "src": "/icons/icon-512x512.png",
+            "src": "./icons/icon.svg",
             "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable any"
-        }
-    ],
-    "screenshots": [
-        {
-            "src": "/screenshots/home.png",
-            "sizes": "1080x1920",
-            "type": "image/png",
-            "form_factor": "narrow",
-            "label": "Home Screen"
-        },
-        {
-            "src": "/screenshots/recommendation.png",
-            "sizes": "1080x1920",
-            "type": "image/png",
-            "form_factor": "narrow",
-            "label": "Crop Recommendations"
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
         }
     ],
     "shortcuts": [
@@ -82,51 +36,23 @@
             "name": "Voice Assistant",
             "short_name": "Voice",
             "description": "Start voice command",
-            "url": "/?action=voice",
-            "icons": [{ "src": "/icons/voice-96.png", "sizes": "96x96" }]
+            "url": "./index.html?action=voice",
+            "icons": [{ "src": "./icons/icon.svg", "sizes": "96x96" }]
         },
         {
             "name": "Weather",
             "short_name": "Weather",
             "description": "Check weather forecast",
-            "url": "/?page=weather",
-            "icons": [{ "src": "/icons/weather-96.png", "sizes": "96x96" }]
+            "url": "./index.html?page=weather",
+            "icons": [{ "src": "./icons/icon.svg", "sizes": "96x96" }]
         },
         {
             "name": "Crop Advice",
             "short_name": "Crops",
             "description": "Get crop recommendations",
-            "url": "/?page=recommendation",
-            "icons": [{ "src": "/icons/crop-96.png", "sizes": "96x96" }]
+            "url": "./index.html?page=recommendation",
+            "icons": [{ "src": "./icons/icon.svg", "sizes": "96x96" }]
         }
     ],
-    "related_applications": [],
-    "prefer_related_applications": false,
-    "share_target": {
-        "action": "/share",
-        "method": "POST",
-        "enctype": "multipart/form-data",
-        "params": {
-            "title": "name",
-            "text": "description",
-            "url": "link",
-            "files": [{
-                "name": "image",
-                "accept": ["image/*"]
-            }]
-        }
-    },
-    "protocol_handlers": [
-        {
-            "protocol": "web+agrismart",
-            "url": "/?action=%s"
-        }
-    ],
-    "handle_links": "preferred",
-    "launch_handler": {
-        "client_mode": "navigate-existing"
-    },
-    "edge_side_panel": {
-        "preferred_width": 400
-    }
+    "prefer_related_applications": false
 }
