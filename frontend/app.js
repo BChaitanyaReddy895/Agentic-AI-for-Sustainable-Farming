@@ -340,6 +340,12 @@ async function changeLanguage(langCode, langName) {
     currentLanguage = langCode;
     document.getElementById('current-lang').textContent = langName;
     
+    // Update Voice Interface Language
+    if (window.voiceInterface) {
+        window.voiceInterface.setLanguage(langCode);
+        console.log(`🎤 Voice interface language set to: ${langCode}`);
+    }
+    
     // Close dropdown
     document.getElementById('lang-menu').classList.remove('active');
     
@@ -458,34 +464,6 @@ function closeDropdowns() {
     const toolsDropdown = document.getElementById('tools-dropdown');
     if (toolsDropdown) {
         toolsDropdown.classList.remove('active');
-    }
-}
-
-// API Helper with enhanced error handling
-async function api(endpoint, method = 'GET', data = null) {
-    showLoading('Processing request...');
-    
-    try {
-        const options = {
-            method,
-            headers: { 'Content-Type': 'application/json' }
-        };
-        if (data) options.body = JSON.stringify(data);
-        
-        const response = await fetch(`${API_BASE}${endpoint}`, options);
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        hideLoading();
-        return result;
-    } catch (error) {
-        hideLoading();
-        console.error('API call failed:', error);
-        showNotification(`Request failed: ${error.message}`, 'error');
-        return null;
     }
 }
 

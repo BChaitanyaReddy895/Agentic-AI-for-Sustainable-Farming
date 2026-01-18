@@ -210,9 +210,38 @@
                 <div class="lang-option" onclick="changeLanguage('pa', 'ਪੰਜਾਬੀ')">
                     <span class="flag">🇮🇳</span> ਪੰਜਾਬੀ
                 </div>
+                <div class="lang-option" onclick="changeLanguage('ml', 'മലയാളം')">
+                    <span class="flag">🇮🇳</span> മലയാളം
+                </div>
+                <div class="lang-option" onclick="changeLanguage('or', 'ଓଡ଼ିଆ')">
+                    <span class="flag">🇮🇳</span> ଓଡ଼ିଆ
+                </div>
+                <div class="lang-option" onclick="changeLanguage('bn', 'বাংলা')">
+                    <span class="flag">🇮🇳</span> বাংলা
+                </div>
+                <div class="lang-option" onclick="changeLanguage('gu', 'ગુજરાતી')">
+                    <span class="flag">🇮🇳</span> ગુજરાતી
+                </div>
+                <div class="lang-option" onclick="changeLanguage('mr', 'मराठी')">
+                    <span class="flag">🇮🇳</span> मराठी
+                </div>
+                <div class="lang-option" onclick="changeLanguage('pa', 'ਪੰਜਾਬੀ')">
+                    <span class="flag">🇮🇳</span> ਪੰਜਾਬੀ
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <a href="#" class="mobile-logo" onclick="navigate('home')">
+            <i class="fas fa-seedling"></i>
+            <span>AgriSmart</span>
+        </a>
+        <button class="mobile-profile-btn" onclick="showAuthModal()">
+            <i class="fas fa-user-circle"></i>
+        </button>
+    </header>
 
     <!-- Modern Header -->
     <header class="modern-header">
@@ -1310,7 +1339,7 @@
             <span>Crops</span>
         </div>
         <div class="mobile-nav-item center-btn" onclick="toggleVoiceInterface()">
-            <div class="voice-fab">
+            <div class="mobile-mic-fab">
                 <i class="fas fa-microphone"></i>
             </div>
         </div>

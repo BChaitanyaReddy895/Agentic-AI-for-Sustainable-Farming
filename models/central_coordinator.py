@@ -1,11 +1,11 @@
 import joblib
-from Models.farmer_advisor import FarmerAdvisor
-from Models.market_Researcher import MarketResearcher
-from Models.weather_Analyst import WeatherAnalyst
-from Models.sustainability_Expert import SustainabilityExpert
+from models.farmer_advisor import FarmerAdvisor
+from models.market_Researcher import MarketResearcher
+from models.weather_Analyst import WeatherAnalyst
+from models.sustainability_Expert import SustainabilityExpert
 import matplotlib.pyplot as plt
-from Models import weather_api
-from Models.pest_disease_predictor import PestDiseasePredictor
+from models import weather_api
+from models.pest_disease_predictor import PestDiseasePredictor
 
 
 class CentralCoordinator:
