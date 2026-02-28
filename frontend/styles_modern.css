@@ -1186,6 +1186,176 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 .animate-scale-in { animation: scaleIn 0.2s ease-out; }
 
 /* ═══════════════════════════════════════
+   RICH ANIMATIONS & TRANSITIONS
+   ═══════════════════════════════════════ */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes bounceIn {
+    0%   { opacity: 0; transform: scale(0.3); }
+    50%  { opacity: 1; transform: scale(1.05); }
+    70%  { transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px hsl(142 76% 36% / 0.2); }
+    50%      { box-shadow: 0 0 20px hsl(142 76% 36% / 0.4); }
+}
+@keyframes ringProgress {
+    from { stroke-dashoffset: 327; }
+}
+
+/* Page transitions */
+.page {
+    animation: slideUp 0.4s ease-out;
+}
+
+/* Cards animate in on page load */
+.card {
+    animation: slideUp 0.35s ease-out both;
+}
+.card:nth-child(1) { animation-delay: 0.05s; }
+.card:nth-child(2) { animation-delay: 0.10s; }
+.card:nth-child(3) { animation-delay: 0.15s; }
+.card:nth-child(4) { animation-delay: 0.20s; }
+.card:nth-child(5) { animation-delay: 0.25s; }
+
+/* Stat cards bounce in */
+.stat-card {
+    animation: bounceIn 0.5s ease-out both;
+}
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Feature cards stagger */
+.feature-card {
+    animation: slideUp 0.4s ease-out both;
+    transition: transform 0.25s, box-shadow 0.25s;
+}
+.feature-card:nth-child(1) { animation-delay: 0.05s; }
+.feature-card:nth-child(2) { animation-delay: 0.10s; }
+.feature-card:nth-child(3) { animation-delay: 0.15s; }
+.feature-card:nth-child(4) { animation-delay: 0.20s; }
+.feature-card:nth-child(5) { animation-delay: 0.25s; }
+.feature-card:nth-child(6) { animation-delay: 0.30s; }
+.feature-card:hover {
+    transform: translateY(-4px) scale(1.02);
+}
+
+/* Buttons — subtle press effect */
+.btn {
+    transition: all 0.2s ease;
+}
+.btn:active {
+    transform: scale(0.96);
+}
+.btn-primary:hover {
+    box-shadow: 0 6px 20px hsl(142 76% 36% / 0.3);
+}
+
+/* GPS detect button pulse when idle */
+#gps-detect-btn:not(:disabled) {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* Health ring progress animation */
+#health-arc {
+    animation: ringProgress 1.2s ease-out both;
+}
+
+/* Weather big temp float */
+.weather-big-temp {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Dashboard hero shimmer */
+.dash-hero {
+    position: relative;
+    overflow: hidden;
+}
+.dash-hero::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent 25%, hsl(0 0% 100% / 0.08) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* Sidebar items slide in */
+.nav-item {
+    transition: all 0.2s ease;
+}
+.nav-item:hover {
+    transform: translateX(4px);
+}
+
+/* Toast notifications slide in */
+.toast {
+    animation: slideIn 0.4s ease-out;
+}
+
+/* Loading overlay */
+.loading-spinner {
+    animation: spin 0.8s linear infinite;
+}
+
+/* Feature guide entrance */
+.feature-guide {
+    animation: slideDown 0.5s ease-out;
+}
+
+/* Explore grid items */
+.explore-item {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.explore-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card);
+}
+
+/* Input focus glow */
+.input-field:focus, select:focus {
+    transition: border-color 0.25s, box-shadow 0.25s;
+    box-shadow: 0 0 0 3px hsl(142 76% 36% / 0.15);
+}
+
+/* My post cards */
+.my-post-card {
+    animation: slideUp 0.3s ease-out both;
+}
+
+/* Community insight cards */
+.community-card, .insight-card {
+    animation: slideUp 0.35s ease-out both;
+    transition: transform 0.2s;
+}
+.community-card:hover, .insight-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Smooth scroll behavior */
+.main-area {
+    scroll-behavior: smooth;
+}
+
+/* ═══════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════ */
 @media (max-width: 768px) {
@@ -1299,14 +1469,19 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 .npk-simple-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
+    gap: 1rem;
 }
 .npk-item {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 1.1rem;
+    padding: 1rem;
     text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.npk-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
 }
 .npk-label {
     font-size: 1rem;
@@ -1327,25 +1502,28 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
     flex-wrap: wrap;
 }
 .npk-btn {
-    padding: 0.45rem 0.7rem;
+    padding: 0.5rem 0.75rem;
     border: 2px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-subtle);
     cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
     color: var(--fg);
+    min-width: 70px;
 }
 .npk-btn:hover {
     border-color: var(--primary);
     background: var(--primary-light);
+    transform: scale(1.05);
 }
 .npk-btn.selected {
     border-color: var(--primary);
     background: var(--primary);
     color: var(--primary-fg);
-    box-shadow: 0 2px 8px hsl(142 76% 36% / 0.3);
+    box-shadow: 0 2px 12px hsl(142 76% 36% / 0.35);
+    transform: scale(1.08);
 }
 
 /* ═══════════════════════════════════════
@@ -1473,7 +1651,7 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
     font-size: 0.85rem;
     color: var(--fg-muted);
 }
-.dash-weather-details span {
+.dash-weather-details div {
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -1485,6 +1663,7 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 /* Crop Health Ring */
 .dash-crop-health {
     padding: 1.25rem;
+    overflow: hidden;
 }
 .health-ring-wrap {
     display: flex;
@@ -1493,13 +1672,15 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 }
 .health-ring {
     position: relative;
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
     flex-shrink: 0;
 }
 .health-ring svg {
     width: 100%;
     height: 100%;
+    max-width: 90px;
+    max-height: 90px;
 }
 .health-ring-val {
     position: absolute;
@@ -1639,4 +1820,88 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
     padding: 0.85rem 1.5rem;
     font-size: 1rem;
     border-radius: var(--radius-lg);
+}
+
+/* ═══════════════════════════════════════
+   WALKTHROUGH / ONBOARDING OVERLAY
+   ═══════════════════════════════════════ */
+.walkthrough-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.walkthrough-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: hsl(0 0% 0% / 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.walkthrough-card {
+    position: relative;
+    background: var(--card);
+    border-radius: var(--radius-2xl);
+    padding: 2rem 2.25rem 1.5rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 25px 60px hsl(0 0% 0% / 0.25);
+    text-align: center;
+    animation: bounceIn 0.5s ease-out;
+    overflow: hidden;
+}
+.walkthrough-progress {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--border);
+}
+.walkthrough-progress-bar {
+    height: 100%;
+    border-radius: 0 2px 2px 0;
+    transition: width 0.4s ease, background 0.4s ease;
+}
+.walkthrough-illustration {
+    margin: 0.5rem 0 1rem;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: float 3s ease-in-out infinite;
+}
+.walkthrough-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--fg);
+    margin-bottom: 0.5rem;
+}
+.walkthrough-desc {
+    font-size: 0.92rem;
+    color: var(--fg-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+.walkthrough-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.walkthrough-dots {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+.wt-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s ease;
+}
+.wt-dot.active {
+    width: 22px;
+    border-radius: 4px;
 }

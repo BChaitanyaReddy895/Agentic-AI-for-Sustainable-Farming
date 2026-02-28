@@ -456,6 +456,13 @@
                     <div><h1 data-i18n="rec.title">AI Recommendations</h1><p class="page-desc" data-i18n="rec.desc">Smart crop suggestions based on your farm data</p></div>
                     <button class="btn btn-outline btn-sm ml-auto" onclick="getRecommendation()"><i class="fas fa-sync-alt"></i> <span data-i18n="rec.regenerate">Regenerate</span></button>
                 </div>
+                <div class="feature-guide" id="rec-guide">
+                    <div class="guide-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="guide-text">
+                        <strong>How it works:</strong> Our AI agents analyze your soil, weather, market prices & sustainability to recommend the best crops. Tap "Generate Now" and watch the agents discuss!
+                    </div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
                 <div id="recommendation-results">
                     <div class="empty-state">
                         <i class="fas fa-seedling"></i>
@@ -574,6 +581,13 @@
                     <div class="page-icon bg-blue"><i class="fas fa-users"></i></div>
                     <div><h1 data-i18n="comm.title">Community Insights</h1><p class="page-desc" data-i18n="comm.desc">Share data anonymously and learn from other farmers</p></div>
                 </div>
+                <div class="feature-guide" id="community-guide">
+                    <div class="guide-icon"><i class="fas fa-hands-helping"></i></div>
+                    <div class="guide-text">
+                        <strong>Help & Learn:</strong> Share your crop yield & price data to help other farmers. See what works best in your region. All data stays anonymous!
+                    </div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
                 <!-- Share -->
                 <div class="card">
                     <h3 class="card-title"><i class="fas fa-share-alt"></i> Share Your Data (Anonymous)</h3>
@@ -662,6 +676,13 @@
                 <div class="page-title-row">
                     <div class="page-icon bg-cyan"><i class="fas fa-cloud-sun"></i></div>
                     <div><h1 data-i18n="weather.title">Weather Intelligence</h1><p class="page-desc" data-i18n="weather.desc">Real-time weather with agricultural risk assessments</p></div>
+                </div>
+                <div class="feature-guide" id="weather-guide">
+                    <div class="guide-icon"><i class="fas fa-cloud-sun-rain"></i></div>
+                    <div class="guide-text">
+                        <strong>Plan with weather:</strong> Get real-time weather forecasts and risk alerts for your location. Know the best time to plant, irrigate, or harvest.
+                    </div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="card">
                     <h3 class="card-title"><i class="fas fa-map-marker-alt"></i> Location</h3>
@@ -890,6 +911,24 @@
 
 <!-- ═══════════════ VOICE FAB ═══════════════ -->
 <button class="voice-fab" id="voice-btn" title="Voice Assistant" onclick="toggleVoiceInterface()"><i class="fas fa-microphone"></i></button>
+
+<!-- ═══════════════ WALKTHROUGH OVERLAY ═══════════════ -->
+<div class="walkthrough-overlay" id="walkthrough-overlay" style="display:none">
+    <div class="walkthrough-backdrop" onclick="closeWalkthrough()"></div>
+    <div class="walkthrough-card" id="walkthrough-card">
+        <div class="walkthrough-progress">
+            <div class="walkthrough-progress-bar" id="walkthrough-progress-bar"></div>
+        </div>
+        <div class="walkthrough-illustration" id="walkthrough-illustration"></div>
+        <h2 class="walkthrough-title" id="walkthrough-title"></h2>
+        <p class="walkthrough-desc" id="walkthrough-desc"></p>
+        <div class="walkthrough-actions">
+            <button class="btn btn-outline btn-sm" id="walkthrough-skip" onclick="closeWalkthrough()">Skip</button>
+            <div class="walkthrough-dots" id="walkthrough-dots"></div>
+            <button class="btn btn-primary btn-sm" id="walkthrough-next" onclick="nextWalkthroughStep()">Next →</button>
+        </div>
+    </div>
+</div>
 
 <!-- ═══════════════ SCRIPTS ═══════════════ -->
 <script src="config.js"></script>

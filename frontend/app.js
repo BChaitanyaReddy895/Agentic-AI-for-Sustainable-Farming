@@ -32,10 +32,91 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('settings-language')) {
         document.getElementById('settings-language').value = state.language;
     }
+    // Show walkthrough for first-time users
+    if (!localStorage.getItem('agri_walkthrough_done')) {
+        setTimeout(() => startWalkthrough(), 800);
+    }
 });
 
 // ═══════════════════════════════════════
-//  AUTH
+//  WALKTHROUGH / ONBOARDING
+// ═══════════════════════════════════════
+const walkthroughSteps = [
+    {
+        icon: '🌾',
+        title: 'Welcome to AgriSmart AI!',
+        desc: 'Your smart farming assistant powered by AI. Let us guide you through the app — it takes just 30 seconds!',
+        color: '#16a34a'
+    },
+    {
+        icon: '📍',
+        title: 'Step 1: Detect Your Location',
+        desc: 'Go to Farm Setup and tap "Detect My Location". We automatically get your weather, temperature, and rainfall — no typing needed!',
+        color: '#0ea5e9'
+    },
+    {
+        icon: '🌿',
+        title: 'Step 2: Tell Us About Fertilizer',
+        desc: 'Just tap emoji buttons — None, Little, Medium, or A Lot — for each fertilizer type. Simple and quick!',
+        color: '#f59e0b'
+    },
+    {
+        icon: '🤖',
+        title: 'Step 3: Get AI Recommendations',
+        desc: '5 AI agents analyze your data together — crop advisor, market researcher, weather analyst, sustainability expert, and coordinator. Watch them discuss!',
+        color: '#8b5cf6'
+    },
+    {
+        icon: '📊',
+        title: 'Explore More Features',
+        desc: 'Soil analysis from photos, pest prediction, weather alerts, community insights, crop rotation planner — all powered by AI for your farm!',
+        color: '#ec4899'
+    }
+];
+let walkthroughStep = 0;
+
+function startWalkthrough() {
+    walkthroughStep = 0;
+    const overlay = document.getElementById('walkthrough-overlay');
+    if (!overlay) return;
+    overlay.style.display = '';
+    renderWalkthroughStep();
+}
+
+function renderWalkthroughStep() {
+    const step = walkthroughSteps[walkthroughStep];
+    document.getElementById('walkthrough-illustration').innerHTML = `<span style="font-size:3.5rem">${step.icon}</span>`;
+    document.getElementById('walkthrough-title').textContent = step.title;
+    document.getElementById('walkthrough-desc').textContent = step.desc;
+    const pct = ((walkthroughStep + 1) / walkthroughSteps.length) * 100;
+    document.getElementById('walkthrough-progress-bar').style.width = pct + '%';
+    document.getElementById('walkthrough-progress-bar').style.background = step.color;
+    const dotsEl = document.getElementById('walkthrough-dots');
+    dotsEl.innerHTML = walkthroughSteps.map((_, i) =>
+        `<span class="wt-dot${i === walkthroughStep ? ' active' : ''}" style="${i === walkthroughStep ? 'background:' + step.color : ''}"></span>`
+    ).join('');
+    const nextBtn = document.getElementById('walkthrough-next');
+    nextBtn.textContent = walkthroughStep === walkthroughSteps.length - 1 ? "Let's Go! 🚀" : 'Next →';
+    const card = document.getElementById('walkthrough-card');
+    card.classList.remove('animate-scale-in');
+    void card.offsetWidth;
+    card.classList.add('animate-scale-in');
+}
+
+function nextWalkthroughStep() {
+    walkthroughStep++;
+    if (walkthroughStep >= walkthroughSteps.length) {
+        closeWalkthrough();
+        return;
+    }
+    renderWalkthroughStep();
+}
+
+function closeWalkthrough() {
+    const overlay = document.getElementById('walkthrough-overlay');
+    if (overlay) overlay.style.display = 'none';
+    localStorage.setItem('agri_walkthrough_done', '1');
+}
 // ═══════════════════════════════════════
 
 function switchAuthTab(tab) {

@@ -1,7 +1,7 @@
 // AgriSmart AI - Service Worker for Offline Support
 // Version: 3.0.0 - Production Ready
 
-const CACHE_NAME = 'agrismart-v3.0.0';
+const CACHE_NAME = 'agrismart-v4.0.0';
 const OFFLINE_URL = './index.html';
 
 // Files to cache for offline use
@@ -112,30 +112,32 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For other requests, cache first, then network
+    // Skip non-GET requests (POST, PUT, etc. cannot be cached)
+    if (request.method !== 'GET') {
+        event.respondWith(fetch(request).catch(() => new Response('Offline', { status: 503 })));
+        return;
+    }
+
+    // For static assets — network first, then cache
     event.respondWith(
-        caches.match(request)
-            .then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
+        fetch(request)
+            .then((networkResponse) => {
+                if (networkResponse && networkResponse.status === 200) {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(request, responseToCache);
+                    });
                 }
-                return fetch(request).then((networkResponse) => {
-                    // Cache successful responses
-                    if (networkResponse && networkResponse.status === 200) {
-                        const responseToCache = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(request, responseToCache);
-                        });
-                    }
-                    return networkResponse;
-                });
+                return networkResponse;
             })
             .catch(() => {
-                // Return offline page for HTML requests
-                if (request.headers.get('Accept')?.includes('text/html')) {
-                    return caches.match(OFFLINE_URL);
-                }
-                return new Response('Offline', { status: 503 });
+                return caches.match(request).then((cachedResponse) => {
+                    if (cachedResponse) return cachedResponse;
+                    if (request.headers.get('Accept')?.includes('text/html')) {
+                        return caches.match(OFFLINE_URL);
+                    }
+                    return new Response('Offline', { status: 503 });
+                });
             })
     );
 });
