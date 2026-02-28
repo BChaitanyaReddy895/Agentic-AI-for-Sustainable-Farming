@@ -43,31 +43,31 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════
 const walkthroughSteps = [
     {
-        icon: '🌾',
+        illustration: 'farm',
         title: 'Welcome to AgriSmart AI!',
         desc: 'Your smart farming assistant powered by AI. Let us guide you through the app — it takes just 30 seconds!',
         color: '#16a34a'
     },
     {
-        icon: '📍',
+        illustration: 'gps',
         title: 'Step 1: Detect Your Location',
         desc: 'Go to Farm Setup and tap "Detect My Location". We automatically get your weather, temperature, and rainfall — no typing needed!',
         color: '#0ea5e9'
     },
     {
-        icon: '🌿',
+        illustration: 'plant',
         title: 'Step 2: Tell Us About Fertilizer',
         desc: 'Just tap emoji buttons — None, Little, Medium, or A Lot — for each fertilizer type. Simple and quick!',
         color: '#f59e0b'
     },
     {
-        icon: '🤖',
+        illustration: 'ai',
         title: 'Step 3: Get AI Recommendations',
         desc: '5 AI agents analyze your data together — crop advisor, market researcher, weather analyst, sustainability expert, and coordinator. Watch them discuss!',
         color: '#8b5cf6'
     },
     {
-        icon: '📊',
+        illustration: 'charts',
         title: 'Explore More Features',
         desc: 'Soil analysis from photos, pest prediction, weather alerts, community insights, crop rotation planner — all powered by AI for your farm!',
         color: '#ec4899'
@@ -85,7 +85,11 @@ function startWalkthrough() {
 
 function renderWalkthroughStep() {
     const step = walkthroughSteps[walkthroughStep];
-    document.getElementById('walkthrough-illustration').innerHTML = `<span style="font-size:3.5rem">${step.icon}</span>`;
+    // Render animated SVG illustration
+    const illustrationEl = document.getElementById('walkthrough-illustration');
+    if (illustrationEl) {
+        illustrationEl.innerHTML = getWalkthroughSVG(step.illustration, step.color);
+    }
     document.getElementById('walkthrough-title').textContent = step.title;
     document.getElementById('walkthrough-desc').textContent = step.desc;
     const pct = ((walkthroughStep + 1) / walkthroughSteps.length) * 100;
@@ -116,7 +120,380 @@ function closeWalkthrough() {
     const overlay = document.getElementById('walkthrough-overlay');
     if (overlay) overlay.style.display = 'none';
     localStorage.setItem('agri_walkthrough_done', '1');
+    // Celebrate completion with confetti!
+    launchConfetti();
 }
+
+// ═══════════════════════════════════════
+//  ANIMATED SVG ILLUSTRATIONS
+// ═══════════════════════════════════════
+function getWalkthroughSVG(type, color) {
+    const svgs = {
+        farm: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#87CEEB"/><stop offset="100%" stop-color="#E0F4FF"/></linearGradient>
+            </defs>
+            <rect width="200" height="200" rx="24" fill="url(#sky)"/>
+            <!-- Sun -->
+            <circle cx="160" cy="40" r="20" fill="#FDB813">
+                <animate attributeName="r" values="18;22;18" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <g stroke="#FDB813" stroke-width="2" fill="none">
+                <line x1="160" y1="10" x2="160" y2="6"><animate attributeName="y2" values="6;2;6" dur="3s" repeatCount="indefinite"/></line>
+                <line x1="190" y1="40" x2="194" y2="40"><animate attributeName="x2" values="194;198;194" dur="3s" repeatCount="indefinite"/></line>
+                <line x1="180" y1="20" x2="184" y2="16"><animate attributeName="x2" values="184;188;184" dur="3s" repeatCount="indefinite"/></line>
+                <line x1="180" y1="60" x2="184" y2="64"><animate attributeName="x2" values="184;188;184" dur="3s" repeatCount="indefinite"/></line>
+            </g>
+            <!-- Ground -->
+            <ellipse cx="100" cy="175" rx="90" ry="20" fill="#8B6914"/>
+            <ellipse cx="100" cy="172" rx="88" ry="16" fill="#16a34a"/>
+            <!-- Barn -->
+            <rect x="30" y="105" width="50" height="55" rx="3" fill="#C23B22"/>
+            <polygon points="30,105 55,80 80,105" fill="#8B2500"/>
+            <rect x="48" y="130" width="14" height="30" rx="2" fill="#5C3317"/>
+            <!-- Wheat stalks -->
+            <g>
+                <line x1="120" y1="155" x2="120" y2="110" stroke="#DAA520" stroke-width="2">
+                    <animate attributeName="x2" values="118;122;118" dur="2.5s" repeatCount="indefinite"/>
+                </line>
+                <ellipse cx="120" cy="108" rx="4" ry="8" fill="#DAA520">
+                    <animate attributeName="cx" values="118;122;118" dur="2.5s" repeatCount="indefinite"/>
+                </ellipse>
+            </g>
+            <g>
+                <line x1="140" y1="155" x2="140" y2="105" stroke="#DAA520" stroke-width="2">
+                    <animate attributeName="x2" values="142;138;142" dur="2.8s" repeatCount="indefinite"/>
+                </line>
+                <ellipse cx="140" cy="103" rx="4" ry="8" fill="#DAA520">
+                    <animate attributeName="cx" values="142;138;142" dur="2.8s" repeatCount="indefinite"/>
+                </ellipse>
+            </g>
+            <g>
+                <line x1="160" y1="155" x2="160" y2="112" stroke="#DAA520" stroke-width="2">
+                    <animate attributeName="x2" values="158;162;158" dur="2.3s" repeatCount="indefinite"/>
+                </line>
+                <ellipse cx="160" cy="110" rx="4" ry="8" fill="#DAA520">
+                    <animate attributeName="cx" values="158;162;158" dur="2.3s" repeatCount="indefinite"/>
+                </ellipse>
+            </g>
+            <!-- Cloud -->
+            <g opacity="0.8">
+                <animateTransform attributeName="transform" type="translate" values="0,0;15,0;0,0" dur="8s" repeatCount="indefinite"/>
+                <circle cx="50" cy="35" r="12" fill="white"/><circle cx="65" cy="30" r="16" fill="white"/><circle cx="80" cy="35" r="12" fill="white"/>
+            </g>
+        </svg>`,
+        gps: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" rx="24" fill="#EFF6FF"/>
+            <!-- Map grid -->
+            <g stroke="#CBD5E1" stroke-width="0.5" opacity="0.5">
+                <line x1="40" y1="40" x2="40" y2="180"/><line x1="80" y1="40" x2="80" y2="180"/>
+                <line x1="120" y1="40" x2="120" y2="180"/><line x1="160" y1="40" x2="160" y2="180"/>
+                <line x1="20" y1="60" x2="180" y2="60"/><line x1="20" y1="100" x2="180" y2="100"/>
+                <line x1="20" y1="140" x2="180" y2="140"/>
+            </g>
+            <!-- Location pin -->
+            <g>
+                <animateTransform attributeName="transform" type="translate" values="0,0;0,-8;0,0" dur="1.5s" repeatCount="indefinite"/>
+                <path d="M100,60 C80,60 68,78 68,92 C68,115 100,145 100,145 C100,145 132,115 132,92 C132,78 120,60 100,60Z" fill="#0ea5e9"/>
+                <circle cx="100" cy="90" r="12" fill="white"/>
+                <circle cx="100" cy="90" r="5" fill="#0ea5e9"/>
+            </g>
+            <!-- Pulse rings -->
+            <circle cx="100" cy="145" rx="1" fill="none" stroke="#0ea5e9" stroke-width="2">
+                <animate attributeName="r" values="5;35;5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="100" cy="145" fill="none" stroke="#0ea5e9" stroke-width="1.5">
+                <animate attributeName="r" values="5;25;5" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+            </circle>
+            <!-- Satellite -->
+            <g>
+                <animateTransform attributeName="transform" type="rotate" values="0 100 50;360 100 50" dur="6s" repeatCount="indefinite"/>
+                <rect x="140" y="45" width="12" height="8" rx="2" fill="#64748B"/>
+                <rect x="134" y="47" width="6" height="4" fill="#0EA5E9"/>
+                <rect x="152" y="47" width="6" height="4" fill="#0EA5E9"/>
+            </g>
+        </svg>`,
+        plant: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" rx="24" fill="#FFFBEB"/>
+            <!-- Pot -->
+            <path d="M65,145 L75,180 L125,180 L135,145 Z" fill="#D97706"/>
+            <rect x="60" y="138" width="80" height="12" rx="4" fill="#F59E0B"/>
+            <!-- Soil -->
+            <ellipse cx="100" cy="145" rx="30" ry="5" fill="#92400E"/>
+            <!-- Plant stem -->
+            <path d="M100,140 Q100,90 100,70" stroke="#16a34a" stroke-width="3" fill="none">
+                <animate attributeName="d" values="M100,140 Q100,90 100,80;M100,140 Q100,90 100,65;M100,140 Q100,90 100,80" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <!-- Leaves -->
+            <g>
+                <animateTransform attributeName="transform" type="rotate" values="-5 100 100;5 100 100;-5 100 100" dur="3s" repeatCount="indefinite"/>
+                <ellipse cx="80" cy="95" rx="18" ry="8" fill="#22c55e" transform="rotate(-30 80 95)"/>
+                <ellipse cx="120" cy="90" rx="18" ry="8" fill="#16a34a" transform="rotate(25 120 90)"/>
+                <ellipse cx="85" cy="75" rx="14" ry="6" fill="#4ade80" transform="rotate(-20 85 75)"/>
+                <ellipse cx="115" cy="72" rx="14" ry="6" fill="#22c55e" transform="rotate(15 115 72)"/>
+            </g>
+            <!-- Sparkles -->
+            <g fill="#F59E0B">
+                <circle cx="60" cy="60" r="3"><animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/></circle>
+                <circle cx="145" cy="55" r="2"><animate attributeName="opacity" values="0;1;0" dur="2.5s" begin="0.5s" repeatCount="indefinite"/></circle>
+                <circle cx="50" cy="95" r="2"><animate attributeName="opacity" values="0;1;0" dur="1.8s" begin="1s" repeatCount="indefinite"/></circle>
+                <circle cx="155" cy="100" r="3"><animate attributeName="opacity" values="0;1;0" dur="2.2s" begin="0.3s" repeatCount="indefinite"/></circle>
+            </g>
+            <!-- Water drops -->
+            <g fill="#38BDF8">
+                <circle cx="75" cy="125" r="2.5">
+                    <animate attributeName="cy" values="115;135;115" dur="2s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="125" cy="120" r="2">
+                    <animate attributeName="cy" values="110;130;110" dur="2.3s" begin="0.5s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="1;0;1" dur="2.3s" begin="0.5s" repeatCount="indefinite"/>
+                </circle>
+            </g>
+        </svg>`,
+        ai: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" rx="24" fill="#F5F3FF"/>
+            <!-- Brain outline -->
+            <g transform="translate(55,35)" fill="none" stroke="#8b5cf6" stroke-width="2.5">
+                <path d="M45,0 C65,0 80,15 80,30 C80,40 75,48 68,53 C72,58 75,65 75,73 C75,90 60,100 45,100 C30,100 15,90 15,73 C15,65 18,58 22,53 C15,48 10,40 10,30 C10,15 25,0 45,0Z">
+                    <animate attributeName="stroke-dasharray" values="0 350;350 0" dur="2s" fill="freeze"/>
+                </path>
+                <!-- Center line -->
+                <line x1="45" y1="10" x2="45" y2="90" stroke-dasharray="3 5">
+                    <animate attributeName="stroke-dashoffset" values="0;-16" dur="1s" repeatCount="indefinite"/>
+                </line>
+                <!-- Neural connections -->
+                <circle cx="30" cy="35" r="4" fill="#8b5cf6"><animate attributeName="fill-opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/></circle>
+                <circle cx="60" cy="35" r="4" fill="#8b5cf6"><animate attributeName="fill-opacity" values="0.3;1;0.3" dur="1.5s" begin="0.3s" repeatCount="indefinite"/></circle>
+                <circle cx="25" cy="60" r="4" fill="#8b5cf6"><animate attributeName="fill-opacity" values="0.3;1;0.3" dur="1.5s" begin="0.6s" repeatCount="indefinite"/></circle>
+                <circle cx="65" cy="60" r="4" fill="#8b5cf6"><animate attributeName="fill-opacity" values="0.3;1;0.3" dur="1.5s" begin="0.9s" repeatCount="indefinite"/></circle>
+                <circle cx="45" cy="50" r="5" fill="#8b5cf6"><animate attributeName="fill-opacity" values="0.5;1;0.5" dur="1s" repeatCount="indefinite"/></circle>
+                <!-- Firing synapses -->
+                <line x1="30" y1="35" x2="45" y2="50" stroke-width="1.5"><animate attributeName="stroke-opacity" values="0.2;1;0.2" dur="1.5s" repeatCount="indefinite"/></line>
+                <line x1="60" y1="35" x2="45" y2="50" stroke-width="1.5"><animate attributeName="stroke-opacity" values="0.2;1;0.2" dur="1.5s" begin="0.3s" repeatCount="indefinite"/></line>
+                <line x1="25" y1="60" x2="45" y2="50" stroke-width="1.5"><animate attributeName="stroke-opacity" values="0.2;1;0.2" dur="1.5s" begin="0.6s" repeatCount="indefinite"/></line>
+                <line x1="65" y1="60" x2="45" y2="50" stroke-width="1.5"><animate attributeName="stroke-opacity" values="0.2;1;0.2" dur="1.5s" begin="0.9s" repeatCount="indefinite"/></line>
+            </g>
+            <!-- Orbiting dots -->
+            <g>
+                <circle cx="100" cy="25" r="4" fill="#EC4899">
+                    <animateTransform attributeName="transform" type="rotate" values="0 100 100;360 100 100" dur="4s" repeatCount="indefinite"/>
+                </circle>
+            </g>
+            <g>
+                <circle cx="175" cy="100" r="3" fill="#F59E0B">
+                    <animateTransform attributeName="transform" type="rotate" values="120 100 100;480 100 100" dur="5s" repeatCount="indefinite"/>
+                </circle>
+            </g>
+        </svg>`,
+        charts: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" rx="24" fill="#FDF2F8"/>
+            <!-- Chart axes -->
+            <line x1="35" y1="30" x2="35" y2="160" stroke="#CBD5E1" stroke-width="2"/>
+            <line x1="35" y1="160" x2="175" y2="160" stroke="#CBD5E1" stroke-width="2"/>
+            <!-- Bars growing up -->
+            <rect x="50" y="160" width="20" height="0" rx="3" fill="#16a34a">
+                <animate attributeName="height" values="0;90;90" dur="1s" fill="freeze"/>
+                <animate attributeName="y" values="160;70;70" dur="1s" fill="freeze"/>
+            </rect>
+            <rect x="80" y="160" width="20" height="0" rx="3" fill="#0ea5e9">
+                <animate attributeName="height" values="0;60;60" dur="1s" begin="0.2s" fill="freeze"/>
+                <animate attributeName="y" values="160;100;100" dur="1s" begin="0.2s" fill="freeze"/>
+            </rect>
+            <rect x="110" y="160" width="20" height="0" rx="3" fill="#f59e0b">
+                <animate attributeName="height" values="0;110;110" dur="1s" begin="0.4s" fill="freeze"/>
+                <animate attributeName="y" values="160;50;50" dur="1s" begin="0.4s" fill="freeze"/>
+            </rect>
+            <rect x="140" y="160" width="20" height="0" rx="3" fill="#ec4899">
+                <animate attributeName="height" values="0;75;75" dur="1s" begin="0.6s" fill="freeze"/>
+                <animate attributeName="y" values="160;85;85" dur="1s" begin="0.6s" fill="freeze"/>
+            </rect>
+            <!-- Trend line -->
+            <polyline points="60,70 90,100 120,50 150,85" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="200" stroke-dashoffset="200">
+                <animate attributeName="stroke-dashoffset" values="200;0" dur="1.5s" begin="0.8s" fill="freeze"/>
+            </polyline>
+            <!-- Dots on trend -->
+            <circle cx="60" cy="70" r="4" fill="#8b5cf6" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.3s" begin="1.5s" fill="freeze"/></circle>
+            <circle cx="90" cy="100" r="4" fill="#8b5cf6" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.3s" begin="1.7s" fill="freeze"/></circle>
+            <circle cx="120" cy="50" r="4" fill="#8b5cf6" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.3s" begin="1.9s" fill="freeze"/></circle>
+            <circle cx="150" cy="85" r="4" fill="#8b5cf6" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.3s" begin="2.1s" fill="freeze"/></circle>
+            <!-- Sparkle -->
+            <circle cx="120" cy="45" r="3" fill="#F59E0B" opacity="0">
+                <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="2;4;2" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+            </circle>
+        </svg>`
+    };
+    return svgs[type] || `<div style="font-size:3.5rem">🌾</div>`;
+}
+
+// ═══════════════════════════════════════
+function launchConfetti(duration = 2500) {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#16a34a', '#f59e0b', '#ec4899', '#8b5cf6', '#0ea5e9', '#ef4444', '#22d3ee', '#facc15'];
+    const particles = [];
+    const count = 150;
+
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            w: Math.random() * 10 + 5,
+            h: Math.random() * 6 + 3,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 4,
+            vy: Math.random() * 3 + 2,
+            rot: Math.random() * 360,
+            vr: (Math.random() - 0.5) * 8,
+            opacity: 1
+        });
+    }
+
+    const startTime = Date.now();
+    function animateConfetti() {
+        const elapsed = Date.now() - startTime;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const fadeRatio = elapsed > duration * 0.7 ? 1 - (elapsed - duration * 0.7) / (duration * 0.3) : 1;
+
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.05;
+            p.rot += p.vr;
+            p.opacity = Math.max(0, fadeRatio);
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot * Math.PI / 180);
+            ctx.globalAlpha = p.opacity;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+        });
+
+        if (elapsed < duration) {
+            requestAnimationFrame(animateConfetti);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    requestAnimationFrame(animateConfetti);
+}
+
+// ═══════════════════════════════════════
+//  SUCCESS CELEBRATION (smaller burst)
+// ═══════════════════════════════════════
+function celebrateSuccess() {
+    launchConfetti(1800);
+    // Also show a success pulse ring on the page
+    const ring = document.createElement('div');
+    ring.className = 'success-ring-burst';
+    document.body.appendChild(ring);
+    setTimeout(() => ring.remove(), 1200);
+}
+
+// ═══════════════════════════════════════
+//  ANIMATED COUNTER (count-up effect)
+// ═══════════════════════════════════════
+function animateCounter(element, target, duration = 1200, suffix = '') {
+    const start = 0;
+    const startTime = performance.now();
+    function updateCounter(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (target - start) * eased);
+        element.textContent = current + suffix;
+        if (progress < 1) requestAnimationFrame(updateCounter);
+    }
+    requestAnimationFrame(updateCounter);
+}
+
+// ═══════════════════════════════════════
+//  RIPPLE EFFECT ON BUTTONS
+// ═══════════════════════════════════════
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    const ripple = document.createElement('span');
+    ripple.className = 'btn-ripple';
+    const rect = btn.getBoundingClientRect();
+    ripple.style.left = (e.clientX - rect.left) + 'px';
+    ripple.style.top = (e.clientY - rect.top) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+});
+
+// ═══════════════════════════════════════
+//  INTERSECTION OBSERVER — ANIMATE ON SCROLL
+// ═══════════════════════════════════════
+const scrollAnimObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('animate-visible');
+            scrollAnimObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.card, .feature-guide, .empty-state').forEach(el => {
+        el.classList.add('animate-on-scroll');
+        scrollAnimObserver.observe(el);
+    });
+});
+
+// ═══════════════════════════════════════
+//  SKELETON LOADING HELPER
+// ═══════════════════════════════════════
+function showSkeleton(containerId, rows = 3) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    let skeletonHTML = '<div class="skeleton-loader">';
+    for (let i = 0; i < rows; i++) {
+        const w = 60 + Math.random() * 35;
+        skeletonHTML += `<div class="skeleton-line" style="width:${w}%;animation-delay:${i*0.1}s"></div>`;
+    }
+    skeletonHTML += '</div>';
+    container.innerHTML = skeletonHTML;
+}
+
+function hideSkeleton(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const sk = container.querySelector('.skeleton-loader');
+    if (sk) sk.remove();
+}
+
+// ═══════════════════════════════════════
+//  TYPING ANIMATION (for AI responses)
+// ═══════════════════════════════════════
+function typeText(element, text, speed = 15) {
+    return new Promise(resolve => {
+        let i = 0;
+        element.textContent = '';
+        element.style.visibility = 'visible';
+        function type() {
+            if (i < text.length) {
+                element.textContent += text.charAt(i);
+                i++;
+                setTimeout(type, speed);
+            } else {
+                resolve();
+            }
+        }
+        type();
+    });
+}
+
 // ═══════════════════════════════════════
 
 function switchAuthTab(tab) {
@@ -502,6 +879,7 @@ function addActivity(text, color = 'green') {
 async function getRecommendation() {
     if (!state.farmSetup) { toast('Please set up farm details first', 'info'); navigate('farm-setup'); return; }
     showLoading('4 AI agents are analyzing your farm data...');
+    showSkeleton('recommendation-results', 5);
     const container = document.getElementById('recommendation-results');
     try {
         const data = await fetchAPI('/multi_agent_recommendation', {
@@ -518,6 +896,7 @@ async function getRecommendation() {
             rainfall: state.farmSetup.rainfall
         });
         renderRecommendation(data, container);
+        celebrateSuccess();
         // Save locally
         const rec = { ...data, timestamp: new Date().toISOString() };
         state.recommendations.unshift(rec);
@@ -1253,6 +1632,7 @@ async function analyzeSoil() {
         }
         if (!res.ok) throw new Error(data.detail || 'Analysis failed');
         showSoilResult(data.soil_type);
+        celebrateSuccess();
         addActivity('Soil analysis completed', 'green');
     } catch (err) {
         toast(err.message || 'Soil analysis failed', 'error');
@@ -1331,6 +1711,7 @@ async function predictPests() {
             html += '</ul></div>';
         }
         container.innerHTML = html;
+        celebrateSuccess();
         toast('Pest analysis complete 🐛', 'success');
     } catch {
         toast('Failed to predict pests', 'error');

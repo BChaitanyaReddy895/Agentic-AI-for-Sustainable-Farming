@@ -1,7 +1,7 @@
 // AgriSmart AI - Service Worker for Offline Support
 // Version: 3.0.0 - Production Ready
 
-const CACHE_NAME = 'agrismart-v4.0.0';
+const CACHE_NAME = 'agrismart-v5.0.0';
 const OFFLINE_URL = './index.html';
 
 // Files to cache for offline use
