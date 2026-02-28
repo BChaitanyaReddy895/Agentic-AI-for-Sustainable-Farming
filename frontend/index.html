@@ -139,6 +139,42 @@
             <span class="pending-badge" id="pending-badge" style="display:none"><i class="fas fa-sync-alt fa-spin"></i> <span id="pending-count">0</span> pending</span>
         </div>
 
+        <!-- ═══════════════ SIMPLE MODE TOGGLE (for illiterate farmers) ═══════════════ -->
+        <button class="simple-mode-toggle" id="simple-mode-toggle" onclick="toggleSimpleMode()" title="Simple Mode for Easy Use">
+            <span class="smt-icon">👨‍🌾</span>
+            <span class="smt-label" data-i18n="simple.toggle">Simple Mode</span>
+        </button>
+
+        <!-- ═══════════════ PICTURE NAVIGATION (Simple Mode) ═══════════════ -->
+        <div class="picture-nav" id="picture-nav" style="display:none">
+            <div class="picture-nav-grid">
+                <button class="pic-nav-btn" onclick="navigate('farm-setup')" data-page="farm-setup">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#16a34a,#22d3ee)">🚜</div>
+                    <span data-i18n="nav.farmSetup">Farm Setup</span>
+                </button>
+                <button class="pic-nav-btn" onclick="oneTapAdvice()" id="one-tap-nav-btn">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">🧠</div>
+                    <span data-i18n="simple.getAdvice">Get Advice</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('weather')" data-page="weather">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4)">🌤️</div>
+                    <span data-i18n="nav.weather">Weather</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('pest-prediction')" data-page="pest-prediction">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#ef4444,#f97316)">🐛</div>
+                    <span data-i18n="nav.pestPrediction">Pest Alert</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('community')" data-page="community">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">👥</div>
+                    <span data-i18n="nav.community">Community</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('soil-analysis')" data-page="soil-analysis">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#92400e,#d97706)">🔬</div>
+                    <span data-i18n="nav.soilAnalysis">Soil Check</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Language Selector (top-right floating) -->
         <div class="lang-float" id="lang-float">
             <button class="lang-float-btn" onclick="toggleLangMenu()"><i class="fas fa-globe"></i> <span id="lang-label">EN</span></button>
@@ -162,6 +198,45 @@
         <!-- ===== DASHBOARD ===== -->
         <section id="dashboard-page" class="page active">
             <div class="page-pad">
+                <!-- ═══ ONE-TAP SMART ADVICE (Simple Mode) ═══ -->
+                <div class="one-tap-section simple-only" id="one-tap-section" style="display:none">
+                    <div class="one-tap-card">
+                        <div class="one-tap-illustration">
+                            <svg viewBox="0 0 120 120" width="100" height="100">
+                                <circle cx="60" cy="60" r="55" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/>
+                                <text x="60" y="50" text-anchor="middle" font-size="36">🌾</text>
+                                <text x="60" y="80" text-anchor="middle" font-size="12" fill="#16a34a" font-weight="bold">AI</text>
+                                <circle cx="60" cy="60" r="55" fill="none" stroke="#16a34a" stroke-width="2" opacity="0.3">
+                                    <animate attributeName="r" values="50;58;50" dur="2s" repeatCount="indefinite"/>
+                                    <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+                                </circle>
+                            </svg>
+                        </div>
+                        <h2 class="one-tap-title" data-i18n="simple.oneTapTitle">🌾 Get My Farm Advice</h2>
+                        <p class="one-tap-desc" data-i18n="simple.oneTapDesc">One tap — we find your location, check weather, and tell you what to grow!</p>
+                        <button class="btn btn-primary btn-mega one-tap-btn" id="one-tap-btn" onclick="oneTapAdvice()">
+                            <i class="fas fa-magic"></i> <span data-i18n="simple.tapHere">Tap Here!</span>
+                        </button>
+                        <div class="one-tap-progress" id="one-tap-progress" style="display:none">
+                            <div class="otp-step" id="otp-step-1"><span class="otp-emoji">📍</span> <span data-i18n="simple.findingLocation">Finding your location...</span></div>
+                            <div class="otp-step" id="otp-step-2"><span class="otp-emoji">🌤️</span> <span data-i18n="simple.checkingWeather">Checking weather...</span></div>
+                            <div class="otp-step" id="otp-step-3"><span class="otp-emoji">🧠</span> <span data-i18n="simple.aiThinking">AI is thinking...</span></div>
+                            <div class="otp-step" id="otp-step-4"><span class="otp-emoji">🔊</span> <span data-i18n="simple.readingResult">Reading your advice...</span></div>
+                        </div>
+                        <div class="one-tap-result" id="one-tap-result" style="display:none"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ SIMPLE WEATHER DISPLAY (Simple Mode) ═══ -->
+                <div class="simple-weather simple-only" id="simple-weather" style="display:none">
+                    <div class="simple-weather-icon" id="simple-weather-icon">☀️</div>
+                    <div class="simple-weather-temp" id="simple-weather-temp">28°</div>
+                    <div class="simple-weather-status" id="simple-weather-status">
+                        <span class="traffic-light green" id="weather-traffic-light"></span>
+                        <span data-i18n="simple.goodWeather">Good weather for farming</span>
+                    </div>
+                </div>
+
                 <!-- Hero -->
                 <div class="dash-hero">
                     <div class="dash-hero-bg"></div>
@@ -357,7 +432,7 @@
                 <!-- Farm Details -->
                 <div class="card">
                     <h3 class="card-title"><i class="fas fa-seedling"></i> <span data-i18n="setup.farmDetails">Farm Details</span></h3>
-                    <div class="input-grid-3">
+                    <div class="input-grid-3 advanced-only">
                         <div class="form-group">
                             <label>Farm Size</label>
                             <div class="input-with-unit">
@@ -388,6 +463,83 @@
                                 <option value="Red">Red soil</option>
                                 <option value="Silty">Silty</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- ═══ VISUAL CROP PICKER (Simple Mode) ═══ -->
+                    <div class="visual-crop-picker simple-only" id="visual-crop-picker" style="display:none">
+                        <h4 class="visual-picker-title" data-i18n="simple.whatToGrow">🌱 What do you want to grow?</h4>
+                        <p class="visual-picker-hint" data-i18n="simple.tapCrop">Tap a picture to choose:</p>
+                        <div class="visual-picker-grid">
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Rice', this)">
+                                <span class="vc-emoji">🌾</span>
+                                <span class="vc-name" data-i18n="crop.rice">Rice</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Wheat', this)">
+                                <span class="vc-emoji">🌾</span>
+                                <span class="vc-name" data-i18n="crop.wheat">Wheat</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Corn', this)">
+                                <span class="vc-emoji">🌽</span>
+                                <span class="vc-name" data-i18n="crop.corn">Corn</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Tomato', this)">
+                                <span class="vc-emoji">🍅</span>
+                                <span class="vc-name" data-i18n="crop.tomato">Tomato</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Potato', this)">
+                                <span class="vc-emoji">🥔</span>
+                                <span class="vc-name" data-i18n="crop.potato">Potato</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Cotton', this)">
+                                <span class="vc-emoji">🏵️</span>
+                                <span class="vc-name" data-i18n="crop.cotton">Cotton</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Soybean', this)">
+                                <span class="vc-emoji">🫘</span>
+                                <span class="vc-name" data-i18n="crop.soybean">Soybean</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Vegetables', this)">
+                                <span class="vc-emoji">🥬</span>
+                                <span class="vc-name" data-i18n="crop.vegetables">Vegetables</span>
+                            </button>
+                            <button class="visual-crop-btn" onclick="selectVisualCrop('Fruits', this)">
+                                <span class="vc-emoji">🍎</span>
+                                <span class="vc-name" data-i18n="crop.fruits">Fruits</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ═══ VISUAL SOIL PICKER (Simple Mode) ═══ -->
+                    <div class="visual-soil-picker simple-only" id="visual-soil-picker" style="display:none">
+                        <h4 class="visual-picker-title" data-i18n="simple.soilType">🪨 What does your soil look like?</h4>
+                        <p class="visual-picker-hint" data-i18n="simple.tapSoil">Tap the closest match:</p>
+                        <div class="visual-soil-grid">
+                            <button class="visual-soil-btn" onclick="selectVisualSoil('Loamy', this)">
+                                <div class="vs-swatch" style="background:linear-gradient(135deg,#8B7355,#A0926B)"></div>
+                                <span class="vs-name" data-i18n="soil.loamy">Loamy</span>
+                                <span class="vs-desc">👍</span>
+                            </button>
+                            <button class="visual-soil-btn" onclick="selectVisualSoil('Sandy', this)">
+                                <div class="vs-swatch" style="background:linear-gradient(135deg,#C2B280,#D4C99E)"></div>
+                                <span class="vs-name" data-i18n="soil.sandy">Sandy</span>
+                                <span class="vs-desc">🏖️</span>
+                            </button>
+                            <button class="visual-soil-btn" onclick="selectVisualSoil('Clay', this)">
+                                <div class="vs-swatch" style="background:linear-gradient(135deg,#8B4513,#A0522D)"></div>
+                                <span class="vs-name" data-i18n="soil.clay">Clay</span>
+                                <span class="vs-desc">💧</span>
+                            </button>
+                            <button class="visual-soil-btn" onclick="selectVisualSoil('Black', this)">
+                                <div class="vs-swatch" style="background:linear-gradient(135deg,#3B3131,#4A4040)"></div>
+                                <span class="vs-name" data-i18n="soil.black">Black</span>
+                                <span class="vs-desc">🖤</span>
+                            </button>
+                            <button class="visual-soil-btn" onclick="selectVisualSoil('Red', this)">
+                                <div class="vs-swatch" style="background:linear-gradient(135deg,#A0522D,#CD6839)"></div>
+                                <span class="vs-name" data-i18n="soil.red">Red</span>
+                                <span class="vs-desc">❤️</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -938,6 +1090,33 @@
 
 <!-- ═══════════════ NOTIFICATION TOAST ═══════════════ -->
 <div class="toast-container" id="toast-container"></div>
+
+<!-- ═══════════════ EMERGENCY PEST HELP (Simple Mode) ═══════════════ -->
+<div class="emergency-pest-btn simple-only" id="emergency-pest-btn" style="display:none" onclick="emergencyPestHelp()">
+    <div class="epb-pulse"></div>
+    <span class="epb-icon">🆘</span>
+    <span class="epb-text" data-i18n="simple.cropDying">My Crop is Sick!</span>
+</div>
+
+<!-- ═══════════════ EMERGENCY PEST MODAL ═══════════════ -->
+<div class="emergency-modal" id="emergency-modal" style="display:none">
+    <div class="emergency-modal-backdrop" onclick="closeEmergencyModal()"></div>
+    <div class="emergency-modal-card">
+        <h2><span style="font-size:2rem">🆘</span> <span data-i18n="simple.emergencyTitle">Which crop needs help?</span></h2>
+        <p data-i18n="simple.emergencyDesc">Tap your crop — we'll check for pest danger!</p>
+        <div class="emergency-crop-grid">
+            <button class="em-crop-btn" onclick="runEmergencyPest('Wheat')"><span>🌾</span>Wheat</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Rice')"><span>🌾</span>Rice</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Corn')"><span>🌽</span>Corn</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Tomato')"><span>🍅</span>Tomato</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Cotton')"><span>🏵️</span>Cotton</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Potato')"><span>🥔</span>Potato</button>
+            <button class="em-crop-btn" onclick="runEmergencyPest('Soybean')"><span>🫘</span>Soybean</button>
+        </div>
+        <div class="emergency-result" id="emergency-result" style="display:none"></div>
+        <button class="btn btn-outline" style="margin-top:1rem;width:100%" onclick="closeEmergencyModal()">✕ Close</button>
+    </div>
+</div>
 
 <!-- ═══════════════ VOICE FAB ═══════════════ -->
 <button class="voice-fab" id="voice-btn" title="Voice Assistant" onclick="toggleVoiceInterface()"><i class="fas fa-microphone"></i></button>

@@ -32,11 +32,487 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('settings-language')) {
         document.getElementById('settings-language').value = state.language;
     }
+    // Restore Simple Mode
+    if (localStorage.getItem('agri_simple_mode') === '1') {
+        activateSimpleMode(false);
+    }
     // Show walkthrough for first-time users
     if (!localStorage.getItem('agri_walkthrough_done')) {
         setTimeout(() => startWalkthrough(), 800);
     }
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  SIMPLE MODE — For Illiterate Farmers
+//  Voice-first, picture-first, minimal text, big buttons
+// ═══════════════════════════════════════════════════════════════
+
+function toggleSimpleMode() {
+    const isSimple = document.body.classList.contains('simple-mode');
+    if (isSimple) {
+        deactivateSimpleMode();
+    } else {
+        activateSimpleMode(true);
+    }
+}
+
+function activateSimpleMode(announce = true) {
+    document.body.classList.add('simple-mode');
+    localStorage.setItem('agri_simple_mode', '1');
+    
+    // Show simple-only elements, hide advanced-only
+    document.querySelectorAll('.simple-only').forEach(el => el.style.display = '');
+    document.querySelectorAll('.advanced-only').forEach(el => el.style.display = 'none');
+    
+    // Update toggle button appearance
+    const toggle = document.getElementById('simple-mode-toggle');
+    if (toggle) {
+        toggle.classList.add('active');
+        toggle.querySelector('.smt-label').textContent = '✓ Simple Mode ON';
+    }
+    
+    // Show picture nav on dashboard
+    const picNav = document.getElementById('picture-nav');
+    if (picNav) picNav.style.display = '';
+    
+    // Show one-tap section
+    const oneTap = document.getElementById('one-tap-section');
+    if (oneTap) oneTap.style.display = '';
+    
+    // Show simple weather
+    const simpleWeather = document.getElementById('simple-weather');
+    if (simpleWeather) simpleWeather.style.display = '';
+    
+    // Show emergency button
+    const emergBtn = document.getElementById('emergency-pest-btn');
+    if (emergBtn) emergBtn.style.display = '';
+    
+    // Show visual pickers
+    const vcPicker = document.getElementById('visual-crop-picker');
+    if (vcPicker) vcPicker.style.display = '';
+    const vsPicker = document.getElementById('visual-soil-picker');
+    if (vsPicker) vsPicker.style.display = '';
+    
+    if (announce) {
+        speakText(getSimpleText('simple.activated', 'Simple Mode activated! I will now speak everything aloud and show pictures instead of text. Tap the big pictures to use the app.'));
+        toast('🌾 Simple Mode ON — Pictures & Voice!', 'success');
+    }
+}
+
+function deactivateSimpleMode() {
+    document.body.classList.remove('simple-mode');
+    localStorage.setItem('agri_simple_mode', '0');
+    
+    document.querySelectorAll('.simple-only').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.advanced-only').forEach(el => el.style.display = '');
+    
+    const toggle = document.getElementById('simple-mode-toggle');
+    if (toggle) {
+        toggle.classList.remove('active');
+        toggle.querySelector('.smt-label').textContent = 'Simple Mode';
+    }
+    
+    // Hide picture nav, one-tap, etc.
+    ['picture-nav', 'one-tap-section', 'simple-weather', 'emergency-pest-btn', 'visual-crop-picker', 'visual-soil-picker'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    
+    window.speechSynthesis?.cancel();
+    toast('Advanced Mode restored', 'info');
+}
+
+// ═══════════════════════════════════════
+//  TEXT-TO-SPEECH ENGINE
+// ═══════════════════════════════════════
+
+const ttsLangMap = {
+    'en': 'en-IN', 'hi': 'hi-IN', 'kn': 'kn-IN', 'te': 'te-IN',
+    'ta': 'ta-IN', 'ml': 'ml-IN', 'bn': 'bn-IN', 'gu': 'gu-IN',
+    'mr': 'mr-IN', 'pa': 'pa-IN', 'or': 'or-IN'
+};
+
+function speakText(text, lang) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    
+    // Clean HTML tags and markdown
+    const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').substring(0, 2000);
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = ttsLangMap[lang || state.language] || 'en-IN';
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    // Try to find a voice for the language
+    const voices = window.speechSynthesis.getVoices();
+    const targetLang = utterance.lang;
+    const matchedVoice = voices.find(v => v.lang === targetLang) || voices.find(v => v.lang.startsWith(targetLang.split('-')[0]));
+    if (matchedVoice) utterance.voice = matchedVoice;
+    
+    window.speechSynthesis.speak(utterance);
+    return utterance;
+}
+
+function autoSpeak(text) {
+    // Only auto-speak if simple mode is active
+    if (document.body.classList.contains('simple-mode')) {
+        speakText(text);
+    }
+}
+
+function stopSpeaking() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+// Pre-load voices
+if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// Add speaker buttons to result sections
+function addSpeakerButton(container, text) {
+    const btn = document.createElement('button');
+    btn.className = 'speaker-btn';
+    btn.innerHTML = '🔊';
+    btn.title = 'Listen';
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        speakText(text);
+        btn.classList.add('speaking');
+        const utterances = window.speechSynthesis;
+        const checkDone = setInterval(() => {
+            if (!utterances.speaking) {
+                btn.classList.remove('speaking');
+                clearInterval(checkDone);
+            }
+        }, 300);
+    };
+    if (container.querySelector('.speaker-btn')) return; // Don't add duplicate
+    container.style.position = 'relative';
+    container.appendChild(btn);
+}
+
+// ═══════════════════════════════════════
+//  ONE-TAP SMART ADVICE
+// ═══════════════════════════════════════
+
+async function oneTapAdvice() {
+    const progressEl = document.getElementById('one-tap-progress');
+    const resultEl = document.getElementById('one-tap-result');
+    const btnEl = document.getElementById('one-tap-btn');
+    
+    if (progressEl) progressEl.style.display = '';
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
+    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working...'; }
+    
+    // Navigate to dashboard first
+    navigate('dashboard');
+    
+    function setOTPStep(step, status) {
+        const el = document.getElementById(`otp-step-${step}`);
+        if (!el) return;
+        el.className = `otp-step ${status}`; // 'active', 'done', 'error'
+    }
+    
+    try {
+        // Step 1: Detect Location
+        setOTPStep(1, 'active');
+        autoSpeak('Finding your location...');
+        
+        const pos = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) reject(new Error('No GPS'));
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true, timeout: 15000, maximumAge: 300000
+            });
+        });
+        
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        document.getElementById('user-lat').value = lat;
+        document.getElementById('user-lon').value = lon;
+        
+        let placeName = `${lat.toFixed(2)}°N`;
+        try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`);
+            const geoData = await geoRes.json();
+            placeName = geoData.address?.village || geoData.address?.town || geoData.address?.city || placeName;
+        } catch {}
+        
+        setOTPStep(1, 'done');
+        
+        // Step 2: Fetch Weather
+        setOTPStep(2, 'active');
+        autoSpeak('Checking weather for ' + placeName);
+        
+        const weatherData = await fetchAPI('/weather', { lat, lon });
+        const temp = Math.round(weatherData.current_weather?.temperature || 25);
+        const hum = weatherData.current_weather?.humidity || 60;
+        const rain = Math.round(weatherData.metrics?.total_rainfall || 0);
+        
+        // Update hidden fields
+        document.getElementById('temperature').value = temp;
+        document.getElementById('humidity').value = hum;
+        document.getElementById('rainfall').value = rain;
+        
+        // Update simple weather display
+        const simpleIcon = document.getElementById('simple-weather-icon');
+        const simpleTemp = document.getElementById('simple-weather-temp');
+        if (simpleIcon) simpleIcon.textContent = temp > 35 ? '🔥' : temp > 25 ? '☀️' : temp > 15 ? '⛅' : '❄️';
+        if (simpleTemp) simpleTemp.textContent = temp + '°';
+        
+        setOTPStep(2, 'done');
+        
+        // Step 3: Get AI Recommendation
+        setOTPStep(3, 'active');
+        autoSpeak('AI is analyzing your farm data...');
+        
+        const soilType = state.farmSetup?.soil_type || document.getElementById('soil-type').value || 'Loamy';
+        const cropPref = state.farmSetup?.crop_preference || document.getElementById('crop-preference').value || 'Grains';
+        
+        // Auto-save farm setup
+        state.farmSetup = {
+            land_size: state.farmSetup?.land_size || 5,
+            soil_type: soilType,
+            crop_preference: cropPref,
+            nitrogen: state.farmSetup?.nitrogen || 0,
+            phosphorus: state.farmSetup?.phosphorus || 0,
+            potassium: state.farmSetup?.potassium || 0,
+            temperature: temp, humidity: hum, ph: 6.5, rainfall: rain,
+            lat, lon, locMethod: 'gps', city: placeName
+        };
+        localStorage.setItem('agri_farm_setup', JSON.stringify(state.farmSetup));
+        
+        const data = await fetchAPI('/multi_agent_recommendation', {
+            username: state.user?.username || 'anonymous',
+            land_size: state.farmSetup.land_size,
+            soil_type: soilType, crop_preference: cropPref,
+            nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
+            potassium: state.farmSetup.potassium,
+            temperature: temp, humidity: hum, ph: 6.5, rainfall: rain
+        });
+        
+        setOTPStep(3, 'done');
+        
+        // Step 4: Show & Speak Result
+        setOTPStep(4, 'active');
+        
+        const topCrop = data.central_coordinator?.final_crop || 'Unknown crop';
+        const score = data.central_coordinator?.overall_score || 0;
+        const confidence = data.central_coordinator?.confidence_level || 'Medium';
+        const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
+        const trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+        
+        // Build simple visual result
+        let resultHTML = `
+            <div class="one-tap-result-card" style="border-color:${scoreColor}">
+                <div class="otr-traffic">${trafficEmoji}</div>
+                <div class="otr-crop-name">${topCrop}</div>
+                <div class="otr-score" style="color:${scoreColor}">${score}/10</div>
+                <div class="otr-location">📍 ${placeName} | 🌡️ ${temp}° | 💧 ${hum}%</div>
+            </div>`;
+        
+        // Add simple advice cards
+        const agents = data.agents || {};
+        if (agents.farmer_advisor?.advice) {
+            resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🚜</span><p>${agents.farmer_advisor.advice}</p></div>`;
+        }
+        if (agents.weather_analyst?.advice) {
+            resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🌤️</span><p>${agents.weather_analyst.advice}</p></div>`;
+        }
+        
+        if (resultEl) {
+            resultEl.innerHTML = resultHTML;
+            resultEl.style.display = '';
+        }
+        
+        // Build speech text
+        let speechText = `Great news! Based on your location in ${placeName}, with temperature ${temp} degrees and ${hum} percent humidity, our AI recommends growing ${topCrop}. `;
+        speechText += `The confidence score is ${score} out of 10. `;
+        if (agents.farmer_advisor?.advice) speechText += agents.farmer_advisor.advice + '. ';
+        if (agents.weather_analyst?.advice) speechText += agents.weather_analyst.advice + '. ';
+        
+        speakText(speechText);
+        
+        setOTPStep(4, 'done');
+        celebrateSuccess();
+        
+        // Save recommendation
+        const rec = { ...data, timestamp: new Date().toISOString() };
+        state.recommendations.unshift(rec);
+        if (state.recommendations.length > 20) state.recommendations.pop();
+        localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        
+    } catch (err) {
+        const failStep = document.querySelector('.otp-step.active');
+        if (failStep) failStep.className = 'otp-step error';
+        
+        let errorMsg = 'Something went wrong. Please try again.';
+        if (err.code === 1) errorMsg = 'Please allow location access and try again.';
+        if (resultEl) {
+            resultEl.innerHTML = `<div class="one-tap-result-card" style="border-color:#ef4444"><div class="otr-traffic">❌</div><div class="otr-crop-name">${errorMsg}</div></div>`;
+            resultEl.style.display = '';
+        }
+        autoSpeak(errorMsg);
+    } finally {
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-magic"></i> Tap Here!'; }
+    }
+}
+
+// ═══════════════════════════════════════
+//  VISUAL CROP & SOIL PICKERS
+// ═══════════════════════════════════════
+
+function selectVisualCrop(crop, btn) {
+    // Update visual selection
+    document.querySelectorAll('.visual-crop-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    
+    // Map visual crop to form value
+    const cropMapping = {
+        'Rice': 'Grains', 'Wheat': 'Grains', 'Corn': 'Grains',
+        'Tomato': 'Vegetables', 'Potato': 'Vegetables', 'Vegetables': 'Vegetables',
+        'Cotton': 'Grains', 'Soybean': 'Grains', 'Fruits': 'Fruits'
+    };
+    const selectVal = cropMapping[crop] || 'Grains';
+    document.getElementById('crop-preference').value = selectVal;
+    
+    // Store specific crop for recommendation
+    state.selectedSpecificCrop = crop;
+    
+    autoSpeak('You selected ' + crop);
+    toast(`Selected: ${crop} ✓`, 'success');
+}
+
+function selectVisualSoil(soil, btn) {
+    document.querySelectorAll('.visual-soil-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('soil-type').value = soil;
+    
+    autoSpeak('You selected ' + soil + ' soil');
+    toast(`Soil: ${soil} ✓`, 'success');
+}
+
+// ═══════════════════════════════════════
+//  EMERGENCY PEST HELP
+// ═══════════════════════════════════════
+
+function emergencyPestHelp() {
+    document.getElementById('emergency-modal').style.display = '';
+    document.getElementById('emergency-result').style.display = 'none';
+    document.getElementById('emergency-result').innerHTML = '';
+    autoSpeak('Which crop needs help? Tap the picture of your crop.');
+}
+
+function closeEmergencyModal() {
+    document.getElementById('emergency-modal').style.display = 'none';
+    stopSpeaking();
+}
+
+async function runEmergencyPest(crop) {
+    const resultEl = document.getElementById('emergency-result');
+    resultEl.innerHTML = '<div style="text-align:center;padding:1rem"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#ef4444"></i><p>Checking pest danger...</p></div>';
+    resultEl.style.display = '';
+    
+    autoSpeak('Checking pest danger for ' + crop + '...');
+    
+    try {
+        const temp = state.farmSetup?.temperature || 25;
+        const humidity = state.farmSetup?.humidity || 65;
+        const rainfall = state.farmSetup?.rainfall || 500;
+        const soil = state.farmSetup?.soil_type || 'Loamy';
+        
+        const data = await fetchAPI('/pest_prediction', {
+            crop_type: crop, soil_type: soil,
+            temperature: temp, humidity: humidity, rainfall: rainfall
+        });
+        
+        const risk = (data.overall_risk || 'low').toLowerCase();
+        const riskEmoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
+        const riskLabel = risk === 'high' ? 'DANGER!' : risk === 'medium' ? 'Watch Out' : 'Safe';
+        const riskColor = risk === 'high' ? '#ef4444' : risk === 'medium' ? '#eab308' : '#16a34a';
+        
+        let html = `<div class="emergency-result-card" style="border-color:${riskColor}">
+            <div class="er-traffic">${riskEmoji}</div>
+            <div class="er-label" style="color:${riskColor}">${riskLabel}</div>
+            <div class="er-crop">${crop}</div>
+        </div>`;
+        
+        // Show top pests visually
+        if (data.predictions?.length) {
+            html += '<div class="er-pests">';
+            data.predictions.slice(0, 3).forEach(p => {
+                const sev = (p.severity || 'low').toLowerCase();
+                const icon = sev === 'high' ? '🔴' : sev === 'medium' ? '🟡' : '🟢';
+                html += `<div class="er-pest-item"><span>${icon}</span><strong>${p.pest}</strong><span>${Math.round(p.probability * 100)}%</span></div>`;
+            });
+            html += '</div>';
+        }
+        
+        // Prevention tips (first 2)
+        if (data.prevention_tips?.length) {
+            html += '<div class="er-tips">';
+            data.prevention_tips.slice(0, 2).forEach(tip => {
+                html += `<div class="er-tip">💡 ${tip}</div>`;
+            });
+            html += '</div>';
+        }
+        
+        resultEl.innerHTML = html;
+        
+        // Speak the result
+        let speech = `${riskLabel} for ${crop}! `;
+        if (data.predictions?.length) {
+            speech += 'Main pests: ' + data.predictions.slice(0, 2).map(p => p.pest).join(' and ') + '. ';
+        }
+        if (data.prevention_tips?.length) {
+            speech += 'Tip: ' + data.prevention_tips[0];
+        }
+        speakText(speech);
+        
+    } catch (err) {
+        resultEl.innerHTML = `<div class="emergency-result-card" style="border-color:#ef4444">
+            <div class="er-traffic">❌</div><div class="er-label" style="color:#ef4444">Could not check. Try again.</div></div>`;
+        autoSpeak('Could not check pest danger. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════
+//  AUDIO PAGE NARRATION
+// ═══════════════════════════════════════
+
+const pageNarrations = {
+    'dashboard': 'simple.narrate.dashboard|Welcome to your farm dashboard. Tap the big green button to get AI advice, or tap the pictures below to navigate.',
+    'farm-setup': 'simple.narrate.farmSetup|This is Farm Setup. First, tap Detect My Location. Then tap a crop picture to choose what you want to grow. Finally tap Save.',
+    'recommendation': 'simple.narrate.recommendation|This page shows AI recommendations. Tap Generate Now to get crop advice from our AI experts.',
+    'weather': 'simple.narrate.weather|This page shows weather for your farm. Tap Get Forecast to see the weather.',
+    'pest-prediction': 'simple.narrate.pest|This page checks for pest and disease danger. Select your crop and tap Analyze.',
+    'soil-analysis': 'simple.narrate.soil|Take a photo of your soil or tap a soil type to analyze it.',
+    'community': 'simple.narrate.community|Share your farming data with other farmers and learn from them.'
+};
+
+function narratePage(pageId) {
+    if (!document.body.classList.contains('simple-mode')) return;
+    const entry = pageNarrations[pageId];
+    if (!entry) return;
+    const [, fallback] = entry.split('|');
+    // Small delay so speech doesn't overlap with navigation
+    setTimeout(() => speakText(fallback), 500);
+}
+
+// ═══════════════════════════════════════
+//  HELPER: Get simple mode text
+// ═══════════════════════════════════════
+function getSimpleText(key, fallback) {
+    // Try translations first, fall back to English
+    if (typeof t === 'function') {
+        const translated = t(key, state.language);
+        if (translated && translated !== key) return translated;
+    }
+    return fallback;
+}
 
 // ═══════════════════════════════════════
 //  WALKTHROUGH / ONBOARDING
@@ -595,7 +1071,11 @@ function navigate(pageId) {
     document.querySelectorAll('.sidebar-link').forEach(l => l.classList.toggle('active', l.dataset.page === pageId));
     // Mobile bottom nav active
     document.querySelectorAll('.mob-item').forEach(m => m.classList.toggle('active', m.dataset.page === pageId));
+    // Picture nav active
+    document.querySelectorAll('.pic-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
     closeMobileMenu();
+    // Audio narration for illiterate farmers (Simple Mode)
+    narratePage(pageId);
     // Lazy-load actions
     if (pageId === 'history') loadHistory();
     if (pageId === 'profile') loadProfileData();
@@ -786,6 +1266,7 @@ async function detectMyLocation() {
         btn.innerHTML = '<i class="fas fa-check"></i> Location Detected!';
         btn.className = 'btn btn-success btn-large';
         toast(`Location detected: ${placeName} — weather data loaded! 📍`, 'success');
+        autoSpeak(`Location detected: ${placeName}. Temperature ${temp} degrees, humidity ${hum} percent.`);
 
     } catch (err) {
         statusEl.className = 'gps-status-box error';
@@ -897,6 +1378,12 @@ async function getRecommendation() {
         });
         renderRecommendation(data, container);
         celebrateSuccess();
+        // Auto-speak result for illiterate farmers
+        const topCropSpeak = data.central_coordinator?.final_crop || 'crop';
+        const scoreSpeak = data.central_coordinator?.overall_score || '';
+        autoSpeak(`AI recommends growing ${topCropSpeak}! Score: ${scoreSpeak} out of 10. ${data.central_coordinator?.reasoning || ''}`);
+        // Add speaker button
+        addSpeakerButton(container, `Recommended crop: ${topCropSpeak}. Score: ${scoreSpeak} out of 10. ${data.agents?.farmer_advisor?.advice || ''}`);
         // Save locally
         const rec = { ...data, timestamp: new Date().toISOString() };
         state.recommendations.unshift(rec);
@@ -1593,6 +2080,10 @@ async function getWeatherForecast() {
             }, { responsive: true, displayModeBar: false });
         }
         toast('Weather data updated 🌤️', 'success');
+        // Auto-speak weather for illiterate farmers
+        const weatherSpeech = `Current temperature is ${Math.round(data.current_weather?.temperature || 0)} degrees, humidity ${data.current_weather?.humidity || 0} percent. Risk level: ${data.agricultural_conditions?.overall_risk || 'unknown'}. ${data.recommendations?.[0] || ''}`;
+        autoSpeak(weatherSpeech);
+        addSpeakerButton(container, weatherSpeech);
     } catch {
         toast('Weather service unavailable', 'error');
     } finally {
@@ -1663,7 +2154,8 @@ function showSoilResult(soilType) {
                 <div style="width:64px;height:64px;border-radius:16px;background:${i.color}"></div>
                 <p style="font-size:0.92rem;flex:1">${i.desc}</p>
             </div>
-            <p class="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
+            <p c
+    autoSpeak(`Soil type is ${soilType}. ${i.desc}`);lass="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
         </div>`;
     // Auto-set soil type in farm setup
     const sel = document.getElementById('soil-type');
@@ -1713,6 +2205,12 @@ async function predictPests() {
         container.innerHTML = html;
         celebrateSuccess();
         toast('Pest analysis complete 🐛', 'success');
+        // Auto-speak pest result for illiterate farmers
+        let pestSpeech = `Pest risk for ${crop} is ${risk}. `;
+        if (data.predictions?.length) pestSpeech += 'Main risks: ' + data.predictions.slice(0, 2).map(p => p.pest).join(' and ') + '. ';
+        if (data.prevention_tips?.length) pestSpeech += 'Tip: ' + data.prevention_tips[0];
+        autoSpeak(pestSpeech);
+        addSpeakerButton(container, pestSpeech);
     } catch {
         toast('Failed to predict pests', 'error');
     } finally {

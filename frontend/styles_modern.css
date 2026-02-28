@@ -2428,3 +2428,705 @@ html {
         text-align: center;
     }
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   SIMPLE MODE — FOR ILLITERATE FARMERS
+   Voice-first, picture-first, minimal text, big buttons
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ─── Simple Mode Toggle Button ─── */
+.simple-mode-toggle {
+    position: fixed;
+    top: 12px;
+    right: 80px;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px solid #16a34a;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #16a34a;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15);
+    font-family: 'Inter', sans-serif;
+}
+.simple-mode-toggle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.25);
+}
+.simple-mode-toggle.active {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: white;
+    border-color: #15803d;
+    animation: smtPulse 2s ease-in-out infinite;
+}
+.smt-icon { font-size: 1.2rem; }
+.smt-label { white-space: nowrap; }
+@keyframes smtPulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3); }
+    50% { box-shadow: 0 4px 20px rgba(22, 163, 74, 0.5); }
+}
+
+/* ─── Picture Navigation Grid ─── */
+.picture-nav {
+    padding: 0 1rem;
+    margin-bottom: 1.5rem;
+}
+.picture-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+.pic-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 8px;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+.pic-nav-btn:hover, .pic-nav-btn:active {
+    transform: scale(1.05);
+    border-color: var(--primary);
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.15);
+}
+.pic-nav-btn.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.pic-nav-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+/* ─── One-Tap Smart Advice Section ─── */
+.one-tap-section {
+    margin-bottom: 1.5rem;
+}
+.one-tap-card {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
+    border: 3px solid #16a34a;
+    border-radius: 24px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.one-tap-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(22, 163, 74, 0.05), transparent 60%);
+    animation: oneTapShine 6s ease-in-out infinite;
+}
+@keyframes oneTapShine {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+}
+.one-tap-illustration { margin-bottom: 1rem; position: relative; z-index: 1; }
+.one-tap-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #15803d;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+.one-tap-desc {
+    font-size: 0.92rem;
+    color: #166534;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 1;
+}
+.btn-mega {
+    padding: 18px 48px !important;
+    font-size: 1.3rem !important;
+    font-weight: 800 !important;
+    border-radius: 60px !important;
+    min-height: 64px;
+    animation: megaBtnPulse 2s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+}
+@keyframes megaBtnPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3); }
+    50% { transform: scale(1.03); box-shadow: 0 8px 30px rgba(22, 163, 74, 0.5); }
+}
+
+/* One-tap progress steps */
+.one-tap-progress {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+    position: relative;
+    z-index: 1;
+}
+.otp-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+.otp-step.active {
+    background: #eff6ff;
+    color: #2563eb;
+    border-left: 4px solid #2563eb;
+    animation: otpStepPulse 1s ease-in-out infinite;
+}
+.otp-step.done {
+    background: #f0fdf4;
+    color: #16a34a;
+    border-left: 4px solid #16a34a;
+}
+.otp-step.done .otp-emoji::after { content: ' ✓'; }
+.otp-step.error {
+    background: #fef2f2;
+    color: #ef4444;
+    border-left: 4px solid #ef4444;
+}
+.otp-emoji { font-size: 1.3rem; }
+@keyframes otpStepPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* One-tap result card */
+.one-tap-result { margin-top: 1.5rem; position: relative; z-index: 1; }
+.one-tap-result-card {
+    background: white;
+    border: 3px solid #16a34a;
+    border-radius: 20px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.otr-traffic { font-size: 3rem; margin-bottom: 0.5rem; }
+.otr-crop-name { font-size: 1.4rem; font-weight: 800; color: #1e293b; margin-bottom: 0.25rem; }
+.otr-score { font-size: 1.8rem; font-weight: 900; }
+.otr-location { font-size: 0.85rem; color: #64748b; margin-top: 0.5rem; }
+
+/* Simple advice cards */
+.simple-advice-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+.simple-advice-card .sac-icon { font-size: 1.5rem; flex-shrink: 0; }
+.simple-advice-card p { font-size: 0.9rem; line-height: 1.55; color: #334155; margin: 0; }
+
+/* ─── Simple Weather Display ─── */
+.simple-weather {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 2px solid #93c5fd;
+    border-radius: 20px;
+    padding: 16px 24px;
+    margin-bottom: 1.5rem;
+}
+.simple-weather-icon { font-size: 3rem; }
+.simple-weather-temp { font-size: 2.5rem; font-weight: 900; color: #1e293b; }
+.simple-weather-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+}
+.traffic-light {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.traffic-light.green { background: #16a34a; box-shadow: 0 0 8px #16a34a; }
+.traffic-light.yellow { background: #eab308; box-shadow: 0 0 8px #eab308; }
+.traffic-light.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+/* ─── Visual Crop Picker ─── */
+.visual-picker-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+.visual-picker-hint {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+.visual-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.visual-crop-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 8px;
+    background: var(--input-bg);
+    border: 3px solid transparent;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+.visual-crop-btn:hover, .visual-crop-btn:active {
+    transform: scale(1.08);
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.visual-crop-btn.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.2);
+    transform: scale(1.05);
+}
+.visual-crop-btn.selected .vc-emoji { animation: selectedBounce 0.5s ease; }
+@keyframes selectedBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+.vc-emoji { font-size: 2.2rem; }
+.vc-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    text-align: center;
+}
+
+/* ─── Visual Soil Picker ─── */
+.visual-soil-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+    margin-top: 0.5rem;
+}
+.visual-soil-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    background: white;
+    border: 3px solid transparent;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+.visual-soil-btn:hover, .visual-soil-btn:active {
+    transform: scale(1.08);
+    border-color: var(--earth);
+}
+.visual-soil-btn.selected {
+    border-color: var(--earth);
+    box-shadow: 0 4px 16px rgba(139, 115, 85, 0.25);
+    transform: scale(1.05);
+}
+.vs-swatch {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.1);
+}
+.vs-name { font-size: 0.78rem; font-weight: 700; color: #334155; }
+.vs-desc { font-size: 1.2rem; }
+
+/* ─── Emergency Pest Button ─── */
+.emergency-pest-btn {
+    position: fixed;
+    bottom: 90px;
+    left: 16px;
+    z-index: 1040;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+    animation: emergencyPulse 1.5s ease-in-out infinite;
+}
+.emergency-pest-btn:hover { transform: scale(1.05); }
+.epb-pulse {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50px;
+    border: 2px solid #ef4444;
+    animation: epbPulseRing 2s ease-out infinite;
+}
+@keyframes epbPulseRing {
+    0% { opacity: 0.6; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes emergencyPulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 6px 24px rgba(239, 68, 68, 0.6); }
+}
+.epb-icon { font-size: 1.3rem; }
+.epb-text { white-space: nowrap; }
+
+/* ─── Emergency Modal ─── */
+.emergency-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.emergency-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+}
+.emergency-modal-card {
+    position: relative;
+    background: white;
+    border-radius: 24px;
+    padding: 2rem;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalSlideUp 0.3s ease;
+}
+@keyframes modalSlideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.emergency-modal-card h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    color: #1e293b;
+}
+.emergency-modal-card > p {
+    font-size: 0.88rem;
+    color: #64748b;
+    margin-bottom: 1.25rem;
+}
+.emergency-crop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+.em-crop-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 6px;
+    background: #fef2f2;
+    border: 2px solid #fecaca;
+    border-radius: 16px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #991b1b;
+    transition: all 0.2s ease;
+}
+.em-crop-btn span:first-child { font-size: 1.8rem; }
+.em-crop-btn:hover, .em-crop-btn:active {
+    transform: scale(1.08);
+    border-color: #ef4444;
+    background: #fee2e2;
+}
+
+/* Emergency result */
+.emergency-result-card {
+    background: white;
+    border: 3px solid;
+    border-radius: 20px;
+    padding: 1.5rem;
+    text-align: center;
+    margin: 1rem 0;
+}
+.er-traffic { font-size: 3.5rem; margin-bottom: 0.5rem; }
+.er-label { font-size: 1.4rem; font-weight: 900; }
+.er-crop { font-size: 1rem; color: #64748b; margin-top: 0.25rem; }
+.er-pests {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 1rem;
+}
+.er-pest-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+.er-pest-item strong { flex: 1; text-align: left; }
+.er-tips { margin-top: 1rem; }
+.er-tip {
+    padding: 8px 12px;
+    background: #fffbeb;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    color: #92400e;
+    margin-bottom: 6px;
+    text-align: left;
+}
+
+/* ─── Speaker Button ─── */
+.speaker-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    background: var(--primary-light);
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 5;
+}
+.speaker-btn:hover { background: var(--primary); color: white; transform: scale(1.1); }
+.speaker-btn.speaking {
+    animation: speakerPulse 1s ease-in-out infinite;
+    background: var(--primary);
+    color: white;
+}
+@keyframes speakerPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+/* ═══════════════════════════════════════
+   SIMPLE MODE BODY OVERRIDES
+   When body has .simple-mode class
+   ═══════════════════════════════════════ */
+
+body.simple-mode {
+    font-size: 1.1rem;
+}
+
+/* Bigger tap targets everywhere */
+body.simple-mode .btn {
+    min-height: 52px;
+    font-size: 1rem;
+    padding: 12px 24px;
+}
+
+body.simple-mode .btn-primary {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Hide complex text-heavy sections in simple mode */
+body.simple-mode .feature-guide .guide-text,
+body.simple-mode .card-desc,
+body.simple-mode .page-desc,
+body.simple-mode .usage-guide,
+body.simple-mode .steps-row,
+body.simple-mode .sidebar-footer a[data-page="offline"],
+body.simple-mode .sidebar-footer a[data-page="history"] {
+    display: none;
+}
+
+/* Bigger sidebar links */
+body.simple-mode .sidebar-link {
+    padding: 14px 16px;
+    font-size: 1rem;
+}
+body.simple-mode .sidebar-link i {
+    font-size: 1.3rem;
+    width: 28px;
+}
+
+/* Bigger stat cards */
+body.simple-mode .stat-value {
+    font-size: 1.6rem;
+}
+body.simple-mode .stat-card {
+    padding: 1.25rem;
+}
+
+/* Bigger NPK buttons */
+body.simple-mode .npk-btn {
+    min-height: 56px;
+    font-size: 1rem;
+    padding: 12px 16px;
+}
+
+/* Bigger form elements */
+body.simple-mode input,
+body.simple-mode select,
+body.simple-mode textarea {
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+/* Bigger page titles */
+body.simple-mode .page-title-row h1 {
+    font-size: 1.5rem;
+}
+
+/* Bigger cards */
+body.simple-mode .card {
+    padding: 1.5rem;
+}
+
+/* Hide explore cards text descriptions in simple mode */
+body.simple-mode .feature-card .fc-text p {
+    display: none;
+}
+body.simple-mode .feature-card .fc-text h3 {
+    font-size: 1.1rem;
+}
+
+/* Make feature cards into bigger icon cards */
+body.simple-mode .feature-card {
+    padding: 1.25rem;
+}
+body.simple-mode .feature-card .fc-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+}
+
+/* Bigger explore grid */
+body.simple-mode .explore-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+body.simple-mode .explore-card {
+    padding: 1.25rem 0.75rem;
+}
+body.simple-mode .explore-card i {
+    font-size: 1.8rem;
+}
+
+/* Mobile: bottom nav icons bigger */
+body.simple-mode .mob-item i {
+    font-size: 1.4rem;
+}
+body.simple-mode .mobile-bottom-nav {
+    height: 68px;
+}
+
+/* Higher contrast for readability */
+body.simple-mode .card-title {
+    font-size: 1.15rem;
+}
+
+/* ─── Simple Mode: Mobile Responsive ─── */
+@media (max-width: 768px) {
+    .simple-mode-toggle {
+        right: 64px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+    .smt-label {
+        display: none;
+    }
+    .smt-icon {
+        font-size: 1.4rem;
+    }
+    .picture-nav-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .pic-nav-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.5rem;
+    }
+    .pic-nav-btn {
+        padding: 12px 6px;
+        font-size: 0.7rem;
+    }
+    .visual-picker-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .visual-crop-btn {
+        padding: 12px 4px;
+    }
+    .vc-emoji {
+        font-size: 1.8rem;
+    }
+    .one-tap-title {
+        font-size: 1.2rem;
+    }
+    .btn-mega {
+        padding: 14px 32px !important;
+        font-size: 1.1rem !important;
+    }
+    .emergency-pest-btn {
+        bottom: 80px;
+        left: 10px;
+        padding: 10px 14px;
+        font-size: 0.8rem;
+    }
+    .emergency-crop-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .simple-weather {
+        padding: 12px 16px;
+    }
+    .simple-weather-icon { font-size: 2.2rem; }
+    .simple-weather-temp { font-size: 2rem; }
+}
