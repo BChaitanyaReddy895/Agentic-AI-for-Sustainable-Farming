@@ -2154,9 +2154,9 @@ function showSoilResult(soilType) {
                 <div style="width:64px;height:64px;border-radius:16px;background:${i.color}"></div>
                 <p style="font-size:0.92rem;flex:1">${i.desc}</p>
             </div>
-            <p c
-    autoSpeak(`Soil type is ${soilType}. ${i.desc}`);lass="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
+            <p class="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
         </div>`;
+    autoSpeak(`Soil type is ${soilType}. ${i.desc}`);
     // Auto-set soil type in farm setup
     const sel = document.getElementById('soil-type');
     for (const opt of sel.options) {
