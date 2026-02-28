@@ -343,5 +343,41 @@
     .rec-info-grid {
         grid-template-columns: 1fr !important;
     }
+
+    /* --- GPS & Farm Setup Mobile --- */
+    .gps-result-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    .npk-emoji-row {
+        flex-wrap: wrap !important;
+    }
+    .npk-btn {
+        font-size: 0.75rem !important;
+        padding: 0.4rem 0.6rem !important;
+    }
+    .npk-simple-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .auto-param-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Dashboard live row */
+    .dash-live-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Feature guides */
+    .feature-guide {
+        flex-direction: column !important;
+    }
+    .feature-guide .guide-icon {
+        display: none !important;
+    }
+
+    /* My posts */
+    .my-post-details {
+        flex-wrap: wrap !important;
+    }
 }
 /* Removed: Migrated to farm-growth-hub */

@@ -144,6 +144,17 @@ function navigate(pageId) {
     if (pageId === 'offline') updateOfflinePage();
     if (pageId === 'community') loadCommunityInsights();
     if (pageId === 'sustainability') loadSustainabilityChart();
+    // Auto-fill pest prediction with farm setup data
+    if (pageId === 'pest-prediction' && state.farmSetup) {
+        const pt = document.getElementById('pest-temp');
+        const ph = document.getElementById('pest-humidity');
+        const pr = document.getElementById('pest-rainfall');
+        const ps = document.getElementById('pest-soil');
+        if (pt && state.farmSetup.temperature) pt.value = state.farmSetup.temperature;
+        if (ph && state.farmSetup.humidity) ph.value = state.farmSetup.humidity;
+        if (pr && state.farmSetup.rainfall) pr.value = state.farmSetup.rainfall;
+        if (ps && state.farmSetup.soil_type) ps.value = state.farmSetup.soil_type;
+    }
 }
 
 // ─── Mobile menu ───
@@ -192,9 +203,24 @@ async function loadDashboardWeather() {
         const lon = state.farmSetup?.lon || 77.5946;
         const data = await fetchAPI('/weather', { lat, lon });
         if (data.current_weather) {
-            document.getElementById('dash-temp').textContent = `${Math.round(data.current_weather.temperature)}°C`;
-            document.getElementById('dash-humidity').textContent = `${data.current_weather.humidity}%`;
-            document.getElementById('dash-wind').textContent = `${data.current_weather.wind_speed} km/h`;
+            const temp = Math.round(data.current_weather.temperature);
+            const hum = data.current_weather.humidity;
+            const wind = data.current_weather.wind_speed;
+            const desc = data.current_weather.description || 'Clear';
+            document.getElementById('dash-temp').textContent = `${temp}°C`;
+            document.getElementById('dash-humidity').textContent = `${hum}%`;
+            document.getElementById('dash-wind').textContent = `${wind} km/h`;
+            // Enhanced dashboard weather
+            const bigTemp = document.getElementById('dash-big-temp');
+            const bigDesc = document.getElementById('dash-big-desc');
+            const detHum = document.getElementById('dash-det-hum');
+            const detWind = document.getElementById('dash-det-wind');
+            const detRain = document.getElementById('dash-det-rain');
+            if (bigTemp) bigTemp.textContent = `${temp}°`;
+            if (bigDesc) bigDesc.textContent = desc.charAt(0).toUpperCase() + desc.slice(1);
+            if (detHum) detHum.textContent = `${hum}%`;
+            if (detWind) detWind.textContent = `${wind} km/h`;
+            if (detRain && data.metrics) detRain.textContent = `${data.metrics.total_rainfall || 0} mm`;
         }
     } catch { /* fallback defaults */ }
 }
@@ -203,10 +229,118 @@ async function loadDashboardWeather() {
 //  FARM SETUP
 // ═══════════════════════════════════════
 
-function updateLocationMethod() {
-    const method = document.querySelector('input[name="loc-method"]:checked').value;
-    document.getElementById('loc-coords').style.display = method === 'coords' ? '' : 'none';
-    document.getElementById('loc-city').style.display = method === 'city' ? '' : 'none';
+// NPK simple emoji selector
+function setNPK(type, val, btn) {
+    const row = btn.parentElement;
+    row.querySelectorAll('.npk-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const map = { n: 'nitrogen', p: 'phosphorus', k: 'potassium' };
+    document.getElementById(map[type]).value = val;
+}
+
+// GPS Location Detection
+async function detectMyLocation() {
+    const statusEl = document.getElementById('gps-status');
+    const statusText = document.getElementById('gps-status-text');
+    const btn = document.getElementById('gps-detect-btn');
+    
+    statusEl.className = 'gps-status-box loading';
+    statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting your location...';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
+
+    try {
+        // Get GPS coordinates
+        const pos = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('GPS not supported on this device'));
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 300000 // 5 min cache
+            });
+        });
+
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        document.getElementById('user-lat').value = lat;
+        document.getElementById('user-lon').value = lon;
+
+        // Reverse geocode (simple - using Open-Meteo geocoding API)
+        let placeName = `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+        try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`);
+            const geoData = await geoRes.json();
+            if (geoData.address) {
+                placeName = geoData.address.village || geoData.address.town || geoData.address.city || geoData.address.county || placeName;
+                document.getElementById('city-name').value = placeName;
+            }
+        } catch { /* use coordinates as fallback */ }
+
+        // Fetch weather from Open-Meteo
+        statusText.innerHTML = '<i class="fas fa-cloud-sun"></i> Fetching weather data...';
+        const weatherData = await fetchAPI('/weather', { lat, lon });
+        
+        const temp = Math.round(weatherData.current_weather?.temperature || 25);
+        const hum = weatherData.current_weather?.humidity || 60;
+        const rain = Math.round(weatherData.metrics?.total_rainfall || 0);
+
+        // Update hidden form fields
+        document.getElementById('temperature').value = temp;
+        document.getElementById('humidity').value = hum;
+        document.getElementById('rainfall').value = rain;
+
+        // Set pH based on soil type (smart default)
+        const soilPh = { Loamy: 6.5, Sandy: 6.0, Clay: 7.0, Black: 7.5, Red: 5.5, Silty: 6.8 };
+        const currentSoil = document.getElementById('soil-type').value;
+        const ph = soilPh[currentSoil] || 6.5;
+        document.getElementById('ph').value = ph;
+
+        // Show result chips
+        document.getElementById('gps-place-name').textContent = placeName;
+        document.getElementById('gps-temp').textContent = `${temp}°C`;
+        document.getElementById('gps-hum').textContent = `${hum}%`;
+        document.getElementById('gps-rain').textContent = `${rain} mm/week`;
+        document.getElementById('gps-result').style.display = '';
+
+        // Show auto-weather card
+        const autoCard = document.getElementById('auto-weather-card');
+        if (autoCard) {
+            autoCard.style.display = '';
+            document.getElementById('auto-temp-val').textContent = `${temp}°C`;
+            document.getElementById('auto-hum-val').textContent = `${hum}%`;
+            document.getElementById('auto-rain-val').textContent = `${rain} mm`;
+            document.getElementById('auto-ph-val').textContent = ph;
+        }
+
+        // Also update pest prediction fields
+        const pestTemp = document.getElementById('pest-temp');
+        const pestHum = document.getElementById('pest-humidity');
+        const pestRain = document.getElementById('pest-rainfall');
+        if (pestTemp) pestTemp.value = temp;
+        if (pestHum) pestHum.value = hum;
+        if (pestRain) pestRain.value = rain;
+
+        statusEl.className = 'gps-status-box success';
+        statusText.innerHTML = `<i class="fas fa-check-circle"></i> Location detected: <strong>${placeName}</strong>`;
+        btn.innerHTML = '<i class="fas fa-check"></i> Location Detected!';
+        btn.className = 'btn btn-success btn-large';
+        toast(`Location detected: ${placeName} — weather data loaded! 📍`, 'success');
+
+    } catch (err) {
+        statusEl.className = 'gps-status-box error';
+        let msg = 'Could not detect location.';
+        if (err.code === 1) msg = 'Permission denied. Please allow location access.';
+        else if (err.code === 2) msg = 'Location unavailable. Check GPS/network.';
+        else if (err.code === 3) msg = 'Location request timed out. Try again.';
+        statusText.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
+        btn.innerHTML = '<i class="fas fa-redo"></i> Try Again';
+        btn.disabled = false;
+        btn.className = 'btn btn-primary btn-large';
+        toast(msg, 'error');
+    }
 }
 
 function convertLandUnit() {
@@ -230,12 +364,8 @@ async function saveFarmSetup() {
     if (unit === 'acres') land_size = land_size_raw * 0.4047;
     else if (unit === 'cents') land_size = land_size_raw * 0.004047;
 
-    const locMethod = document.querySelector('input[name="loc-method"]:checked').value;
-    let lat = 12.9716, lon = 77.5946;
-    if (locMethod === 'coords') {
-        lat = parseFloat(document.getElementById('user-lat').value) || 12.9716;
-        lon = parseFloat(document.getElementById('user-lon').value) || 77.5946;
-    }
+    const lat = parseFloat(document.getElementById('user-lat').value) || 12.9716;
+    const lon = parseFloat(document.getElementById('user-lon').value) || 77.5946;
 
     state.farmSetup = {
         land_size: Math.round(land_size * 100) / 100,
@@ -249,7 +379,7 @@ async function saveFarmSetup() {
         ph: +document.getElementById('ph').value,
         rainfall: +document.getElementById('rainfall').value,
         lat, lon,
-        locMethod,
+        locMethod: 'gps',
         city: document.getElementById('city-name')?.value || ''
     };
     localStorage.setItem('agri_farm_setup', JSON.stringify(state.farmSetup));
@@ -264,8 +394,24 @@ async function saveFarmSetup() {
         });
     } catch { /* offline ok */ }
 
+    // Add to recent activity
+    addActivity('Farm details saved', 'green');
     updateDashboard();
     toast('Farm details saved! 🚜', 'success');
+}
+
+// Track recent activity on dashboard
+function addActivity(text, color = 'green') {
+    const feed = document.getElementById('dash-recent-activity');
+    if (!feed) return;
+    const item = document.createElement('div');
+    item.className = 'activity-item animate-fade-in';
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    item.innerHTML = `<div class="activity-dot ${color}"></div><span>${text}</span><small>${timeStr}</small>`;
+    feed.prepend(item);
+    // Keep max 10 items
+    while (feed.children.length > 10) feed.removeChild(feed.lastChild);
 }
 
 // ═══════════════════════════════════════
@@ -620,7 +766,7 @@ async function calculateFertilizer() {
             <div class="npk-card k-card"><div class="npk-value">${data.potassium_kg}</div><div class="npk-label">Potassium (kg)</div></div>
         </div>`;
 
-        Plotly.newPlot('fertilizer-chart', [{
+        Plotly.react('fertilizer-chart', [{
             values: [data.nitrogen_kg, data.phosphorus_kg, data.potassium_kg],
             labels: ['Nitrogen (N)', 'Phosphorus (P)', 'Potassium (K)'],
             type: 'pie',
@@ -753,19 +899,21 @@ async function loadSustainabilityChart() {
     try {
         const data = await fetch(`${API}/sustainability/scores?username=${state.user?.username || 'anonymous'}`).then(r => r.json());
         if (data.timestamps?.length) {
-            Plotly.newPlot('sustainability-trend-chart', [{
-                x: data.timestamps, y: data.scores,
-                type: 'scatter', mode: 'lines+markers',
-                line: { color: '#16a34a', width: 3, shape: 'spline' },
-                marker: { size: 8, color: '#16a34a' },
-                fill: 'tozeroy', fillcolor: 'rgba(22,163,74,0.08)'
-            }], {
-                yaxis: { title: 'Score', range: [0, 100] },
-                xaxis: { title: 'Date' },
-                margin: { t: 10, b: 40, l: 50, r: 20 },
-                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-                font: { family: 'Inter' }
-            }, { responsive: true, displayModeBar: false });
+            requestAnimationFrame(() => {
+                Plotly.react('sustainability-trend-chart', [{
+                    x: data.timestamps, y: data.scores,
+                    type: 'scatter', mode: 'lines+markers',
+                    line: { color: '#16a34a', width: 3, shape: 'spline' },
+                    marker: { size: 8, color: '#16a34a' },
+                    fill: 'tozeroy', fillcolor: 'rgba(22,163,74,0.08)'
+                }], {
+                    yaxis: { title: 'Score', range: [0, 100] },
+                    xaxis: { title: 'Date' },
+                    margin: { t: 10, b: 40, l: 50, r: 20 },
+                    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                    font: { family: 'Inter' }
+                }, { responsive: true, displayModeBar: false, staticPlot: false });
+            });
         }
     } catch { /* offline ok */ }
 }
@@ -775,7 +923,7 @@ async function loadSustainabilityChart() {
 // ═══════════════════════════════════════
 
 async function shareCommunityData() {
-    showLoading('Sharing anonymously...');
+    showLoading('Sharing your data...');
     try {
         await fetchAPI('/community', {
             username: state.user?.username || 'anonymous',
@@ -787,7 +935,9 @@ async function shareCommunityData() {
             sustainability_practice: document.getElementById('community-practice').value
         });
         toast('Data shared with the community! 🤝', 'success');
+        addActivity('Shared data with community', 'blue');
         loadCommunityInsights();
+        loadMyPosts();
     } catch {
         toast('Could not share data', 'error');
     } finally {
@@ -801,19 +951,55 @@ async function loadCommunityInsights() {
         if (!data.insights?.length) return;
         const crops = data.insights.map(i => i.crop_type);
         const yields = data.insights.map(i => i.avg_yield);
-        Plotly.newPlot('community-chart', [{
-            x: crops, y: yields,
-            type: 'bar',
-            marker: { color: crops.map((_, i) => ['#16a34a', '#0ea5e9', '#eab308', '#8b5cf6', '#ef4444'][i % 5]), cornerradius: 8 },
-            text: yields.map(y => `${y} t/ha`),
-            textposition: 'outside'
-        }], {
-            yaxis: { title: 'Avg Yield (t/ha)' },
-            margin: { t: 10, b: 40, l: 50, r: 20 },
-            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-            font: { family: 'Inter' }
-        }, { responsive: true, displayModeBar: false });
+        requestAnimationFrame(() => {
+            Plotly.newPlot('community-chart', [{
+                x: crops, y: yields,
+                type: 'bar',
+                marker: { color: crops.map((_, i) => ['#16a34a', '#0ea5e9', '#eab308', '#8b5cf6', '#ef4444'][i % 5]), cornerradius: 8 },
+                text: yields.map(y => `${y} t/ha`),
+                textposition: 'outside'
+            }], {
+                yaxis: { title: 'Avg Yield (t/ha)' },
+                margin: { t: 10, b: 40, l: 50, r: 20 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        });
     } catch { /* offline ok */ }
+    // Also load user's posts
+    loadMyPosts();
+}
+
+async function loadMyPosts() {
+    const container = document.getElementById('my-community-posts');
+    if (!container) return;
+    try {
+        const data = await fetch(`${API}/community/my_posts?username=${encodeURIComponent(state.user?.username || 'anonymous')}`).then(r => r.json());
+        if (!data.posts?.length) {
+            container.innerHTML = '<p class="muted-text">You haven\'t shared any data yet. Share your first post above!</p>';
+            return;
+        }
+        let html = '<div class="my-posts-list">';
+        data.posts.forEach(p => {
+            const date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '';
+            html += `<div class="my-post-card">
+                <div class="my-post-header">
+                    <strong>${p.crop_type}</strong>
+                    <small>${date}</small>
+                </div>
+                <div class="my-post-details">
+                    <span><i class="fas fa-wheat-awn"></i> ${p.yield_data} t/ha</span>
+                    <span><i class="fas fa-rupee-sign"></i> ₹${p.market_price?.toLocaleString()}/ton</span>
+                    <span><i class="fas fa-map-marker-alt"></i> ${p.region}</span>
+                    <span><i class="fas fa-leaf"></i> ${p.practice}</span>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch {
+        container.innerHTML = '<p class="muted-text">Could not load your posts.</p>';
+    }
 }
 
 // ═══════════════════════════════════════
@@ -977,9 +1163,16 @@ async function analyzeSoil() {
         const formData = new FormData();
         formData.append('soil_photo', fileInput.files[0]);
         const res = await fetch(`${API}/soil_analysis`, { method: 'POST', body: formData });
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error('Server error — please try again later');
+        }
         if (!res.ok) throw new Error(data.detail || 'Analysis failed');
         showSoilResult(data.soil_type);
+        addActivity('Soil analysis completed', 'green');
     } catch (err) {
         toast(err.message || 'Soil analysis failed', 'error');
     } finally {

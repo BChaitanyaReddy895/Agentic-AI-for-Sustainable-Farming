@@ -1232,3 +1232,411 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
     /* Desktop: floating online badge */
     .voice-fab { bottom: 1.5rem; right: 1.5rem; }
 }
+
+/* ═══════════════════════════════════════
+   GPS AUTO-DETECT
+   ═══════════════════════════════════════ */
+.gps-status-box {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.92rem;
+    color: var(--fg-muted);
+    transition: all 0.3s ease;
+}
+.gps-status-box i { font-size: 1.1rem; }
+.gps-status-box.loading {
+    background: hsl(45 90% 95%);
+    border-color: hsl(45 80% 70%);
+    color: hsl(35 70% 35%);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.gps-status-box.success {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: hsl(142 60% 25%);
+}
+.gps-status-box.error {
+    background: hsl(0 80% 96%);
+    border-color: hsl(0 60% 70%);
+    color: hsl(0 60% 40%);
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.gps-result-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+}
+.gps-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--fg);
+    box-shadow: var(--shadow-soft);
+}
+.gps-chip i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+/* ═══════════════════════════════════════
+   NPK SIMPLE EMOJI BUTTONS
+   ═══════════════════════════════════════ */
+.npk-simple-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+}
+.npk-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem;
+    text-align: center;
+}
+.npk-label {
+    font-size: 1rem;
+    color: var(--fg);
+    margin-bottom: 0.25rem;
+    display: block;
+}
+.npk-hint {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    margin: 0.15rem 0 0.85rem 0;
+    line-height: 1.35;
+}
+.npk-emoji-row {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.npk-btn {
+    padding: 0.45rem 0.7rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-subtle);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: var(--fg);
+}
+.npk-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.npk-btn.selected {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--primary-fg);
+    box-shadow: 0 2px 8px hsl(142 76% 36% / 0.3);
+}
+
+/* ═══════════════════════════════════════
+   AUTO-WEATHER PARAMETER DISPLAY
+   ═══════════════════════════════════════ */
+.auto-param-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+.auto-param {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.75rem 0.5rem;
+    background: var(--bg-subtle);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    text-align: center;
+}
+.auto-param i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+.auto-param-label {
+    font-size: 0.72rem;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+.auto-param-val {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--fg);
+}
+
+/* ═══════════════════════════════════════
+   FEATURE GUIDE TOOLTIPS
+   ═══════════════════════════════════════ */
+.feature-guide {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem 1.15rem;
+    background: linear-gradient(135deg, hsl(195 85% 96%) 0%, hsl(142 60% 96%) 100%);
+    border: 1px solid hsl(195 60% 80%);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.25rem;
+    animation: fadeIn 0.4s ease-out;
+    position: relative;
+}
+.guide-icon {
+    font-size: 1.25rem;
+    color: var(--secondary);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+.guide-text {
+    flex: 1;
+    font-size: 0.88rem;
+    color: hsl(195 40% 30%);
+    line-height: 1.55;
+}
+.guide-text strong {
+    color: var(--fg);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.95rem;
+}
+.guide-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: hsl(195 30% 55%);
+    font-size: 1rem;
+    padding: 0.25rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.guide-close:hover {
+    background: hsl(195 60% 90%);
+    color: hsl(195 50% 35%);
+}
+
+/* ═══════════════════════════════════════
+   DASHBOARD — LIVE WEATHER + HEALTH RING
+   ═══════════════════════════════════════ */
+.dash-live-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.dash-weather-live {
+    padding: 1.25rem;
+}
+.dash-weather-big {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin-bottom: 0.75rem;
+}
+.weather-big-temp {
+    font-size: 2.8rem;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+.weather-big-desc {
+    font-size: 0.95rem;
+    color: var(--fg-muted);
+    text-transform: capitalize;
+}
+.dash-weather-details {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+}
+.dash-weather-details span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.dash-weather-details i {
+    color: var(--secondary);
+}
+
+/* Crop Health Ring */
+.dash-crop-health {
+    padding: 1.25rem;
+}
+.health-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+.health-ring {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+}
+.health-ring svg {
+    width: 100%;
+    height: 100%;
+}
+.health-ring-val {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+.health-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--fg);
+}
+.health-labels > div {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Dots */
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.dot.green { background: var(--farm-green); }
+.dot.blue  { background: var(--farm-blue); }
+.dot.red   { background: var(--farm-red); }
+.dot.yellow { background: var(--farm-yellow); }
+
+/* ═══════════════════════════════════════
+   DASHBOARD — ACTIVITY FEED
+   ═══════════════════════════════════════ */
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg-subtle);
+    border-radius: var(--radius);
+    font-size: 0.84rem;
+    color: var(--fg);
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+.activity-item:hover {
+    border-color: var(--border);
+}
+.activity-item .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--farm-green);
+}
+.activity-item .activity-dot.blue { background: var(--farm-blue); }
+.activity-item .activity-dot.red  { background: var(--farm-red); }
+.activity-item span {
+    flex: 1;
+}
+.activity-item small {
+    color: var(--fg-muted);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════
+   COMMUNITY — MY POSTS
+   ═══════════════════════════════════════ */
+.my-posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.my-post-card {
+    padding: 0.85rem 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    animation: fadeIn 0.3s ease-out;
+}
+.my-post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+.my-post-header strong {
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+.my-post-header small {
+    color: var(--fg-muted);
+    font-size: 0.76rem;
+}
+.my-post-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.my-post-details span {
+    padding: 0.22rem 0.55rem;
+    background: var(--bg-subtle);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════
+   BTN SUCCESS VARIANT
+   ═══════════════════════════════════════ */
+.btn-success {
+    background: var(--farm-green) !important;
+    color: var(--primary-fg) !important;
+    border-color: var(--farm-green) !important;
+}
+.btn-success:hover {
+    background: hsl(142 76% 30%) !important;
+}
+.btn-large {
+    padding: 0.85rem 1.5rem;
+    font-size: 1rem;
+    border-radius: var(--radius-lg);
+}

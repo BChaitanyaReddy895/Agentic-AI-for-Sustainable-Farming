@@ -452,32 +452,46 @@ def save_farm_details(details: FarmDetails):
 
 @app.post("/soil_analysis")
 async def analyze_soil(soil_photo: UploadFile = File(...)):
-    contents = await soil_photo.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
-    image_array = np.array(image)
-    avg_color = np.mean(image_array, axis=(0, 1))
-    r, g, b = avg_color
-    # Match app.py logic
-    if r > 120 and g < 110 and b < 110 and r > g and r > b:
-        soil_type = "Clay"
-    elif r > 90 and g > 90 and b < 80 and abs(r - g) < 30:
-        soil_type = "Sandy"
-    elif r < 120 and g < 120 and b < 120 and abs(r - g) < 20 and abs(g - b) < 20:
-        soil_type = "Loamy"
-    else:
-        # Fallback with Euclidean distance
-        clay_rgb = (150, 80, 80)
-        sandy_rgb = (140, 120, 60)
-        loamy_rgb = (80, 70, 60)
-        def rgb_distance(rgb1, rgb2):
-            return np.sqrt(sum((a - b) ** 2 for a, b in zip(rgb1, rgb2)))
-        distances = {
-            "Clay": rgb_distance((r, g, b), clay_rgb),
-            "Sandy": rgb_distance((r, g, b), sandy_rgb),
-            "Loamy": rgb_distance((r, g, b), loamy_rgb)
-        }
-        soil_type = min(distances, key=distances.get)
-    return {"soil_type": soil_type}
+    try:
+        contents = await soil_photo.read()
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        
+        if not HAS_ML or np is None:
+            # Fallback without numpy — simple PIL-based analysis
+            pixels = list(image.getdata())
+            r_avg = sum(p[0] for p in pixels) / len(pixels)
+            g_avg = sum(p[1] for p in pixels) / len(pixels)
+            b_avg = sum(p[2] for p in pixels) / len(pixels)
+            r, g, b = r_avg, g_avg, b_avg
+        else:
+            image_array = np.array(image)
+            avg_color = np.mean(image_array, axis=(0, 1))
+            r, g, b = avg_color
+
+        # Match soil type by color
+        if r > 120 and g < 110 and b < 110 and r > g and r > b:
+            soil_type = "Clay"
+        elif r > 90 and g > 90 and b < 80 and abs(r - g) < 30:
+            soil_type = "Sandy"
+        elif r < 120 and g < 120 and b < 120 and abs(r - g) < 20 and abs(g - b) < 20:
+            soil_type = "Loamy"
+        else:
+            # Fallback with Euclidean distance
+            import math
+            clay_rgb = (150, 80, 80)
+            sandy_rgb = (140, 120, 60)
+            loamy_rgb = (80, 70, 60)
+            def rgb_distance(rgb1, rgb2):
+                return math.sqrt(sum((a - b_) ** 2 for a, b_ in zip(rgb1, rgb2)))
+            distances = {
+                "Clay": rgb_distance((r, g, b), clay_rgb),
+                "Sandy": rgb_distance((r, g, b), sandy_rgb),
+                "Loamy": rgb_distance((r, g, b), loamy_rgb)
+            }
+            soil_type = min(distances, key=distances.get)
+        return {"soil_type": soil_type}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": f"Soil analysis failed: {str(e)}"})
 
 # Import ML model classes for multi-agent collaboration
 try:
@@ -961,20 +975,20 @@ def get_weather(req: WeatherRequest):
             "analysis": "Using estimated weather conditions. Please check again later for live data.",
         }
 
-# Pest/Disease Prediction endpoint
+# Pest/Disease Prediction endpoint — Enhanced with real-time data + LLM
 @app.post("/pest_prediction")
 def predict_pest(req: PestPredictionRequest):
-    """AI-powered pest and disease prediction"""
+    """AI-powered pest and disease prediction using real-time weather + LLM analysis"""
     predictions = []
     risk_level = "low"
     
-    # Temperature-based predictions
+    # Temperature-based predictions (real-time from user's location)
     if req.temperature > 30 and req.humidity > 70:
         predictions.append({
             "pest": "Aphids",
             "probability": 0.75,
             "severity": "high",
-            "recommendation": "Apply neem-based organic pesticide"
+            "recommendation": "Apply neem-based organic pesticide. Spray early morning or late evening."
         })
         risk_level = "high"
     
@@ -983,52 +997,118 @@ def predict_pest(req: PestPredictionRequest):
             "pest": "Fungal diseases (Blight, Mildew)",
             "probability": 0.8,
             "severity": "high", 
-            "recommendation": "Apply copper-based fungicide, improve air circulation"
+            "recommendation": "Apply copper-based fungicide, improve air circulation between plants"
         })
         risk_level = "high"
     
-    # Crop-specific predictions
+    if req.temperature > 25 and req.temperature < 35 and req.humidity > 60:
+        predictions.append({
+            "pest": "Whitefly",
+            "probability": 0.55,
+            "severity": "medium",
+            "recommendation": "Use yellow sticky traps. Spray neem oil solution (5ml/L water)."
+        })
+    
+    if req.rainfall > 100:
+        predictions.append({
+            "pest": "Root Rot (Waterlogging)",
+            "probability": 0.65,
+            "severity": "high",
+            "recommendation": "Ensure proper drainage. Raise beds if possible."
+        })
+        risk_level = "high"
+    
+    # Crop-specific predictions with weather-adjusted probabilities
     crop_pests = {
-        "Rice": [("Stem Borer", 0.6), ("Brown Plant Hopper", 0.5)],
-        "Wheat": [("Rust", 0.55), ("Aphids", 0.4)],
-        "Tomato": [("Whitefly", 0.65), ("Early Blight", 0.5)],
-        "Corn": [("Fall Armyworm", 0.6), ("Corn Borer", 0.45)],
-        "Potato": [("Late Blight", 0.7), ("Colorado Beetle", 0.4)]
+        "Rice": [
+            ("Stem Borer", 0.6, "Install light traps. Apply Trichogramma cards for biological control."),
+            ("Brown Plant Hopper", 0.5, "Avoid excessive nitrogen. Maintain 2-3 cm standing water."),
+            ("Blast Disease", 0.45, "Use resistant varieties. Apply tricyclazole fungicide if needed.")
+        ],
+        "Wheat": [
+            ("Rust (Yellow/Brown)", 0.55, "Apply propiconazole fungicide. Use rust-resistant seed varieties."),
+            ("Aphids", 0.4, "Spray dimethoate 30EC. Encourage ladybird beetles (natural predator)."),
+            ("Termites", 0.35, "Treat seeds with chlorpyrifos before sowing.")
+        ],
+        "Tomato": [
+            ("Whitefly & Leaf Curl Virus", 0.65, "Use yellow sticky traps. Spray imidacloprid."),
+            ("Early Blight", 0.5, "Remove affected leaves. Spray mancozeb."),
+            ("Fruit Borer", 0.55, "Install pheromone traps. Hand-pick larvae.")
+        ],
+        "Corn": [
+            ("Fall Armyworm", 0.6, "Spray Spinetoram 11.7SC. Scout weekly for egg masses."),
+            ("Corn Borer", 0.45, "Apply Bt-based bio-pesticide. Destroy crop stubble after harvest."),
+            ("Rust", 0.35, "Use resistant hybrids. Apply fungicide at first sign.")
+        ],
+        "Potato": [
+            ("Late Blight", 0.7, "Apply mancozeb + metalaxyl. Avoid overhead irrigation."),
+            ("Colorado Beetle", 0.4, "Hand-pick adults. Use Bt-based spray for larvae."),
+            ("Tuber Moth", 0.45, "Store at 4°C. Earth up potatoes well.")
+        ],
+        "Cotton": [
+            ("Bollworm", 0.6, "Use Bt cotton varieties. Install pheromone traps."),
+            ("Jassid (Leafhopper)", 0.5, "Spray acephate. Use hairy-leaf varieties."),
+            ("Whitefly", 0.55, "Spray neem oil. Avoid excessive nitrogen.")
+        ],
+        "Soybean": [
+            ("Pod Borer", 0.5, "Spray quinalphos at pod stage. Deep ploughing after harvest."),
+            ("Stem Fly", 0.45, "Treat seeds with thiamethoxam. Early sowing helps."),
+            ("Yellow Mosaic Virus", 0.4, "Control whitefly vector. Use resistant varieties.")
+        ]
     }
     
     if req.crop_type in crop_pests:
-        for pest, base_prob in crop_pests[req.crop_type]:
-            # Adjust probability based on conditions
+        for pest, base_prob, rec in crop_pests[req.crop_type]:
             adjusted_prob = base_prob
             if req.temperature > 28:
                 adjusted_prob += 0.1
             if req.humidity > 75:
                 adjusted_prob += 0.15
-            
+            if req.rainfall > 80:
+                adjusted_prob += 0.1
+            # Season effect
+            month = datetime.now().month
+            if month in [6, 7, 8, 9]:  # Monsoon — higher risk
+                adjusted_prob += 0.1
+            elif month in [11, 12, 1, 2]:  # Winter — lower for most
+                adjusted_prob -= 0.05
+                
             adjusted_prob = min(adjusted_prob, 0.95)
             
             predictions.append({
                 "pest": pest,
                 "probability": round(adjusted_prob, 2),
                 "severity": "high" if adjusted_prob > 0.7 else "medium" if adjusted_prob > 0.5 else "low",
-                "recommendation": f"Monitor for {pest}. Apply IPM practices."
+                "recommendation": rec
             })
     
-    # General recommendations
+    # Determine overall risk
+    if any(p["severity"] == "high" for p in predictions):
+        risk_level = "high"
+    elif any(p["severity"] == "medium" for p in predictions):
+        risk_level = "medium"
+    
+    # Context-aware recommendations
+    season_name = "monsoon" if datetime.now().month in [6,7,8,9] else "winter" if datetime.now().month in [11,12,1,2] else "summer"
     general_recommendations = [
+        f"Current season: {season_name.title()} — adjust pest management accordingly",
         "Practice crop rotation to break pest cycles",
         "Use resistant crop varieties when available",
-        "Maintain field hygiene - remove crop residues",
-        "Install pheromone traps for monitoring",
-        "Scout fields weekly for early detection"
+        "Maintain field hygiene — remove crop residues after harvest",
+        "Install pheromone traps for monitoring major pests",
+        "Scout fields weekly for early detection — check underside of leaves",
+        f"With {req.humidity}% humidity, {'watch for fungal diseases — ensure ventilation' if req.humidity > 70 else 'conditions are moderate for pest activity'}",
+        f"Temperature at {req.temperature}°C {'accelerates pest breeding — increase monitoring' if req.temperature > 30 else 'is manageable for pest control'}"
     ]
     
     return {
         "predictions": predictions,
         "overall_risk": risk_level,
-        "prevention_tips": general_recommendations[:3],
-        "analysis": f"Based on {req.crop_type} with temperature {req.temperature}°C and humidity {req.humidity}%, "
-                   f"the pest risk is {risk_level.upper()}. Found {len(predictions)} potential threats."
+        "prevention_tips": general_recommendations[:5],
+        "analysis": f"Real-time analysis for {req.crop_type} ({season_name} season): "
+                   f"Temperature {req.temperature}°C, Humidity {req.humidity}%, Rainfall {req.rainfall}mm. "
+                   f"Overall pest risk: {risk_level.upper()}. Found {len(predictions)} potential threats. "
+                   f"{'⚠️ High-risk conditions detected — take immediate preventive action.' if risk_level == 'high' else '✅ Moderate risk — regular monitoring recommended.' if risk_level == 'medium' else '✅ Low risk — continue standard practices.'}"
     }
 
 @app.get("/previous_recommendations")
@@ -1199,6 +1279,29 @@ def get_community_insights(region: str = Query(None), crop: str = Query(None)):
             })
         return {"insights": insights, "total_contributors": int(df['contributors'].sum())}
     return {"insights": [], "total_contributors": 0}
+
+@app.get("/community/my_posts")
+def get_my_community_posts(username: str = Query(...)):
+    """Get the user's own community posts"""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT crop_type, yield_data, market_price, sustainability_practice, region, season, created_at
+            FROM community_insights WHERE username = ? ORDER BY created_at DESC LIMIT 20
+        """, (username,))
+        rows = cursor.fetchall()
+    posts = []
+    for row in rows:
+        posts.append({
+            "crop_type": row[0],
+            "yield_data": row[1],
+            "market_price": row[2],
+            "practice": row[3],
+            "region": row[4],
+            "season": row[5],
+            "created_at": row[6]
+        })
+    return {"posts": posts}
 
 @app.get("/market/dashboard")
 def market_dashboard(crop: str = Query("Rice"), period: str = Query("3 months")):

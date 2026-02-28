@@ -201,6 +201,44 @@
                     </div>
                 </div>
 
+                <!-- Live Weather & Crop Health Row -->
+                <div class="dash-live-row">
+                    <div class="card dash-weather-live">
+                        <h3 class="card-title"><i class="fas fa-cloud-sun"></i> Today's Weather</h3>
+                        <div class="dash-weather-big">
+                            <div class="weather-big-temp" id="dash-big-temp">28°</div>
+                            <div class="weather-big-desc" id="dash-big-desc">Partly Cloudy</div>
+                        </div>
+                        <div class="dash-weather-details">
+                            <div><i class="fas fa-tint"></i> Humidity: <strong id="dash-det-hum">65%</strong></div>
+                            <div><i class="fas fa-wind"></i> Wind: <strong id="dash-det-wind">12 km/h</strong></div>
+                            <div><i class="fas fa-cloud-rain"></i> Rain: <strong id="dash-det-rain">0 mm</strong></div>
+                        </div>
+                    </div>
+                    <div class="card dash-crop-health">
+                        <h3 class="card-title"><i class="fas fa-heartbeat"></i> Farm Health</h3>
+                        <div class="health-ring-wrap">
+                            <div class="health-ring" id="dash-health-ring">
+                                <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/><circle cx="60" cy="60" r="52" fill="none" stroke="#16a34a" stroke-width="10" stroke-dasharray="327" stroke-dashoffset="65" stroke-linecap="round" transform="rotate(-90 60 60)" id="health-arc"/></svg>
+                                <span class="health-ring-val" id="dash-health-score">80%</span>
+                            </div>
+                            <div class="health-labels">
+                                <div><span class="dot green"></span> Soil: Good</div>
+                                <div><span class="dot blue"></span> Water: OK</div>
+                                <div id="dash-pest-status"><span class="dot green"></span> Pest Risk: Low</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card mt-3">
+                    <h3 class="card-title"><i class="fas fa-clock"></i> Recent Activity</h3>
+                    <div id="dash-recent-activity" class="activity-feed">
+                        <div class="activity-item"><div class="activity-dot green"></div><span>Welcome! Set up your farm to get started.</span><small>Just now</small></div>
+                    </div>
+                </div>
+
                 <!-- Quick Actions -->
                 <h2 class="section-title" data-i18n="dash.quickActions">Quick Actions</h2>
                 <div class="feature-cards">
@@ -261,7 +299,7 @@
                 <div class="usage-guide">
                     <h2 class="section-title" data-i18n-html="dash.howToUse">📋 How to Use This App</h2>
                     <div class="steps-row">
-                        <div class="step-card"><div class="step-num">1</div><h4 data-i18n="dash.step1Title">Enter Farm Details</h4><p data-i18n="dash.step1Desc">Add your soil type, farm size, and location</p></div>
+                        <div class="step-card"><div class="step-num">1</div><h4 data-i18n="dash.step1Title">Detect Location</h4><p data-i18n="dash.step1Desc">Tap "Detect My Location" in Farm Setup — we get weather automatically</p></div>
                         <div class="step-card"><div class="step-num">2</div><h4 data-i18n="dash.step2Title">Get AI Recommendations</h4><p data-i18n="dash.step2Desc">4 AI agents analyze your data for the best crops</p></div>
                         <div class="step-card"><div class="step-num">3</div><h4 data-i18n="dash.step3Title">Plan Your Season</h4><p data-i18n="dash.step3Desc">Use rotation planner, fertilizer calc & market insights</p></div>
                         <div class="step-card"><div class="step-num">4</div><h4 data-i18n="dash.step4Title">Track & Improve</h4><p data-i18n="dash.step4Desc">Log sustainability data and learn from community</p></div>
@@ -278,23 +316,37 @@
                     <div><h1 data-i18n="setup.title">Farm Setup</h1><p class="page-desc" data-i18n="setup.desc">Enter your farm details for personalized recommendations</p></div>
                 </div>
 
-                <!-- Location -->
-                <div class="card">
-                    <h3 class="card-title"><i class="fas fa-map-marker-alt"></i> <span data-i18n="setup.locationSettings">Location Settings</span></h3>
-                    <div class="radio-row">
-                        <label class="radio-pill"><input type="radio" name="loc-method" value="default" checked onchange="updateLocationMethod()"> Default (Bangalore)</label>
-                        <label class="radio-pill"><input type="radio" name="loc-method" value="coords" onchange="updateLocationMethod()"> Coordinates</label>
-                        <label class="radio-pill"><input type="radio" name="loc-method" value="city" onchange="updateLocationMethod()"> City Name</label>
+                <!-- Guide -->
+                <div class="feature-guide" id="setup-guide">
+                    <div class="guide-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="guide-text">
+                        <strong>Easy 3 steps:</strong> 1️⃣ Tap "Detect My Location" — we get your weather automatically. 2️⃣ Enter your farm size & crop. 3️⃣ Tell us how much fertilizer you use. That's it!
                     </div>
-                    <div id="loc-coords" class="loc-fields" style="display:none">
-                        <div class="input-row-2">
-                            <div class="form-group"><label>Latitude</label><input type="number" id="user-lat" value="12.9716" step="0.0001"></div>
-                            <div class="form-group"><label>Longitude</label><input type="number" id="user-lon" value="77.5946" step="0.0001"></div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
+
+                <!-- Location — Auto GPS -->
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-map-marker-alt"></i> <span data-i18n="setup.locationSettings">Your Location</span></h3>
+                    <p class="card-desc" style="margin-bottom:1rem">We detect your location automatically to fetch weather & climate data.</p>
+                    <div id="gps-status" class="gps-status-box">
+                        <i class="fas fa-satellite-dish"></i> <span id="gps-status-text">Tap the button below to detect your location</span>
+                    </div>
+                    <button class="btn btn-primary btn-large" id="gps-detect-btn" onclick="detectMyLocation()" style="margin-top:0.75rem;width:100%">
+                        <i class="fas fa-crosshairs"></i> Detect My Location
+                    </button>
+                    <div id="gps-result" style="display:none;margin-top:1rem">
+                        <div class="gps-result-grid">
+                            <div class="gps-chip"><i class="fas fa-map-pin"></i> <span id="gps-place-name">—</span></div>
+                            <div class="gps-chip"><i class="fas fa-thermometer-half"></i> <span id="gps-temp">—</span></div>
+                            <div class="gps-chip"><i class="fas fa-tint"></i> <span id="gps-hum">—</span></div>
+                            <div class="gps-chip"><i class="fas fa-cloud-rain"></i> <span id="gps-rain">—</span></div>
                         </div>
                     </div>
-                    <div id="loc-city" class="loc-fields" style="display:none">
-                        <div class="form-group"><label>City</label><input type="text" id="city-name" placeholder="e.g. Bangalore, India"><small>Supported: Bangalore, Mumbai, Delhi, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad, Jaipur, Lucknow</small></div>
-                    </div>
+                    <!-- Hidden inputs for lat/lon -->
+                    <input type="hidden" id="user-lat" value="12.9716">
+                    <input type="hidden" id="user-lon" value="77.5946">
+                    <input type="hidden" id="city-name" value="">
                 </div>
 
                 <!-- Farm Details -->
@@ -335,39 +387,61 @@
                     </div>
                 </div>
 
-                <!-- Soil / Climate -->
+                <!-- NPK — Farmer-Friendly -->
                 <div class="card">
-                    <h3 class="card-title"><i class="fas fa-sliders-h"></i> <span data-i18n="setup.soilClimate">Soil & Climate Parameters</span></h3>
-                    <div class="input-grid-3">
-                        <div class="form-group slider-group">
-                            <label>Nitrogen (N) <span class="slider-val" id="nitrogen-val">40</span></label>
-                            <input type="range" id="nitrogen" min="0" max="140" value="40" oninput="document.getElementById('nitrogen-val').textContent=this.value">
+                    <h3 class="card-title"><i class="fas fa-flask"></i> <span>Fertilizer You Use</span></h3>
+                    <p class="card-desc" style="margin-bottom:0.75rem">Tell us how much fertilizer you put on your field. Pick the closest option:</p>
+                    <div class="npk-simple-grid">
+                        <div class="npk-item">
+                            <label class="npk-label">🌿 <strong>Urea / Nitrogen</strong></label>
+                            <p class="npk-hint">Makes leaves green & crops grow tall</p>
+                            <div class="npk-emoji-row" id="npk-n-row">
+                                <button class="npk-btn selected" onclick="setNPK('n',0,this)" data-val="0">❌ None</button>
+                                <button class="npk-btn" onclick="setNPK('n',25,this)" data-val="25">🤏 Little</button>
+                                <button class="npk-btn" onclick="setNPK('n',50,this)" data-val="50">👍 Medium</button>
+                                <button class="npk-btn" onclick="setNPK('n',90,this)" data-val="90">💪 A Lot</button>
+                            </div>
                         </div>
-                        <div class="form-group slider-group">
-                            <label>Phosphorus (P) <span class="slider-val" id="phosphorus-val">30</span></label>
-                            <input type="range" id="phosphorus" min="0" max="140" value="30" oninput="document.getElementById('phosphorus-val').textContent=this.value">
+                        <div class="npk-item">
+                            <label class="npk-label">🌸 <strong>DAP / Phosphorus</strong></label>
+                            <p class="npk-hint">Helps flowers, fruits & strong roots</p>
+                            <div class="npk-emoji-row" id="npk-p-row">
+                                <button class="npk-btn selected" onclick="setNPK('p',0,this)" data-val="0">❌ None</button>
+                                <button class="npk-btn" onclick="setNPK('p',20,this)" data-val="20">🤏 Little</button>
+                                <button class="npk-btn" onclick="setNPK('p',45,this)" data-val="45">👍 Medium</button>
+                                <button class="npk-btn" onclick="setNPK('p',80,this)" data-val="80">💪 A Lot</button>
+                            </div>
                         </div>
-                        <div class="form-group slider-group">
-                            <label>Potassium (K) <span class="slider-val" id="potassium-val">30</span></label>
-                            <input type="range" id="potassium" min="0" max="200" value="30" oninput="document.getElementById('potassium-val').textContent=this.value">
-                        </div>
-                        <div class="form-group slider-group">
-                            <label>Temperature °C <span class="slider-val" id="temperature-val">25</span></label>
-                            <input type="range" id="temperature" min="5" max="50" value="25" oninput="document.getElementById('temperature-val').textContent=this.value">
-                        </div>
-                        <div class="form-group slider-group">
-                            <label>Humidity % <span class="slider-val" id="humidity-val">60</span></label>
-                            <input type="range" id="humidity" min="10" max="100" value="60" oninput="document.getElementById('humidity-val').textContent=this.value">
-                        </div>
-                        <div class="form-group slider-group">
-                            <label>pH Level <span class="slider-val" id="ph-val">6.5</span></label>
-                            <input type="range" id="ph" min="3" max="10" value="6.5" step="0.1" oninput="document.getElementById('ph-val').textContent=this.value">
-                        </div>
-                        <div class="form-group slider-group">
-                            <label>Rainfall (mm) <span class="slider-val" id="rainfall-val">500</span></label>
-                            <input type="range" id="rainfall" min="0" max="3000" value="500" step="10" oninput="document.getElementById('rainfall-val').textContent=this.value">
+                        <div class="npk-item">
+                            <label class="npk-label">🥔 <strong>Potash / Potassium</strong></label>
+                            <p class="npk-hint">Makes crops strong & disease resistant</p>
+                            <div class="npk-emoji-row" id="npk-k-row">
+                                <button class="npk-btn selected" onclick="setNPK('k',0,this)" data-val="0">❌ None</button>
+                                <button class="npk-btn" onclick="setNPK('k',20,this)" data-val="20">🤏 Little</button>
+                                <button class="npk-btn" onclick="setNPK('k',40,this)" data-val="40">👍 Medium</button>
+                                <button class="npk-btn" onclick="setNPK('k',80,this)" data-val="80">💪 A Lot</button>
+                            </div>
                         </div>
                     </div>
+                    <input type="hidden" id="nitrogen" value="0">
+                    <input type="hidden" id="phosphorus" value="0">
+                    <input type="hidden" id="potassium" value="0">
+                </div>
+
+                <!-- Auto-fetched Weather (read-only display) -->
+                <div class="card" id="auto-weather-card" style="display:none">
+                    <h3 class="card-title"><i class="fas fa-cloud-sun"></i> <span>Weather & Soil (Auto-detected)</span></h3>
+                    <p class="card-desc">These values were fetched automatically from your location. You can adjust if needed.</p>
+                    <div class="auto-param-grid">
+                        <div class="auto-param"><i class="fas fa-thermometer-half"></i><span class="auto-param-label">Temperature</span><span class="auto-param-val" id="auto-temp-val">25°C</span></div>
+                        <div class="auto-param"><i class="fas fa-tint"></i><span class="auto-param-label">Humidity</span><span class="auto-param-val" id="auto-hum-val">60%</span></div>
+                        <div class="auto-param"><i class="fas fa-cloud-rain"></i><span class="auto-param-label">Rainfall</span><span class="auto-param-val" id="auto-rain-val">500 mm</span></div>
+                        <div class="auto-param"><i class="fas fa-vial"></i><span class="auto-param-label">Soil pH</span><span class="auto-param-val" id="auto-ph-val">6.5</span></div>
+                    </div>
+                    <input type="hidden" id="temperature" value="25">
+                    <input type="hidden" id="humidity" value="60">
+                    <input type="hidden" id="rainfall" value="500">
+                    <input type="hidden" id="ph" value="6.5">
                 </div>
 
                 <button class="btn btn-primary btn-large" onclick="saveFarmSetup()"><i class="fas fa-save"></i> <span data-i18n="setup.saveFarm">Save Farm Details</span></button>
@@ -514,6 +588,11 @@
                     </div>
                     <button class="btn btn-primary" onclick="shareCommunityData()"><i class="fas fa-paper-plane"></i> <span data-i18n="comm.shareBtn">Share Data</span></button>
                 </div>
+                <!-- My Posts -->
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-user-circle"></i> My Shared Posts</h3>
+                    <div id="my-community-posts"><p class="muted-text">Your shared data will appear here.</p></div>
+                </div>
                 <!-- Dashboard -->
                 <div class="card mt-4">
                     <h3 class="card-title"><i class="fas fa-chart-bar"></i> Regional Insights</h3>
@@ -605,6 +684,13 @@
                     <div class="page-icon bg-earth"><i class="fas fa-microscope"></i></div>
                     <div><h1 data-i18n="soil.title">Soil Analysis</h1><p class="page-desc" data-i18n="soil.desc">Upload a photo for AI analysis or select manually</p></div>
                 </div>
+                <div class="feature-guide" id="soil-guide">
+                    <div class="guide-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="guide-text">
+                        <strong>How it works:</strong> Take a clear photo of your soil and upload it. Our AI will identify the soil type. Or simply pick your soil type manually below!
+                    </div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
                 <div class="two-col">
                     <div class="card">
                         <h3 class="card-title" data-i18n="soil.uploadTitle">📸 Upload Soil Photo</h3>
@@ -637,16 +723,25 @@
             <div class="page-pad">
                 <div class="page-title-row">
                     <div class="page-icon bg-red"><i class="fas fa-bug"></i></div>
-                    <div><h1 data-i18n="pest.title">Pest & Disease Prediction</h1><p class="page-desc" data-i18n="pest.desc">AI early-warning system for pest outbreaks</p></div>
+                    <div><h1 data-i18n="pest.title">Pest & Disease Prediction</h1><p class="page-desc" data-i18n="pest.desc">Real-time AI early-warning system using your location weather</p></div>
+                </div>
+                <!-- Guide tooltip -->
+                <div class="feature-guide" id="pest-guide">
+                    <div class="guide-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="guide-text">
+                        <strong>How it works:</strong> We use real-time weather from your location + your crop to predict pest risks using AI. Just select your crop and tap Analyze!
+                    </div>
+                    <button class="guide-close" onclick="this.parentElement.style.display='none'"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="card">
                     <h3 class="card-title"><i class="fas fa-sliders-h"></i> Farm Conditions</h3>
+                    <p class="card-desc">Weather data is auto-filled from your farm location. Just select your crop!</p>
                     <div class="input-grid-3">
                         <div class="form-group"><label>Crop</label><select id="pest-crop"><option>Wheat</option><option>Rice</option><option>Corn</option><option>Tomato</option><option>Cotton</option><option>Soybean</option><option>Potato</option></select></div>
                         <div class="form-group"><label>Soil Type</label><select id="pest-soil"><option>Loamy</option><option>Clay</option><option>Sandy</option><option>Silty</option><option>Black</option><option>Red</option></select></div>
-                        <div class="form-group"><label>Temperature °C</label><input type="number" id="pest-temp" value="25"></div>
-                        <div class="form-group"><label>Humidity %</label><input type="number" id="pest-humidity" value="65"></div>
-                        <div class="form-group"><label>Rainfall (mm)</label><input type="number" id="pest-rainfall" value="500"></div>
+                        <div class="form-group"><label>Temperature °C <small>(auto)</small></label><input type="number" id="pest-temp" value="25" readonly style="opacity:0.7"></div>
+                        <div class="form-group"><label>Humidity % <small>(auto)</small></label><input type="number" id="pest-humidity" value="65" readonly style="opacity:0.7"></div>
+                        <div class="form-group"><label>Rainfall mm <small>(auto)</small></label><input type="number" id="pest-rainfall" value="500" readonly style="opacity:0.7"></div>
                     </div>
                     <button class="btn btn-primary" onclick="predictPests()"><i class="fas fa-shield-alt"></i> <span data-i18n="pest.analyze">Analyze Pest Risk</span></button>
                 </div>
