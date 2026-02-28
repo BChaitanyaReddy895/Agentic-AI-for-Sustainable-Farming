@@ -1,2402 +1,1369 @@
-// Modern AgriSmart AI - Complete Frontend Application with Multilingual Support
-// Version: 2.2.0 - Production Ready with Offline, Voice & Mobile Support
+/* ══════════════════════════════════════════════════
+   AgriSmart AI — Application Logic
+   Complete JS for all pages & features
+   ══════════════════════════════════════════════════ */
 
-// Dynamic API URL - works on mobile and web
-const API_BASE = (function() {
-    // Check if running in Capacitor (mobile app)
-    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-        console.log('📱 Running in Capacitor mobile app');
-        return 'https://agrismart-api-m8nz.onrender.com';
-    }
-    // Check for Capacitor without method
-    if (typeof Capacitor !== 'undefined') {
-        console.log('📱 Capacitor detected');
-        return 'https://agrismart-api-m8nz.onrender.com';
-    }
-    // For localhost development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://127.0.0.1:8001';
-    }
-    // For production web - use deployed API
-    return 'https://agrismart-api-m8nz.onrender.com';
-})();
-
-console.log('🌐 API Base URL:', API_BASE);
-
-// Global state
-let currentPage = 'home';
-let currentLanguage = localStorage.getItem('agrismart-language') || 'hi';
-let recommendations = [];
-let weatherData = null;
-let farmLocation = null;
-let isOffline = false; // Default to online, will check properly
-let currentUser = JSON.parse(localStorage.getItem('agrismart-user')) || null;
-
-// Better network check - try actual request
-async function checkNetworkStatus() {
-    try {
-        // Try to reach the API
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(`${API_BASE}/health`, {
-            method: 'HEAD',
-            mode: 'no-cors',
-            cache: 'no-cache',
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        isOffline = false;
-        document.body.classList.remove('offline');
-        console.log('✅ Network check: Online');
-        return true;
-    } catch (e) {
-        // Fallback to navigator.onLine
-        isOffline = !navigator.onLine;
-        console.log('⚠️ Network check fallback:', navigator.onLine ? 'Online' : 'Offline');
-        return navigator.onLine;
-    }
-}
-
-// Check network on app start
-checkNetworkStatus();
-
-// Check network status on events
-window.addEventListener('online', () => { 
-    isOffline = false; 
-    document.body.classList.remove('offline');
-    showNotification('Back online!', 'success');
-});
-window.addEventListener('offline', () => { 
-    isOffline = true; 
-    document.body.classList.add('offline');
-    showNotification('You are offline. Some features may be limited.', 'warning');
-});
-
-// ==================== ENHANCED API WITH OFFLINE FALLBACK ====================
-async function api(endpoint, method = 'GET', data = null) {
-    // Always try the API first, don't check isOffline flag
-    // This ensures we try to connect even if the flag is wrong
-    
-    try {
-        const options = {
-            method,
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        };
-        
-        if (data && method !== 'GET') {
-            options.body = JSON.stringify(data);
-        }
-        
-        console.log(`📤 API ${method}:`, endpoint, data);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        options.signal = controller.signal;
-        
-        const response = await fetch(`${API_BASE}${endpoint}`, options);
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log(`📥 API Response:`, result);
-        
-        // Mark as online since API worked
-        isOffline = false;
-        document.body.classList.remove('offline');
-        
-        // Cache successful responses
-        cacheResponse(endpoint, result);
-        
-        return result;
-    } catch (error) {
-        console.warn('⚠️ API call failed, trying offline:', error.message);
-        isOffline = true;
-        return getOfflineData(endpoint, data);
-    }
-}
-
-function cacheResponse(endpoint, data) {
-    try {
-        const cacheKey = `cache_${endpoint.replace(/[^a-z0-9]/gi, '_')}`;
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data,
-            timestamp: Date.now()
-        }));
-    } catch (e) {
-        console.warn('Cache storage failed:', e);
-    }
-}
-
-function getCachedResponse(endpoint) {
-    try {
-        const cacheKey = `cache_${endpoint.replace(/[^a-z0-9]/gi, '_')}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            // Cache valid for 1 hour
-            if (Date.now() - timestamp < 3600000) {
-                return data;
-            }
-        }
-    } catch (e) {}
-    return null;
-}
-
-// Get offline data from IndexedDB or local cache
-async function getOfflineData(endpoint, data) {
-    // Check cached response first
-    const cached = getCachedResponse(endpoint);
-    if (cached) {
-        console.log('📦 Using cached data for:', endpoint);
-        return cached;
-    }
-    
-    // Use IndexedDB if available
-    if (window.offlineDB) {
-        if (endpoint.includes('recommendation') || endpoint.includes('multi_agent')) {
-            return await window.offlineDB.getOfflineRecommendation(data);
-        }
-        if (endpoint.includes('weather')) {
-            const cachedWeather = await window.offlineDB.getCachedWeather(data?.lat + ',' + data?.lon);
-            if (cachedWeather) return cachedWeather;
-        }
-        if (endpoint.includes('crop')) {
-            return await window.offlineDB.getAllCrops();
-        }
-    }
-    
-    // Fallback offline data
-    return getHardcodedOfflineData(endpoint, data);
-}
-
-// Hardcoded offline data for when everything else fails
-function getHardcodedOfflineData(endpoint, data) {
-    if (endpoint.includes('recommendation') || endpoint.includes('multi_agent')) {
-        return {
-            success: true,
-            offline: true,
-            central_coordinator: {
-                final_crop: getBestOfflineCrop(data),
-                final_score: 75,
-                reasoning: "Based on offline analysis of your soil and weather conditions"
-            },
-            agents: {
-                farmer_advisor: {
-                    recommended_crop: getBestOfflineCrop(data),
-                    original_prediction: getBestOfflineCrop(data),
-                    confidence: 75,
-                    advice: "This recommendation is based on offline data. Connect to internet for accurate AI analysis.",
-                    model_used: "offline_rules"
-                },
-                market_researcher: {
-                    market_score: 7,
-                    price_trend: "Stable",
-                    advice: "Market data unavailable offline"
-                },
-                weather_analyst: {
-                    weather_score: 7,
-                    risk_level: "medium",
-                    advice: "Connect to internet for weather data"
-                },
-                sustainability_expert: {
-                    sustainability_score: 7,
-                    environmental_impact: "Moderate",
-                    advice: "Crop rotation recommended for sustainability"
-                }
-            }
-        };
-    }
-    
-    if (endpoint.includes('weather')) {
-        return {
-            offline: true,
-            message: "Weather data requires internet connection",
-            current: { temp: "--", condition: "Offline" }
-        };
-    }
-    
-    if (endpoint.includes('market')) {
-        return {
-            offline: true,
-            message: "Market prices require internet connection",
-            prices: []
-        };
-    }
-    
-    return { offline: true, message: 'This feature requires internet connection' };
-}
-
-function getBestOfflineCrop(data) {
-    if (!data) return 'Rice';
-    
-    const ph = data.ph || 6.5;
-    const temp = data.temperature || 25;
-    const rainfall = data.rainfall || 500;
-    const humidity = data.humidity || 60;
-    
-    // Simple rule-based recommendation
-    if (rainfall > 1000 && humidity > 70) return 'Rice';
-    if (rainfall < 400 && temp > 25) return 'Cotton';
-    if (ph < 6 && humidity > 60) return 'Rice';
-    if (ph > 7.5 && temp < 30) return 'Wheat';
-    if (temp > 30 && rainfall > 600) return 'Corn';
-    if (temp < 20) return 'Wheat';
-    if (rainfall > 500 && rainfall < 800) return 'Sugarcane';
-    
-    return 'Rice';
-}
-
-// Language translations using free translation service
-const translations = {
-    'en': {
-        'Modern Farming Intelligence': 'Modern Farming Intelligence',
-        'Home': 'Home',
-        'AI Assistant': 'AI Assistant',
-        'Smart Tools': 'Smart Tools',
-        'Analytics': 'Analytics',
-        'Profile': 'Profile',
-        'Transform Your Farming with AI Intelligence': 'Transform Your Farming with AI Intelligence',
-        'Get personalized crop recommendations, soil analysis, pest predictions, and market insights powered by advanced machine learning algorithms.': 'Get personalized crop recommendations, soil analysis, pest predictions, and market insights powered by advanced machine learning algorithms.',
-        'Start AI Analysis': 'Start AI Analysis',
-        'Watch Demo': 'Watch Demo'
-    },
-    'hi': {
-        'Modern Farming Intelligence': 'आधुनिक कृषि बुद्धिमत्ता',
-        'Home': 'होम',
-        'AI Assistant': 'AI सहायक',
-        'Smart Tools': 'स्मार्ट टूल्स',
-        'Analytics': 'विश्लेषण',
-        'Profile': 'प्रोफाइल',
-        'Transform Your Farming with AI Intelligence': 'AI बुद्धिमत्ता के साथ अपनी कृषि को बदलें',
-        'Get personalized crop recommendations, soil analysis, pest predictions, and market insights powered by advanced machine learning algorithms.': 'उन्नत मशीन लर्निंग एल्गोरिदम द्वारा संचालित व्यक्तिगत फसल सिफारिशें, मिट्टी विश्लेषण, कीट भविष्यवाणियां और बाजार अंतर्दृष्टि प्राप्त करें।',
-        'Start AI Analysis': 'AI विश्लेषण शुरू करें',
-        'Watch Demo': 'डेमो देखें'
-    }
-    // Add more languages as needed
+// ─── State ───
+const state = {
+    user: null,
+    farmSetup: null,
+    recommendations: [],
+    leafletMap: null,
+    mapMarkers: [],
+    currentPage: 'dashboard',
+    language: localStorage.getItem('agri_lang') || 'en',
+    isOffline: !navigator.onLine
 };
 
-// Navigation and UI Functions
-function navigate(page) {
-    currentPage = page;
-    hideAllPages();
-    showPage(page);
-    updateNavigation(page);
-    closeDropdowns();
-}
+const API = window.API_BASE || 'http://127.0.0.1:8001';
 
-function hideAllPages() {
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        page.classList.remove('active');
-    });
-}
-
-function showPage(page) {
-    const pageElement = document.getElementById(`${page}-page`);
-    if (pageElement) {
-        pageElement.classList.add('active');
-        pageElement.classList.add('fade-in');
-        
-        // Initialize charts when navigating to analytics page
-        if (page === 'analytics') {
-            setTimeout(() => refreshAnalytics(), 100);
-        }
-        // Initialize weather chart when navigating to weather page
-        if (page === 'weather') {
-            setTimeout(() => initWeatherChart(), 100);
-        }
-        // Initialize market charts when navigating to market page
-        if (page === 'market') {
-            setTimeout(() => initMarketCharts(), 100);
-        }
-    }
-}
-
-function updateNavigation(activePage) {
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    const activeNav = document.querySelector(`[onclick="navigate('${activePage}')"]`);
-    if (activeNav) activeNav.classList.add('active');
-}
-
-// Language Support Functions - OPTIMIZED FOR SPEED
-const translationCache = new Map();
-
-function toggleLanguageDropdown() {
-    const menu = document.getElementById('lang-menu');
-    menu.classList.toggle('active');
-}
-
-async function changeLanguage(langCode, langName) {
-    currentLanguage = langCode;
-    document.getElementById('current-lang').textContent = langName;
-    
-    // Update Voice Interface Language
-    if (window.voiceInterface) {
-        window.voiceInterface.setLanguage(langCode);
-        console.log(`🎤 Voice interface language set to: ${langCode}`);
-    }
-    
-    // Close dropdown
-    document.getElementById('lang-menu').classList.remove('active');
-    
-    // Check if we have cached translations
-    if (translationCache.has(langCode)) {
-        applyTranslations(translationCache.get(langCode));
-        showNotification(`Switched to ${langName}`, 'success');
-        return;
-    }
-    
-    // Show minimal loading for new translations
-    const loadingToast = document.createElement('div');
-    loadingToast.className = 'translation-loading';
-    loadingToast.innerHTML = '<i class="fas fa-globe fa-spin"></i> Translating...';
-    loadingToast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22c55e;color:white;padding:8px 16px;border-radius:20px;z-index:9999;font-size:12px;';
-    document.body.appendChild(loadingToast);
-    
-    try {
-        await translateInterface(langCode);
-        showNotification(`Switched to ${langName}`, 'success');
-    } catch (error) {
-        showNotification('Translation applied (some text may remain in English)', 'warning');
-    }
-    
-    loadingToast.remove();
-}
-
-function applyTranslations(translationMap) {
-    const elements = document.querySelectorAll('[data-translate]');
-    elements.forEach(el => {
-        const key = el.getAttribute('data-translate');
-        if (translationMap[key]) {
-            el.textContent = translationMap[key];
-        }
-    });
-}
-
-async function translateInterface(langCode) {
-    if (langCode === 'en') {
-        location.reload(); // Reset to English
-        return;
-    }
-    
-    const elementsToTranslate = document.querySelectorAll('[data-translate]');
-    const translationMap = {};
-    
-    // Batch translate - collect all unique texts
-    const textsToTranslate = new Set();
-    elementsToTranslate.forEach(el => {
-        textsToTranslate.add(el.getAttribute('data-translate'));
-    });
-    
-    // Translate in parallel batches
-    const textsArray = Array.from(textsToTranslate);
-    const batchSize = 5;
-    
-    for (let i = 0; i < textsArray.length; i += batchSize) {
-        const batch = textsArray.slice(i, i + batchSize);
-        const promises = batch.map(text => getTranslation(text, langCode));
-        const results = await Promise.all(promises);
-        
-        batch.forEach((text, idx) => {
-            translationMap[text] = results[idx];
-        });
-    }
-    
-    // Cache and apply
-    translationCache.set(langCode, translationMap);
-    applyTranslations(translationMap);
-}
-
-async function getTranslation(text, targetLang) {
-    // Check pre-defined translations first (instant)
-    if (translations[targetLang] && translations[targetLang][text]) {
-        return translations[targetLang][text];
-    }
-    
-    // Check localStorage cache (fast)
-    const cacheKey = `trans_${targetLang}_${text.substring(0, 30)}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) return cached;
-    
-    try {
-        // Use faster translation API with timeout
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        
-        const response = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`,
-            { signal: controller.signal }
-        );
-        clearTimeout(timeout);
-        
-        const data = await response.json();
-        
-        if (data.responseData && data.responseData.translatedText) {
-            const translated = data.responseData.translatedText;
-            localStorage.setItem(cacheKey, translated);
-            return translated;
-        }
-    } catch (error) {
-        console.warn('Translation failed, using original:', text.substring(0, 20));
-    }
-    
-    return text;
-}
-
-// Tools Dropdown
-function showToolsDropdown() {
-    const dropdown = document.getElementById('tools-dropdown');
-    dropdown.classList.toggle('active');
-}
-
-function closeDropdowns() {
-    document.getElementById('lang-menu').classList.remove('active');
-    const toolsDropdown = document.getElementById('tools-dropdown');
-    if (toolsDropdown) {
-        toolsDropdown.classList.remove('active');
-    }
-}
-
-// Enhanced notification system
-function showNotification(message, type = 'info', duration = 5000) {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type} slide-up`;
-    
-    const icon = {
-        'success': 'fas fa-check-circle',
-        'error': 'fas fa-exclamation-circle',
-        'warning': 'fas fa-exclamation-triangle',
-        'info': 'fas fa-info-circle'
-    }[type] || 'fas fa-info-circle';
-    
-    notification.innerHTML = `
-        <i class="${icon}"></i>
-        <span>${message}</span>
-        <button onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer;">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    notification.style.cssText = `
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        z-index: 1001;
-        padding: 16px 20px;
-        border-radius: 12px;
-        color: white;
-        background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 300px;
-        max-width: 500px;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => notification.remove(), 300);
-    }, duration);
-}
-
-// Loading overlay
-function showLoading(message = 'Processing...') {
-    const overlay = document.getElementById('loading-overlay');
-    const messageEl = overlay.querySelector('p');
-    if (messageEl) messageEl.textContent = message;
-    overlay.classList.add('active');
-}
-
-function hideLoading() {
-    document.getElementById('loading-overlay').classList.remove('active');
-}
-
-// ==================== ENHANCED CROP RECOMMENDATIONS ====================
-async function getRecommendation() {
-    const resultsDiv = document.getElementById('recommendation-results');
-    resultsDiv.innerHTML = `
-        <div class="loading-state">
-            <div class="loading-animation">
-                <div class="ai-brain">
-                    <i class="fas fa-brain"></i>
-                </div>
-                <div class="loading-text">
-                    <h3>AI Agents Collaborating...</h3>
-                    <p>Our 4 specialized agents are analyzing your farm data</p>
-                    <div class="progress-steps">
-                        <div class="step active">🚜 Farmer Analysis</div>
-                        <div class="step">💰 Market Research</div>
-                        <div class="step">🌤️ Weather Check</div>
-                        <div class="step">🌱 Sustainability</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Animate progress steps
-    const steps = resultsDiv.querySelectorAll('.step');
-    for (let i = 0; i < steps.length; i++) {
-        setTimeout(() => {
-            steps[i].classList.add('active');
-        }, (i + 1) * 1000);
-    }
-    
-    const formData = {
-        username: "web_user",
-        nitrogen: parseFloat(document.getElementById('nitrogen')?.value) || 40,
-        phosphorus: parseFloat(document.getElementById('phosphorus')?.value) || 30,
-        potassium: parseFloat(document.getElementById('potassium')?.value) || 30,
-        temperature: parseFloat(document.getElementById('temperature')?.value) || 25,
-        humidity: parseFloat(document.getElementById('humidity')?.value) || 60,
-        ph: parseFloat(document.getElementById('ph')?.value) || 6.5,
-        rainfall: parseFloat(document.getElementById('rainfall')?.value) || 500,
-        land_size: parseFloat(document.getElementById('land-size')?.value) || 5,
-        soil_type: document.getElementById('soil-type')?.value || 'Loamy',
-        crop_preference: document.getElementById('crop-preference')?.value || 'Grains'
-    };
-    
-    // DEBUG: Log the actual values being sent
-    console.log('📤 Sending to API:', JSON.stringify(formData, null, 2));
-
-    const result = await api('/multi_agent_recommendation', 'POST', formData);
-    
-    // DEBUG: Log the response
-    console.log('📥 API Response:', result);
-    
-    if (result && result.success) {
-        // Show what was sent vs what was received
-        console.log('✅ Model prediction:', result.agents?.farmer_advisor?.original_prediction);
-        console.log('✅ Final recommendation:', result.agents?.farmer_advisor?.recommended_crop);
-        
-        displayEnhancedMultiAgentResults(result);
-        recommendations.push({ ...formData, ...result, timestamp: new Date().toISOString() });
-    } else {
-        // Fallback with enhanced display
-        displayFallbackRecommendation(formData);
-    }
-}
-
-function displayEnhancedMultiAgentResults(result) {
-    const container = document.getElementById('recommendation-results');
-    const agents = result.agents || {};
-    const coordinator = result.central_coordinator || {};
-    
-    container.innerHTML = `
-        <div class="modern-results-container fade-in">
-            <div class="results-header">
-                <div class="success-indicator">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Analysis Complete</span>
-                </div>
-                <h2>Multi-Agent AI Recommendation</h2>
-                <p>4 specialized AI agents have analyzed your farm conditions</p>
-            </div>
-            
-            <div class="agent-collaboration">
-                <h3><i class="fas fa-users"></i> Agent Collaboration</h3>
-                <div class="agents-grid">
-                    <div class="agent-card farmer-agent">
-                        <div class="agent-header">
-                            <div class="agent-avatar">🚜</div>
-                            <div class="agent-info">
-                                <h4>Farmer Advisor</h4>
-                                <div class="confidence-bar">
-                                    <div class="confidence-fill" style="width: ${agents.farmer_advisor?.confidence || 0}%"></div>
-                                </div>
-                                <span class="confidence-text">${agents.farmer_advisor?.confidence || 0}% Confidence</span>
-                            </div>
-                        </div>
-                        <div class="agent-recommendation">
-                            <div class="crop-suggestion">
-                                <span class="label">🤖 ML Model Predicted:</span>
-                                <span class="value" style="color: #3b82f6;">${agents.farmer_advisor?.original_prediction || 'N/A'}</span>
-                            </div>
-                            <div class="crop-suggestion" style="margin-top: 8px;">
-                                <span class="label">✅ Final Recommendation:</span>
-                                <span class="value" style="color: #10b981; font-weight: bold;">${agents.farmer_advisor?.recommended_crop || 'N/A'}</span>
-                            </div>
-                            <div class="model-info" style="margin-top: 8px; font-size: 0.8em; color: #6b7280;">
-                                <i class="fas fa-info-circle"></i> Model: ${agents.farmer_advisor?.model_used || 'unknown'}
-                            </div>
-                            <p class="agent-advice">${agents.farmer_advisor?.advice || 'Analyzing soil and environmental conditions for optimal crop selection.'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="agent-card market-agent">
-                        <div class="agent-header">
-                            <div class="agent-avatar">💰</div>
-                            <div class="agent-info">
-                                <h4>Market Researcher</h4>
-                                <div class="score-indicator">
-                                    <span class="score-value">${agents.market_researcher?.market_score || 0}</span>
-                                    <span class="score-max">/10</span>
-                                </div>
-                                <span class="score-label">Market Score</span>
-                            </div>
-                        </div>
-                        <div class="agent-recommendation">
-                            <div class="market-trend">
-                                <span class="label">Price Trend:</span>
-                                <span class="value trend-${(agents.market_researcher?.price_trend || 'stable').toLowerCase()}">${agents.market_researcher?.price_trend || 'Stable'}</span>
-                            </div>
-                            <p class="agent-advice">${agents.market_researcher?.advice || 'Current market conditions are favorable for recommended crops.'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="agent-card weather-agent">
-                        <div class="agent-header">
-                            <div class="agent-avatar">🌤️</div>
-                            <div class="agent-info">
-                                <h4>Weather Analyst</h4>
-                                <div class="risk-indicator ${(agents.weather_analyst?.risk_level || 'medium').toLowerCase()}">
-                                    <i class="fas fa-${agents.weather_analyst?.risk_level === 'low' ? 'check' : agents.weather_analyst?.risk_level === 'high' ? 'exclamation' : 'minus'}"></i>
-                                    <span>${(agents.weather_analyst?.risk_level || 'Medium').toUpperCase()} RISK</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="agent-recommendation">
-                            <div class="weather-score">
-                                <span class="label">Weather Score:</span>
-                                <span class="value">${agents.weather_analyst?.weather_score || 0}/10</span>
-                            </div>
-                            <p class="agent-advice">${agents.weather_analyst?.advice || 'Weather patterns are suitable for the recommended growing season.'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="agent-card sustainability-agent">
-                        <div class="agent-header">
-                            <div class="agent-avatar">🌱</div>
-                            <div class="agent-info">
-                                <h4>Sustainability Expert</h4>
-                                <div class="sustainability-meter">
-                                    <div class="meter-fill" style="width: ${(agents.sustainability_expert?.sustainability_score || 0) * 10}%"></div>
-                                </div>
-                                <span class="meter-label">${agents.sustainability_expert?.sustainability_score || 0}/10 Sustainable</span>
-                            </div>
-                        </div>
-                        <div class="agent-recommendation">
-                            <div class="environmental-impact">
-                                <span class="label">Impact Level:</span>
-                                <span class="value impact-${(agents.sustainability_expert?.environmental_impact || 'moderate').toLowerCase()}">${agents.sustainability_expert?.environmental_impact || 'Moderate'}</span>
-                            </div>
-                            <p class="agent-advice">${agents.sustainability_expert?.advice || 'This recommendation supports sustainable farming practices.'}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="final-recommendation">
-                <div class="recommendation-header">
-                    <h3><i class="fas fa-trophy"></i> Final Recommendation</h3>
-                    <div class="coordinator-badge">
-                        <span>Central Coordinator</span>
-                    </div>
-                </div>
-                
-                <div class="recommendation-result">
-                    <div class="recommended-crop">
-                        <div class="crop-icon">
-                            <i class="fas fa-seedling"></i>
-                        </div>
-                        <div class="crop-details">
-                            <h4>${coordinator.final_crop || 'Wheat'}</h4>
-                            <div class="crop-score">
-                                <span class="score">${coordinator.overall_score || 8.5}</span>
-                                <span class="max">/10</span>
-                                <div class="confidence-badge ${(coordinator.confidence_level || 'medium').toLowerCase()}">
-                                    ${coordinator.confidence_level || 'Medium'} Confidence
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="recommendation-reasoning">
-                        <h5>Why This Crop?</h5>
-                        <p>${coordinator.reasoning || 'Based on comprehensive analysis of soil conditions, weather patterns, market trends, and sustainability factors, this crop offers the best potential for your farm.'}</p>
-                    </div>
-                </div>
-                
-                <div class="action-plan">
-                    <h5><i class="fas fa-clipboard-list"></i> Action Plan</h5>
-                    <div class="action-items">
-                        ${(coordinator.action_items || [
-                            'Prepare soil with recommended nutrients',
-                            'Monitor weather conditions for optimal planting time',
-                            'Consider market timing for harvest season',
-                            'Implement sustainable farming practices'
-                        ]).map(item => `
-                            <div class="action-item">
-                                <i class="fas fa-check"></i>
-                                <span>${item}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <div class="recommendation-actions">
-                    <button class="btn btn-primary" onclick="downloadRecommendation()">
-                        <i class="fas fa-download"></i>
-                        Download Report
-                    </button>
-                    <button class="btn btn-outline" onclick="shareRecommendation()">
-                        <i class="fas fa-share"></i>
-                        Share Results
-                    </button>
-                    <button class="btn btn-outline" onclick="saveToProfile()">
-                        <i class="fas fa-bookmark"></i>
-                        Save to Profile
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add animation delays for smooth appearance
-    const cards = container.querySelectorAll('.agent-card');
-    cards.forEach((card, index) => {
-        card.style.animationDelay = `${index * 0.1}s`;
-        card.classList.add('slide-up');
-    });
-}
-
-// Fallback recommendation when API fails
-function displayFallbackRecommendation(formData) {
-    const offlineData = getHardcodedOfflineData('/multi_agent_recommendation', formData);
-    
-    if (offlineData && offlineData.central_coordinator) {
-        displayEnhancedMultiAgentResults(offlineData);
-        showNotification('Showing offline recommendation. Connect to internet for AI analysis.', 'warning');
-    } else {
-        const container = document.getElementById('recommendation-results');
-        const crop = getBestOfflineCrop(formData);
-        
-        container.innerHTML = `
-            <div class="offline-recommendation fade-in">
-                <div class="offline-header">
-                    <i class="fas fa-wifi-slash"></i>
-                    <h3>Offline Recommendation</h3>
-                    <p>Based on your inputs, here's a basic recommendation</p>
-                </div>
-                
-                <div class="recommended-crop-card">
-                    <div class="crop-icon-large">
-                        <i class="fas fa-seedling"></i>
-                    </div>
-                    <h2>${crop}</h2>
-                    <p class="crop-reason">Recommended based on your soil pH (${formData.ph}), temperature (${formData.temperature}°C), and rainfall (${formData.rainfall}mm)</p>
-                </div>
-                
-                <div class="offline-tips">
-                    <h4><i class="fas fa-lightbulb"></i> Quick Tips for ${crop}</h4>
-                    <ul>
-                        ${getCropTips(crop).map(tip => `<li>${tip}</li>`).join('')}
-                    </ul>
-                </div>
-                
-                <div class="offline-actions">
-                    <button class="btn btn-primary" onclick="getRecommendation()">
-                        <i class="fas fa-sync"></i> Retry Online
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function getCropTips(crop) {
-    const tips = {
-        'Rice': [
-            'Requires standing water during growth',
-            'Best planted during monsoon season',
-            'Needs nitrogen-rich fertilizer',
-            'Harvest when 80% of grains turn golden'
-        ],
-        'Wheat': [
-            'Plant in October-November for best results',
-            'Requires 3-4 irrigations',
-            'Apply urea fertilizer at tillering stage',
-            'Harvest when grains are hard and golden'
-        ],
-        'Cotton': [
-            'Requires well-drained soil',
-            'Plant in April-May',
-            'Needs proper pest management',
-            'Pick when bolls open fully'
-        ],
-        'Sugarcane': [
-            'Requires heavy irrigation',
-            'Plant in February-March',
-            'Apply potash fertilizer for better yield',
-            'Harvest after 10-12 months'
-        ],
-        'Corn': [
-            'Requires warm temperatures',
-            'Needs nitrogen-rich soil',
-            'Water regularly during tasseling',
-            'Harvest when kernels are firm'
-        ]
-    };
-    
-    return tips[crop] || [
-        'Prepare soil well before planting',
-        'Ensure adequate irrigation',
-        'Monitor for pests and diseases',
-        'Harvest at optimal maturity'
-    ];
-}
-
-// ==================== ENHANCED SOIL ANALYSIS ====================
-async function analyzeSoil() {
-    const fileInput = document.getElementById('soil-photo');
-    if (!fileInput.files[0]) {
-        showNotification('Please select a soil photo first', 'warning');
-        return;
-    }
-    
-    const resultsDiv = document.getElementById('soil-results');
-    resultsDiv.innerHTML = `
-        <div class="analysis-progress">
-            <div class="analysis-icon">
-                <i class="fas fa-microscope"></i>
-            </div>
-            <h3>Analyzing Soil Sample...</h3>
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            <p class="progress-text">Processing image with AI...</p>
-        </div>
-    `;
-    
-    // Animate progress bar
-    const progressFill = resultsDiv.querySelector('.progress-fill');
-    const progressText = resultsDiv.querySelector('.progress-text');
-    
-    const progressSteps = [
-        'Processing image with AI...',
-        'Analyzing soil texture...',
-        'Identifying soil composition...',
-        'Generating recommendations...'
-    ];
-    
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += 25;
-        progressFill.style.width = `${progress}%`;
-        
-        if (progress <= 100) {
-            progressText.textContent = progressSteps[Math.floor(progress / 25) - 1] || progressSteps[0];
-        }
-        
-        if (progress >= 100) {
-            clearInterval(progressInterval);
-        }
-    }, 500);
-    
-    const formData = new FormData();
-    formData.append('soil_photo', fileInput.files[0]);
-    
-    try {
-        const response = await fetch(`${API_BASE}/soil_analysis`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            displayEnhancedSoilResults(result);
-            showNotification(`Soil analysis complete: ${result.soil_type} detected`, 'success');
-        } else {
-            throw new Error('Analysis failed');
-        }
-    } catch (error) {
-        resultsDiv.innerHTML = `
-            <div class="error-state">
-                <div class="error-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <h3>Analysis Failed</h3>
-                <p>Unable to analyze soil image. Please try with a clearer photo.</p>
-                <button class="btn btn-outline" onclick="document.getElementById('soil-photo').click()">
-                    <i class="fas fa-retry"></i>
-                    Try Again
-                </button>
-            </div>
-        `;
-        showNotification('Soil analysis failed. Please try again.', 'error');
-    }
-}
-
-function displayEnhancedSoilResults(result) {
-    const container = document.getElementById('soil-results');
-    const soilType = result.soil_type || 'Unknown';
-    
-    container.innerHTML = `
-        <div class="soil-analysis-result fade-in">
-            <div class="result-header">
-                <div class="success-indicator">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Analysis Complete</span>
-                </div>
-                <h3>Soil Analysis Results</h3>
-            </div>
-            
-            <div class="soil-type-display">
-                <div class="soil-sample">
-                    <div class="soil-icon ${soilType.toLowerCase()}">
-                        <i class="fas fa-layer-group"></i>
-                    </div>
-                    <div class="soil-details">
-                        <h4>Detected Soil Type</h4>
-                        <div class="soil-type-badge ${soilType.toLowerCase()}">${soilType}</div>
-                        <div class="confidence-score">
-                            <span>Confidence: </span>
-                            <strong>${result.confidence || 95}%</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="soil-properties">
-                <h4><i class="fas fa-list"></i> Soil Characteristics</h4>
-                <div class="properties-grid">
-                    <div class="property-card">
-                        <div class="property-icon drainage-${getDrainageLevel(soilType)}">
-                            <i class="fas fa-tint"></i>
-                        </div>
-                        <div class="property-details">
-                            <h5>Drainage</h5>
-                            <span class="property-value">${getDrainageLevel(soilType)}</span>
-                            <div class="property-bar">
-                                <div class="property-fill" style="width: ${getDrainagePercent(soilType)}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="property-card">
-                        <div class="property-icon retention-${getNutrientLevel(soilType)}">
-                            <i class="fas fa-leaf"></i>
-                        </div>
-                        <div class="property-details">
-                            <h5>Nutrient Retention</h5>
-                            <span class="property-value">${getNutrientLevel(soilType)}</span>
-                            <div class="property-bar">
-                                <div class="property-fill" style="width: ${getNutrientPercent(soilType)}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="property-card">
-                        <div class="property-icon water-${getWaterLevel(soilType)}">
-                            <i class="fas fa-droplet"></i>
-                        </div>
-                        <div class="property-details">
-                            <h5>Water Retention</h5>
-                            <span class="property-value">${getWaterLevel(soilType)}</span>
-                            <div class="property-bar">
-                                <div class="property-fill" style="width: ${getWaterPercent(soilType)}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="recommendations-section">
-                <h4><i class="fas fa-lightbulb"></i> Expert Recommendations</h4>
-                <div class="recommendation-card">
-                    <div class="recommendation-content">
-                        <p>${getDetailedSoilRecommendations(soilType)}</p>
-                    </div>
-                </div>
-                
-                <div class="best-crops">
-                    <h5>Recommended Crops for ${soilType} Soil:</h5>
-                    <div class="crop-tags">
-                        ${getRecommendedCrops(soilType).map(crop => 
-                            `<span class="crop-tag">
-                                <i class="fas fa-seedling"></i>
-                                ${crop}
-                            </span>`
-                        ).join('')}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="soil-actions">
-                <button class="btn btn-primary" onclick="getRecommendationBasedOnSoil('${soilType}')">
-                    <i class="fas fa-magic"></i>
-                    Get Crop Recommendations
-                </button>
-                <button class="btn btn-outline" onclick="downloadSoilReport()">
-                    <i class="fas fa-download"></i>
-                    Download Report
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Helper functions for soil analysis
-function getDrainageLevel(soilType) {
-    const levels = {
-        'Sandy': 'Excellent',
-        'Loamy': 'Good',
-        'Clay': 'Poor'
-    };
-    return levels[soilType] || 'Good';
-}
-
-function getDrainagePercent(soilType) {
-    const percentages = {
-        'Sandy': 90,
-        'Loamy': 70,
-        'Clay': 30
-    };
-    return percentages[soilType] || 60;
-}
-
-function getNutrientLevel(soilType) {
-    const levels = {
-        'Clay': 'High',
-        'Loamy': 'Medium',
-        'Sandy': 'Low'
-    };
-    return levels[soilType] || 'Medium';
-}
-
-function getNutrientPercent(soilType) {
-    const percentages = {
-        'Clay': 85,
-        'Loamy': 70,
-        'Sandy': 40
-    };
-    return percentages[soilType] || 60;
-}
-
-function getWaterLevel(soilType) {
-    return getNutrientLevel(soilType); // Similar pattern
-}
-
-function getWaterPercent(soilType) {
-    return getNutrientPercent(soilType); // Similar pattern
-}
-
-function getDetailedSoilRecommendations(soilType) {
-    const recommendations = {
-        'Clay': 'Clay soil has excellent nutrient retention but poor drainage. Improve soil structure by adding organic matter like compost or aged manure. Consider raised beds or drainage systems for better water management. Till when soil moisture is optimal to prevent compaction.',
-        'Sandy': 'Sandy soil drains quickly and warms up fast, but nutrients leach out easily. Add organic matter regularly to improve water retention. Use slow-release fertilizers and consider more frequent, smaller irrigation applications. Mulching will help retain moisture.',
-        'Loamy': 'Excellent soil type! Your loamy soil has the perfect balance of drainage and nutrient retention. Maintain soil health by adding organic matter annually. This soil type supports most crops with proper care and management.'
-    };
-    return recommendations[soilType] || 'Continue with standard soil management practices based on your specific soil conditions.';
-}
-
-function getRecommendedCrops(soilType) {
-    const crops = {
-        'Clay': ['Rice', 'Wheat', 'Barley', 'Cabbage', 'Brussels Sprouts'],
-        'Sandy': ['Carrots', 'Radishes', 'Potatoes', 'Lettuce', 'Tomatoes'],
-        'Loamy': ['Corn', 'Wheat', 'Cotton', 'Soybeans', 'Most Vegetables']
-    };
-    return crops[soilType] || ['Wheat', 'Rice', 'Vegetables'];
-}
-
-// Additional utility functions
-function downloadRecommendation() {
-    showNotification('Generating PDF report...', 'info');
-    // Implementation for PDF generation
-    setTimeout(() => {
-        showNotification('Report downloaded successfully!', 'success');
-    }, 2000);
-}
-
-function shareRecommendation() {
-    if (navigator.share) {
-        navigator.share({
-            title: 'AgriSmart AI Crop Recommendation',
-            text: 'Check out my personalized crop recommendation from AgriSmart AI',
-            url: window.location.href
-        });
-    } else {
-        navigator.clipboard.writeText(window.location.href);
-        showNotification('Link copied to clipboard!', 'success');
-    }
-}
-
-function saveToProfile() {
-    showNotification('Recommendation saved to your profile!', 'success');
-    // Implementation to save to user profile
-}
-
-function downloadSoilReport() {
-    showNotification('Generating soil analysis report...', 'info');
-    // Implementation for soil report generation
-    setTimeout(() => {
-        showNotification('Soil report downloaded!', 'success');
-    }, 2000);
-}
-
-function getRecommendationBasedOnSoil(soilType) {
-    // Pre-fill recommendation form with soil type
-    document.getElementById('soil-type').value = soilType;
-    navigate('recommendation');
-    showNotification(`Recommendation form updated with ${soilType} soil type`, 'success');
-}
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-    setupEventListeners();
-    startAnimations();
-    
-    // Auto-start app if user is authenticated
-    const isAuthenticated = localStorage.getItem('authenticated') === 'true';
-    const userPhone = localStorage.getItem('userPhone');
-    
-    if (isAuthenticated && userPhone) {
-        startApp();
+// ─── Initialise on Load ───
+document.addEventListener('DOMContentLoaded', () => {
+    restoreSession();
+    setupNetworkListeners();
+    updateOfflineUI();
+    setGreeting();
+    // Apply saved language on load
+    applyTranslations(state.language);
+    // Sync lang label
+    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    const langLbl = document.getElementById('lang-label');
+    if (langLbl) langLbl.textContent = labels[state.language] || 'EN';
+    if (document.getElementById('settings-language')) {
+        document.getElementById('settings-language').value = state.language;
     }
 });
 
-// Start app - hide welcome overlay and navigate to home
-function startApp() {
-    const welcomeOverlay = document.getElementById('welcome-overlay');
-    if (welcomeOverlay) {
-        welcomeOverlay.classList.add('hidden');
-        welcomeOverlay.style.display = 'none';
-    }
-    navigate('home');
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
+
+function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('active', f.id === `${tab}-form`));
 }
 
-function initializeApp() {
-    navigate('home');
-    
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.lang-dropdown') && !e.target.closest('.dropdown-trigger')) {
-            closeDropdowns();
-        }
-    });
-}
-
-function setupEventListeners() {
-    // File upload drag and drop functionality
-    const uploadArea = document.getElementById('soil-upload-area');
-    if (uploadArea) {
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('drag-over'), false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('drag-over'), false);
-        });
-        
-        uploadArea.addEventListener('drop', handleFileSelect, false);
-    }
-    
-    // File input change handler
-    const fileInput = document.getElementById('soil-photo');
-    if (fileInput) {
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                updateFileUploadDisplay(e.target.files[0]);
-            }
-        });
-    }
-}
-
-function preventDefaults(e) {
+async function handleSignup(e) {
     e.preventDefault();
-    e.stopPropagation();
-}
-
-function handleFileSelect(e) {
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        document.getElementById('soil-photo').files = files;
-        updateFileUploadDisplay(files[0]);
-    }
-}
-
-function updateFileUploadDisplay(file) {
-    const uploadArea = document.getElementById('soil-upload-area');
-    if (uploadArea) {
-        uploadArea.innerHTML = `
-            <div class="file-selected">
-                <div class="file-icon">
-                    <i class="fas fa-image"></i>
-                </div>
-                <div class="file-info">
-                    <h4>File Selected</h4>
-                    <p>${file.name}</p>
-                    <p class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function startAnimations() {
-    // Animate statistics counters
-    const statNumbers = document.querySelectorAll('.stat-number');
-    
-    const observerOptions = {
-        threshold: 0.5,
-        rootMargin: '0px 0px -100px 0px'
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const target = parseInt(entry.target.getAttribute('data-count'));
-                animateCounter(entry.target, target);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-    
-    statNumbers.forEach(stat => {
-        observer.observe(stat);
-    });
-}
-
-function animateCounter(element, target) {
-    let current = 0;
-    const increment = target / 100;
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            element.textContent = target.toLocaleString();
-            clearInterval(timer);
-        } else {
-            element.textContent = Math.floor(current).toLocaleString();
-        }
-    }, 20);
-}
-
-// Export functions to global scope
-window.navigate = navigate;
-window.getRecommendation = getRecommendation;
-window.analyzeSoil = analyzeSoil;
-window.toggleLanguageDropdown = toggleLanguageDropdown;
-window.changeLanguage = changeLanguage;
-window.showToolsDropdown = showToolsDropdown;
-
-// ==================== CHART FUNCTIONS ====================
-// Initialize all analytics charts when page loads
-function refreshAnalytics() {
-    showNotification('Loading analytics data...', 'info');
-    renderCropPerformanceChart();
-    renderSoilCompositionChart();
-    renderWeatherTrendsChart();
-    renderSustainabilityGauge();
-    showNotification('Analytics updated!', 'success');
-}
-
-function renderCropPerformanceChart() {
-    const container = document.getElementById('crop-performance-chart');
-    if (!container) return;
-    
-    const data = [{
-        type: 'bar',
-        x: ['Wheat', 'Rice', 'Corn', 'Soybean', 'Tomato', 'Cotton'],
-        y: [85, 78, 92, 76, 88, 70],
-        marker: {
-            color: ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']
-        },
-        text: ['85%', '78%', '92%', '76%', '88%', '70%'],
-        textposition: 'auto'
-    }];
-    
-    const layout = {
-        title: 'Crop Suitability Scores',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Crop' },
-        yaxis: { title: 'Score (%)', range: [0, 100] },
-        margin: { l: 50, r: 30, t: 50, b: 50 }
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-function renderSoilCompositionChart() {
-    const container = document.getElementById('soil-composition-chart');
-    if (!container) return;
-    
-    const data = [{
-        type: 'pie',
-        values: [40, 30, 20, 10],
-        labels: ['Nitrogen', 'Phosphorus', 'Potassium', 'Organic Matter'],
-        marker: {
-            colors: ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6']
-        },
-        hole: 0.4,
-        textinfo: 'label+percent'
-    }];
-    
-    const layout = {
-        title: 'Soil Nutrient Distribution',
-        paper_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        showlegend: true,
-        legend: { orientation: 'h', y: -0.1 },
-        margin: { l: 30, r: 30, t: 50, b: 50 }
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-function renderWeatherTrendsChart() {
-    const container = document.getElementById('weather-trends-chart');
-    if (!container) return;
-    
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    const data = [
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Temperature (°C)',
-            x: days,
-            y: [25, 27, 26, 28, 30, 29, 27],
-            line: { color: '#ef4444', width: 3 },
-            marker: { size: 8 }
-        },
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Humidity (%)',
-            x: days,
-            y: [60, 65, 70, 68, 55, 58, 62],
-            line: { color: '#3b82f6', width: 3 },
-            marker: { size: 8 },
-            yaxis: 'y2'
-        }
-    ];
-    
-    const layout = {
-        title: '7-Day Weather Overview',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Day' },
-        yaxis: { title: 'Temperature (°C)', side: 'left' },
-        yaxis2: { title: 'Humidity (%)', overlaying: 'y', side: 'right' },
-        legend: { orientation: 'h', y: -0.2 },
-        margin: { l: 50, r: 50, t: 50, b: 80 }
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-function renderSustainabilityGauge() {
-    const container = document.getElementById('sustainability-chart');
-    if (!container) return;
-    
-    const data = [{
-        type: 'indicator',
-        mode: 'gauge+number+delta',
-        value: 75,
-        title: { text: 'Current Score', font: { color: '#e5e7eb' } },
-        delta: { reference: 70, increasing: { color: '#22c55e' } },
-        gauge: {
-            axis: { range: [0, 100], tickcolor: '#e5e7eb' },
-            bar: { color: '#22c55e' },
-            bgcolor: 'rgba(255,255,255,0.1)',
-            borderwidth: 2,
-            bordercolor: '#374151',
-            steps: [
-                { range: [0, 40], color: '#ef4444' },
-                { range: [40, 70], color: '#f59e0b' },
-                { range: [70, 100], color: '#22c55e' }
-            ],
-            threshold: {
-                line: { color: '#22c55e', width: 4 },
-                thickness: 0.75,
-                value: 75
-            }
-        }
-    }];
-    
-    const layout = {
-        paper_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        margin: { l: 30, r: 30, t: 30, b: 30 }
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-// ==================== WEATHER FUNCTIONS ====================
-async function getWeatherForecast() {
-    const lat = parseFloat(document.getElementById('weather-lat').value);
-    const lon = parseFloat(document.getElementById('weather-lon').value);
-    
-    showLoading('Fetching weather data...');
-    
+    const username = document.getElementById('signup-name').value.trim();
+    const farm_name = document.getElementById('signup-farm').value.trim();
+    const phone = document.getElementById('signup-phone').value.trim();
+    const location = document.getElementById('signup-location').value.trim();
+    if (!username || !farm_name) return toast('Please fill required fields', 'error');
+    showLoading('Creating your account...');
     try {
-        const result = await api('/weather', 'POST', { lat, lon, crop_type: 'Grains' });
-        
-        if (result) {
-            displayWeatherResults(result);
-            renderWeatherForecastChart(result);
+        const res = await fetchAPI('/signup', { username, farm_name, profile_picture: null });
+        state.user = { username, farm_name, phone, location };
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        toast('Welcome to AgriSmart AI! 🌱', 'success');
+        enterApp();
+    } catch (err) {
+        // If user already exists, try login
+        if (err.message && err.message.includes('already exists')) {
+            toast('Username exists — logging you in', 'info');
+            state.user = { username, farm_name, phone, location };
+            localStorage.setItem('agri_user', JSON.stringify(state.user));
+            enterApp();
         } else {
-            // Generate demo weather data
-            const demoData = generateDemoWeather();
-            displayWeatherResults(demoData);
-            renderWeatherForecastChart(demoData);
+            toast(err.message || 'Signup failed', 'error');
         }
-    } catch (error) {
-        const demoData = generateDemoWeather();
-        displayWeatherResults(demoData);
-        renderWeatherForecastChart(demoData);
+    } finally {
+        hideLoading();
     }
 }
 
-function generateDemoWeather() {
-    const days = ['Today', 'Tomorrow', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
-    return {
-        current: { temperature: 28, humidity: 65, description: 'Partly Cloudy', wind_speed: 12 },
-        forecast: days.map((day, i) => ({
-            day,
-            temp_high: 28 + Math.round(Math.random() * 5),
-            temp_low: 20 + Math.round(Math.random() * 3),
-            humidity: 60 + Math.round(Math.random() * 20),
-            rain_chance: Math.round(Math.random() * 50)
-        })),
-        risk_level: 'medium',
-        recommendations: [
-            'Good conditions for planting',
-            'Monitor soil moisture levels',
-            'Consider irrigation in afternoon'
-        ]
-    };
+async function handleLogin(e) {
+    e.preventDefault();
+    const phone = document.getElementById('login-phone').value.trim();
+    if (!phone) return toast('Enter your phone number', 'error');
+    showLoading('Logging in...');
+    try {
+        const res = await fetchAPI('/login', { username: phone });
+        state.user = res;
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        toast(`Welcome back, ${res.username}! 🌾`, 'success');
+        enterApp();
+    } catch {
+        toast('User not found — please sign up first', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
-function displayWeatherResults(data) {
-    const container = document.getElementById('weather-results');
-    const current = data.current || {};
-    
-    container.innerHTML = `
-        <div class="weather-result fade-in">
-            <div class="current-weather">
-                <div class="weather-icon">
-                    <i class="fas fa-cloud-sun" style="font-size: 4rem; color: #f59e0b;"></i>
+function restoreSession() {
+    const saved = localStorage.getItem('agri_user');
+    if (saved) {
+        state.user = JSON.parse(saved);
+        enterApp();
+    }
+    const savedSetup = localStorage.getItem('agri_farm_setup');
+    if (savedSetup) state.farmSetup = JSON.parse(savedSetup);
+    const savedRecs = localStorage.getItem('agri_recommendations');
+    if (savedRecs) state.recommendations = JSON.parse(savedRecs);
+}
+
+function enterApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'flex';
+    updateSidebarProfile();
+    updateDashboard();
+    loadDashboardWeather();
+    navigate('dashboard');
+}
+
+function logout() {
+    localStorage.removeItem('agri_user');
+    state.user = null;
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('auth-screen').style.display = '';
+    toast('Logged out', 'info');
+}
+
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
+
+function navigate(pageId) {
+    state.currentPage = pageId;
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(`${pageId}-page`);
+    if (target) {
+        target.classList.add('active');
+        target.classList.add('animate-fade-in');
+        setTimeout(() => target.classList.remove('animate-fade-in'), 400);
+    }
+    // Sidebar active
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.toggle('active', l.dataset.page === pageId));
+    // Mobile bottom nav active
+    document.querySelectorAll('.mob-item').forEach(m => m.classList.toggle('active', m.dataset.page === pageId));
+    closeMobileMenu();
+    // Lazy-load actions
+    if (pageId === 'history') loadHistory();
+    if (pageId === 'profile') loadProfileData();
+    if (pageId === 'offline') updateOfflinePage();
+    if (pageId === 'community') loadCommunityInsights();
+    if (pageId === 'sustainability') loadSustainabilityChart();
+}
+
+// ─── Mobile menu ───
+function openMobileMenu() {
+    document.getElementById('sidebar').classList.add('mobile-open');
+    document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeMobileMenu() {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════
+//  SIDEBAR / DASHBOARD
+// ═══════════════════════════════════════
+
+function updateSidebarProfile() {
+    if (!state.user) return;
+    const initial = (state.user.username || 'F')[0].toUpperCase();
+    document.getElementById('sidebar-avatar').textContent = initial;
+    document.getElementById('sidebar-username').textContent = state.user.username || 'Farmer';
+    document.getElementById('sidebar-farmname').textContent = state.user.farm_name || 'My Farm';
+}
+
+function setGreeting() {
+    const h = new Date().getHours();
+    const greetKey = h < 12 ? 'dash.goodMorning' : h < 17 ? 'dash.goodAfternoon' : 'dash.goodEvening';
+    const el = document.getElementById('dash-greeting');
+    if (el) el.textContent = t(greetKey, state.language);
+}
+
+function updateDashboard() {
+    if (!state.user) return;
+    document.getElementById('dash-name').textContent = `${state.user.username} 🌾`;
+    document.getElementById('dash-farm').textContent = state.user.farm_name || '';
+    // Stats
+    if (state.farmSetup) {
+        document.getElementById('stat-farm-size').textContent = `${state.farmSetup.land_size || '—'} ha`;
+    }
+    document.getElementById('stat-recs').textContent = state.recommendations.length;
+}
+
+async function loadDashboardWeather() {
+    try {
+        const lat = state.farmSetup?.lat || 12.9716;
+        const lon = state.farmSetup?.lon || 77.5946;
+        const data = await fetchAPI('/weather', { lat, lon });
+        if (data.current_weather) {
+            document.getElementById('dash-temp').textContent = `${Math.round(data.current_weather.temperature)}°C`;
+            document.getElementById('dash-humidity').textContent = `${data.current_weather.humidity}%`;
+            document.getElementById('dash-wind').textContent = `${data.current_weather.wind_speed} km/h`;
+        }
+    } catch { /* fallback defaults */ }
+}
+
+// ═══════════════════════════════════════
+//  FARM SETUP
+// ═══════════════════════════════════════
+
+function updateLocationMethod() {
+    const method = document.querySelector('input[name="loc-method"]:checked').value;
+    document.getElementById('loc-coords').style.display = method === 'coords' ? '' : 'none';
+    document.getElementById('loc-city').style.display = method === 'city' ? '' : 'none';
+}
+
+function convertLandUnit() {
+    const val = parseFloat(document.getElementById('land-size').value) || 0;
+    const unit = document.getElementById('land-unit').value;
+    let hectares = val;
+    if (unit === 'acres') hectares = val * 0.4047;
+    else if (unit === 'cents') hectares = val * 0.004047;
+    const el = document.getElementById('land-converted');
+    if (unit !== 'hectares') {
+        el.textContent = `≈ ${hectares.toFixed(2)} hectares`;
+    } else {
+        el.textContent = '';
+    }
+}
+
+async function saveFarmSetup() {
+    const land_size_raw = parseFloat(document.getElementById('land-size').value) || 5;
+    const unit = document.getElementById('land-unit').value;
+    let land_size = land_size_raw;
+    if (unit === 'acres') land_size = land_size_raw * 0.4047;
+    else if (unit === 'cents') land_size = land_size_raw * 0.004047;
+
+    const locMethod = document.querySelector('input[name="loc-method"]:checked').value;
+    let lat = 12.9716, lon = 77.5946;
+    if (locMethod === 'coords') {
+        lat = parseFloat(document.getElementById('user-lat').value) || 12.9716;
+        lon = parseFloat(document.getElementById('user-lon').value) || 77.5946;
+    }
+
+    state.farmSetup = {
+        land_size: Math.round(land_size * 100) / 100,
+        soil_type: document.getElementById('soil-type').value,
+        crop_preference: document.getElementById('crop-preference').value,
+        nitrogen: +document.getElementById('nitrogen').value,
+        phosphorus: +document.getElementById('phosphorus').value,
+        potassium: +document.getElementById('potassium').value,
+        temperature: +document.getElementById('temperature').value,
+        humidity: +document.getElementById('humidity').value,
+        ph: +document.getElementById('ph').value,
+        rainfall: +document.getElementById('rainfall').value,
+        lat, lon,
+        locMethod,
+        city: document.getElementById('city-name')?.value || ''
+    };
+    localStorage.setItem('agri_farm_setup', JSON.stringify(state.farmSetup));
+
+    // Send to backend
+    try {
+        await fetchAPI('/farm_details', {
+            username: state.user?.username || 'anonymous',
+            land_size: state.farmSetup.land_size,
+            soil_type: state.farmSetup.soil_type,
+            crop_preference: state.farmSetup.crop_preference
+        });
+    } catch { /* offline ok */ }
+
+    updateDashboard();
+    toast('Farm details saved! 🚜', 'success');
+}
+
+// ═══════════════════════════════════════
+//  AI RECOMMENDATION (Multi-Agent)
+// ═══════════════════════════════════════
+
+async function getRecommendation() {
+    if (!state.farmSetup) { toast('Please set up farm details first', 'info'); navigate('farm-setup'); return; }
+    showLoading('4 AI agents are analyzing your farm data...');
+    const container = document.getElementById('recommendation-results');
+    try {
+        const data = await fetchAPI('/multi_agent_recommendation', {
+            username: state.user?.username || 'anonymous',
+            land_size: state.farmSetup.land_size,
+            soil_type: state.farmSetup.soil_type,
+            crop_preference: state.farmSetup.crop_preference,
+            nitrogen: state.farmSetup.nitrogen,
+            phosphorus: state.farmSetup.phosphorus,
+            potassium: state.farmSetup.potassium,
+            temperature: state.farmSetup.temperature,
+            humidity: state.farmSetup.humidity,
+            ph: state.farmSetup.ph,
+            rainfall: state.farmSetup.rainfall
+        });
+        renderRecommendation(data, container);
+        // Save locally
+        const rec = { ...data, timestamp: new Date().toISOString() };
+        state.recommendations.unshift(rec);
+        if (state.recommendations.length > 20) state.recommendations.pop();
+        localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        document.getElementById('stat-recs').textContent = state.recommendations.length;
+    } catch (err) {
+        // Try fallback simple recommendation
+        try {
+            const data = await fetchAPI('/recommendation', {
+                username: state.user?.username || 'anonymous',
+                land_size: state.farmSetup.land_size,
+                soil_type: state.farmSetup.soil_type,
+                crop_preference: state.farmSetup.crop_preference
+            });
+            renderSimpleRecommendation(data, container);
+            state.recommendations.unshift({ ...data, timestamp: new Date().toISOString() });
+            localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        } catch (err2) {
+            container.innerHTML = `<div class="card" style="color:var(--farm-red)"><p><i class="fas fa-exclamation-triangle"></i> Could not get recommendations. ${err2.message || 'Please try again.'}</p></div>`;
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderRecommendation(data, container) {
+    let html = '';
+    const topCrop = data.central_coordinator?.final_crop || 'Unknown';
+    const finalScore = data.central_coordinator?.overall_score || 0;
+    const confidence = data.central_coordinator?.confidence_level || 'Medium';
+    const agents = data.agents || {};
+    const coord = data.central_coordinator || {};
+
+    // ── 1. Visual Score Hero (icon-heavy for illiterate farmers) ──
+    const scoreColor = finalScore >= 7 ? '#16a34a' : finalScore >= 5 ? '#eab308' : '#dc2626';
+    html += `<div class="rec-hero animate-scale-in" style="background:linear-gradient(135deg,${scoreColor}15,${scoreColor}05);border:2px solid ${scoreColor}30;border-radius:20px;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <div style="width:80px;height:80px;border-radius:50%;background:${scoreColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;flex-shrink:0">${finalScore}</div>
+            <div style="flex:1;min-width:150px">
+                <div style="font-size:1.5rem;font-weight:800;color:#1e293b">🌾 ${topCrop}</div>
+                <div style="font-size:0.95rem;color:#64748b;margin-top:4px">
+                    ${confidence === 'High' ? '✅' : confidence === 'Medium' ? '⚠️' : '❌'} ${confidence} Confidence
                 </div>
-                <div class="weather-main">
-                    <div class="temperature">${current.temperature || 28}°C</div>
-                    <div class="description">${current.description || 'Partly Cloudy'}</div>
-                </div>
-                <div class="weather-details">
-                    <div class="detail"><i class="fas fa-tint"></i> ${current.humidity || 65}% Humidity</div>
-                    <div class="detail"><i class="fas fa-wind"></i> ${current.wind_speed || 12} km/h Wind</div>
-                </div>
-            </div>
-            
-            <div class="risk-assessment">
-                <h4>Agricultural Risk Level</h4>
-                <div class="risk-badge ${data.risk_level || 'medium'}">
-                    <i class="fas fa-${data.risk_level === 'low' ? 'check' : data.risk_level === 'high' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                    ${(data.risk_level || 'medium').toUpperCase()} RISK
-                </div>
-            </div>
-            
-            <div class="weather-recommendations">
-                <h4><i class="fas fa-lightbulb"></i> Recommendations</h4>
-                ${(data.recommendations || ['Good conditions for farming']).map(rec => 
-                    `<div class="rec-item"><i class="fas fa-check"></i> ${rec}</div>`
-                ).join('')}
             </div>
         </div>
-    `;
-}
+    </div>`;
 
-function renderWeatherForecastChart(data) {
-    const container = document.getElementById('weather-forecast-chart');
-    if (!container || !data.forecast) return;
-    
-    const forecast = data.forecast;
-    
-    const traces = [
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'High Temp',
-            x: forecast.map(d => d.day),
-            y: forecast.map(d => d.temp_high),
-            line: { color: '#ef4444', width: 3 },
-            marker: { size: 8 }
-        },
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Low Temp',
-            x: forecast.map(d => d.day),
-            y: forecast.map(d => d.temp_low),
-            line: { color: '#3b82f6', width: 3 },
-            marker: { size: 8 }
-        },
-        {
+    // ── 2. Visual Score Bars (understandable without reading) ──
+    const scoreData = [];
+    if (agents.farmer_advisor?.confidence) scoreData.push({ emoji: '🚜', label: 'Crop Match', val: agents.farmer_advisor.confidence, max: 100 });
+    if (agents.market_researcher?.market_score) scoreData.push({ emoji: '💰', label: 'Market', val: agents.market_researcher.market_score * 10, max: 100 });
+    if (agents.weather_analyst?.weather_score) scoreData.push({ emoji: '🌤️', label: 'Weather', val: agents.weather_analyst.weather_score * 10, max: 100 });
+    if (agents.sustainability_expert?.sustainability_score) scoreData.push({ emoji: '🌱', label: 'Sustainability', val: agents.sustainability_expert.sustainability_score * 10, max: 100 });
+
+    if (scoreData.length) {
+        html += `<div class="card mb-4" style="margin-bottom:1.5rem"><h3 class="card-title"><i class="fas fa-chart-bar"></i> ${t('dash.recommendations', state.language)} — Visual Scores</h3>`;
+        html += '<div class="visual-scores" style="display:grid;gap:0.75rem;padding:0.5rem 0">';
+        scoreData.forEach(s => {
+            const pct = Math.min(100, Math.max(0, s.val));
+            const barColor = pct >= 70 ? '#16a34a' : pct >= 50 ? '#eab308' : '#dc2626';
+            html += `<div class="score-bar-row" style="display:flex;align-items:center;gap:0.75rem">
+                <span style="font-size:1.5rem;width:2rem;text-align:center">${s.emoji}</span>
+                <span style="width:90px;font-size:0.85rem;font-weight:600;color:#334155">${s.label}</span>
+                <div style="flex:1;height:22px;background:#f1f5f9;border-radius:12px;overflow:hidden;position:relative">
+                    <div style="height:100%;width:${pct}%;background:${barColor};border-radius:12px;transition:width 1s ease"></div>
+                </div>
+                <span style="width:40px;font-weight:700;font-size:0.9rem;color:${barColor};text-align:right">${Math.round(pct)}%</span>
+            </div>`;
+        });
+        html += '</div></div>';
+    }
+
+    // ── 3. Charts row: Radar + Bar ──
+    html += `<div class="rec-charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem">`;
+    if (data.chart_data?.length) {
+        html += `<div class="card"><h3 class="card-title"><i class="fas fa-chart-pie"></i> Score Analysis</h3><div id="rec-radar-chart" class="chart-container" style="min-height:300px"></div></div>`;
+        html += `<div class="card"><h3 class="card-title"><i class="fas fa-chart-bar"></i> Agent Comparison</h3><div id="rec-bar-chart" class="chart-container" style="min-height:300px"></div></div>`;
+    }
+    html += '</div>';
+
+    // ── 4. Agent Discussion Panel — shows a natural "conversation" ──
+    html += `<div class="card mb-4" style="margin-bottom:1.5rem">
+        <h3 class="card-title"><i class="fas fa-comments"></i> Agent Discussion</h3>
+        <p style="font-size:0.85rem;color:#64748b;margin-bottom:1rem">5 AI experts analysed your farm data and discussed to reach this recommendation:</p>
+        <div class="agent-discussion" style="display:flex;flex-direction:column;gap:0.75rem">`;
+
+    const agentMeta = {
+        farmer_advisor:        { icon: '🚜', color: '#16a34a', label: 'Farmer Advisor',  bg: '#f0fdf4' },
+        market_researcher:     { icon: '💰', color: '#d97706', label: 'Market Researcher', bg: '#fffbeb' },
+        weather_analyst:       { icon: '🌤️', color: '#2563eb', label: 'Weather Analyst',  bg: '#eff6ff' },
+        sustainability_expert: { icon: '🌱', color: '#059669', label: 'Sustainability Expert', bg: '#ecfdf5' }
+    };
+
+    // Farmer Advisor speaks first
+    if (agents.farmer_advisor) {
+        const a = agents.farmer_advisor;
+        html += buildDiscussionBubble(agentMeta.farmer_advisor,
+            `Based on your soil and climate data, I recommend <strong>${a.recommended_crop}</strong> with ${a.confidence}% confidence. ${a.advice || ''} ${a.reasoning || ''}`);
+    }
+
+    // Market Researcher responds
+    if (agents.market_researcher) {
+        const a = agents.market_researcher;
+        html += buildDiscussionBubble(agentMeta.market_researcher,
+            `Looking at market trends for ${topCrop}: Market score is <strong>${a.market_score}/10</strong>, price trend is <strong>${a.price_trend}</strong>. ${a.advice || ''} ${a.reasoning || ''}`);
+    }
+
+    // Weather Analyst weighs in
+    if (agents.weather_analyst) {
+        const a = agents.weather_analyst;
+        html += buildDiscussionBubble(agentMeta.weather_analyst,
+            `Weather suitability: <strong>${a.weather_score}/10</strong>, risk level: <strong>${a.risk_level}</strong>. ${a.forecast || ''} ${a.advice || ''} ${a.reasoning || ''}`);
+    }
+
+    // Sustainability Expert
+    if (agents.sustainability_expert) {
+        const a = agents.sustainability_expert;
+        html += buildDiscussionBubble(agentMeta.sustainability_expert,
+            `Sustainability score: <strong>${a.sustainability_score}/10</strong>, environmental impact: <strong>${a.environmental_impact}</strong>. ${a.recommendations || ''} ${a.advice || ''}`);
+    }
+
+    // Central Coordinator synthesis — the final word
+    if (coord.reasoning || coord.action_plan) {
+        html += `<div style="border-left:3px solid #7c3aed;padding:1rem;background:#f5f3ff;border-radius:0 12px 12px 0;margin-top:0.5rem">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                <span style="font-size:1.3rem">🧠</span>
+                <strong style="color:#7c3aed">Central Coordinator (Final Synthesis)</strong>
+            </div>
+            <div style="font-size:0.9rem;color:#334155;line-height:1.6">
+                ${coord.reasoning || ''}
+                ${coord.risk_summary ? `<br><strong>⚠️ Risk Summary:</strong> ${coord.risk_summary}` : ''}
+                ${coord.conflicts_resolved && coord.conflicts_resolved !== 'None' ? `<br><strong>🔄 Conflicts Resolved:</strong> ${coord.conflicts_resolved}` : ''}
+            </div>
+        </div>`;
+    }
+
+    html += '</div></div>';
+
+    // ── 5. Action Plan (visual steps) ──
+    if (coord.action_plan) {
+        html += `<div class="card mb-4" style="margin-bottom:1.5rem">
+            <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Action Plan</h3>
+            <div style="white-space:pre-line;font-size:0.9rem;line-height:1.7;color:#334155">${coord.action_plan}</div>
+        </div>`;
+    }
+
+    // ── 6. Key Factors & Warnings ──
+    if (coord.key_factors?.length || coord.action_items?.length) {
+        html += '<div class="rec-info-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem">';
+        if (coord.key_factors?.length) {
+            html += `<div class="card"><h3 class="card-title"><i class="fas fa-key"></i> Key Factors</h3><ul style="padding-left:1.25rem;margin:0">`;
+            coord.key_factors.forEach(f => { if (f) html += `<li style="margin-bottom:0.4rem;font-size:0.9rem">${f}</li>`; });
+            html += '</ul></div>';
+        }
+        if (coord.action_items?.length) {
+            html += `<div class="card"><h3 class="card-title"><i class="fas fa-exclamation-triangle" style="color:#d97706"></i> Warnings & Alerts</h3><ul style="padding-left:1.25rem;margin:0">`;
+            coord.action_items.forEach(item => { if (item) html += `<li style="margin-bottom:0.4rem;font-size:0.9rem;color:#92400e">${item}</li>`; });
+            html += '</ul></div>';
+        }
+        html += '</div>';
+    }
+
+    // ── 7. Agent detail cards (expandable) ──
+    html += '<div class="agent-results-grid">';
+    for (const [key, agent] of Object.entries(agents)) {
+        const meta = agentMeta[key] || { icon: '🤖', color: '#16a34a', label: key, bg: '#f0fdf4' };
+        html += `<div class="agent-card animate-fade-in">
+            <div class="agent-card-header">
+                <div class="agent-avatar" style="background:${meta.color};color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem">${meta.icon}</div>
+                <span class="agent-name">${meta.label}</span>
+            </div>
+            <div class="agent-body">${formatAgentContent(agent)}</div>
+        </div>`;
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    // ── Draw Charts ──
+    if (data.chart_data?.length) {
+        const cd = data.chart_data[0];
+        // Radar chart
+        Plotly.newPlot('rec-radar-chart', [{
+            type: 'scatterpolar',
+            r: [...cd.values, cd.values[0]],
+            theta: [...cd.labels, cd.labels[0]],
+            fill: 'toself',
+            fillcolor: 'rgba(22,163,74,0.15)',
+            line: { color: '#16a34a', width: 2 },
+            marker: { size: 6 }
+        }], {
+            polar: { radialaxis: { visible: true, range: [0, 100] } },
+            margin: { t: 20, b: 20, l: 50, r: 50 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+            font: { family: 'Inter', size: 11 }
+        }, { responsive: true, displayModeBar: false });
+
+        // Bar chart — visual comparison
+        const barLabels = cd.labels;
+        const barValues = cd.values;
+        const barColors = barValues.map(v => v >= 70 ? '#16a34a' : v >= 50 ? '#eab308' : '#dc2626');
+        Plotly.newPlot('rec-bar-chart', [{
+            x: barLabels,
+            y: barValues,
             type: 'bar',
-            name: 'Rain Chance',
-            x: forecast.map(d => d.day),
-            y: forecast.map(d => d.rain_chance),
-            marker: { color: 'rgba(59, 130, 246, 0.5)' },
-            yaxis: 'y2'
-        }
-    ];
-    
-    const layout = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Day' },
-        yaxis: { title: 'Temperature (°C)' },
-        yaxis2: { title: 'Rain %', overlaying: 'y', side: 'right', range: [0, 100] },
-        legend: { orientation: 'h', y: -0.2 },
-        barmode: 'overlay',
-        margin: { l: 50, r: 50, t: 30, b: 80 }
-    };
-    
-    Plotly.newPlot(container, traces, layout, {responsive: true});
-}
-
-// ==================== MARKET DASHBOARD FUNCTIONS ====================
-function generateMarketForecast() {
-    const crop = document.getElementById('market-crop').value;
-    const months = parseInt(document.getElementById('forecast-period').value);
-    
-    showLoading('Generating market forecast...');
-    
-    // Base prices per crop (₹/ton)
-    const basePrices = {
-        'Rice': 25000, 'Wheat': 20000, 'Corn': 18000,
-        'Soybean': 35000, 'Tomato': 15000, 'Cotton': 60000
-    };
-    
-    const basePrice = basePrices[crop] || 20000;
-    const forecastData = [];
-    let currentPrice = basePrice;
-    
-    for (let i = 0; i < months; i++) {
-        const change = (Math.random() - 0.4) * 0.15; // -6% to +9% monthly change
-        currentPrice = currentPrice * (1 + change);
-        forecastData.push({
-            month: `Month ${i + 1}`,
-            price: Math.round(currentPrice),
-            confidence: Math.max(60, 95 - (i * 3))
-        });
+            marker: { color: barColors, cornerradius: 8 },
+            text: barValues.map(v => `${v}%`),
+            textposition: 'outside',
+            textfont: { size: 12, color: '#334155' }
+        }], {
+            yaxis: { range: [0, 110], title: '', showgrid: true, gridcolor: '#f1f5f9' },
+            xaxis: { title: '' },
+            margin: { t: 20, b: 60, l: 40, r: 20 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+            font: { family: 'Inter', size: 11 },
+            bargap: 0.3
+        }, { responsive: true, displayModeBar: false });
     }
-    
-    hideLoading();
-    renderMarketChart(crop, forecastData);
-    displayMarketInsights(crop, forecastData, basePrice);
 }
 
-function renderMarketChart(crop, data) {
-    const container = document.getElementById('market-price-chart');
-    if (!container) return;
-    
-    const prices = data.map(d => d.price);
-    const upper = data.map((d, i) => d.price * (1 + (100 - d.confidence) / 200));
-    const lower = data.map((d, i) => d.price * (1 - (100 - d.confidence) / 200));
-    
-    const traces = [
-        {
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Upper Bound',
-            x: data.map(d => d.month),
-            y: upper,
-            line: { width: 0 },
-            showlegend: false
-        },
-        {
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Lower Bound',
-            x: data.map(d => d.month),
-            y: lower,
-            fill: 'tonexty',
-            fillcolor: 'rgba(59, 130, 246, 0.2)',
-            line: { width: 0 },
-            showlegend: false
-        },
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Predicted Price',
-            x: data.map(d => d.month),
-            y: prices,
-            line: { color: '#22c55e', width: 3 },
-            marker: { size: 10 }
-        }
-    ];
-    
-    const layout = {
-        title: `${crop} Price Forecast (₹/ton)`,
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Period' },
-        yaxis: { title: 'Price (₹/ton)' },
-        legend: { orientation: 'h', y: -0.2 },
-        margin: { l: 60, r: 30, t: 50, b: 80 }
-    };
-    
-    Plotly.newPlot(container, traces, layout, {responsive: true});
-}
-
-function displayMarketInsights(crop, data, basePrice) {
-    const container = document.getElementById('market-insights');
-    const finalPrice = data[data.length - 1].price;
-    const priceChange = ((finalPrice - basePrice) / basePrice) * 100;
-    const trend = priceChange > 0 ? 'increasing' : 'decreasing';
-    
-    container.innerHTML = `
-        <h3><i class="fas fa-lightbulb"></i> Market Insights</h3>
-        <div class="insights-content">
-            <div class="insight-card ${trend}">
-                <div class="insight-icon">
-                    <i class="fas fa-${priceChange > 0 ? 'arrow-up' : 'arrow-down'}"></i>
-                </div>
-                <div class="insight-text">
-                    <h4>${crop} Price Trend</h4>
-                    <p>Expected to ${trend === 'increasing' ? 'increase' : 'decrease'} by <strong>${Math.abs(priceChange).toFixed(1)}%</strong></p>
-                </div>
-            </div>
-            
-            <div class="insight-item">
-                <i class="fas fa-rupee-sign"></i>
-                <span>Current: ₹${basePrice.toLocaleString()}/ton</span>
-            </div>
-            <div class="insight-item">
-                <i class="fas fa-chart-line"></i>
-                <span>Projected: ₹${finalPrice.toLocaleString()}/ton</span>
-            </div>
-            
-            <div class="recommendation-box">
-                <h5><i class="fas fa-clipboard-check"></i> Recommendation</h5>
-                <p>${priceChange > 5 ? 
-                    `Consider planting ${crop} - prices expected to rise significantly.` : 
-                    priceChange < -5 ? 
-                    `Consider alternatives to ${crop} - prices expected to decline.` :
-                    `${crop} prices are stable. Monitor market conditions before planting.`
-                }</p>
-            </div>
+function buildDiscussionBubble(meta, message) {
+    return `<div style="display:flex;gap:0.75rem;align-items:flex-start">
+        <div style="width:40px;height:40px;border-radius:50%;background:${meta.bg};display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;border:2px solid ${meta.color}30">${meta.icon}</div>
+        <div style="flex:1;background:${meta.bg};border:1px solid ${meta.color}20;border-radius:4px 16px 16px 16px;padding:0.75rem 1rem">
+            <div style="font-weight:700;font-size:0.8rem;color:${meta.color};margin-bottom:0.3rem">${meta.label}</div>
+            <div style="font-size:0.88rem;line-height:1.55;color:#334155">${message}</div>
         </div>
-    `;
-    
-    showNotification(`Market forecast generated for ${crop}`, 'success');
+    </div>`;
 }
 
-// ==================== SUSTAINABILITY TRACKER ====================
-let sustainabilityHistory = [];
+function formatAgentContent(agent) {
+    let lines = [];
+    if (agent.recommended_crop) lines.push(`<strong>Crop:</strong> ${agent.recommended_crop}`);
+    if (agent.confidence) lines.push(`<strong>Confidence:</strong> ${agent.confidence}%`);
+    if (agent.market_score) lines.push(`<strong>Market Score:</strong> ${agent.market_score}/10`);
+    if (agent.price_trend) lines.push(`<strong>Price Trend:</strong> ${agent.price_trend}`);
+    if (agent.weather_score) lines.push(`<strong>Weather Score:</strong> ${agent.weather_score}/10`);
+    if (agent.risk_level) lines.push(`<strong>Risk:</strong> ${agent.risk_level}`);
+    if (agent.forecast) lines.push(`${agent.forecast}`);
+    if (agent.sustainability_score) lines.push(`<strong>Sustainability:</strong> ${agent.sustainability_score}/10`);
+    if (agent.environmental_impact) lines.push(`<strong>Impact:</strong> ${agent.environmental_impact}`);
+    if (agent.advice) lines.push(`${agent.advice}`);
+    if (agent.reasoning) lines.push(`<em>${agent.reasoning}</em>`);
+    return lines.join('<br>');
+}
 
-async function logSustainability() {
-    const waterUsage = parseFloat(document.getElementById('water-usage').value);
-    const fertilizerUse = parseFloat(document.getElementById('fertilizer-use').value);
-    const rotation = document.getElementById('crop-rotation').value === 'yes';
-    
-    // Save to backend
+function renderSimpleRecommendation(data, container) {
+    let html = `<div class="card"><h3 class="card-title"><i class="fas fa-clipboard-check"></i> AI Recommendation</h3>`;
+    html += `<div class="agent-body" style="white-space:pre-line">${data.recommendation || 'No data'}</div></div>`;
+    if (data.chart_data?.length) {
+        html += '<div class="card mt-4"><h3 class="card-title"><i class="fas fa-chart-bar"></i> Crop Analysis</h3><div id="rec-simple-chart" class="chart-container"></div></div>';
+    }
+    container.innerHTML = html;
+    if (data.chart_data?.length) {
+        const traces = data.chart_data.map(cd => ({
+            type: 'scatterpolar',
+            name: cd.crop,
+            r: [...cd.values, cd.values[0]],
+            theta: [...cd.labels, cd.labels[0]],
+            fill: 'toself'
+        }));
+        Plotly.newPlot('rec-simple-chart', traces, {
+            polar: { radialaxis: { visible: true, range: [0, 100] } },
+            margin: { t: 30, b: 30, l: 50, r: 50 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+            font: { family: 'Inter' }
+        }, { responsive: true, displayModeBar: false });
+    }
+}
+
+// ═══════════════════════════════════════
+//  CROP ROTATION
+// ═══════════════════════════════════════
+
+async function generateRotationPlan() {
+    const crop = document.getElementById('current-crop').value;
+    showLoading('Generating rotation plan...');
     try {
-        await api('/sustainability', 'POST', {
-            username: 'web_user',
-            water_score: waterUsage,
-            fertilizer_use: fertilizerUse,
-            rotation: rotation
-        });
-    } catch (error) {
-        console.log('Backend save failed, continuing with local');
+        const data = await fetchAPI('/crop_rotation', { current_crop: crop, years: 4 });
+        const container = document.getElementById('rotation-results');
+        let html = `<div class="card mt-4"><h3 class="card-title"><i class="fas fa-calendar-check"></i> Rotation Plan for ${crop}</h3>`;
+        html += `<div class="agent-body" style="white-space:pre-line">${data.plan}</div></div>`;
+        container.innerHTML = html;
+
+        // Timeline chart
+        if (data.timeline) {
+            Plotly.newPlot('rotation-timeline-chart', [{
+                x: data.timeline.years,
+                y: data.timeline.scores,
+                type: 'bar',
+                marker: {
+                    color: data.timeline.scores.map((_, i) => ['#16a34a', '#0ea5e9', '#eab308', '#8b5cf6'][i % 4]),
+                    cornerradius: 8
+                },
+                text: data.timeline.crops.map(c => c.split(': ')[1] || c),
+                textposition: 'outside'
+            }], {
+                yaxis: { title: 'Soil Health Score', range: [0, 100] },
+                margin: { t: 20, b: 40, l: 50, r: 20 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        }
+    } catch (err) {
+        toast('Failed to generate rotation plan', 'error');
+    } finally {
+        hideLoading();
     }
-    
-    // Calculate score
-    let score = 100;
-    const RECOMMENDED_WATER = 2.0;
-    const RECOMMENDED_FERTILIZER = 1.5;
-    
-    if (waterUsage > RECOMMENDED_WATER) {
-        score -= Math.min(30, 30 * (waterUsage - RECOMMENDED_WATER) / RECOMMENDED_WATER);
-    }
-    if (fertilizerUse > RECOMMENDED_FERTILIZER) {
-        score -= Math.min(30, 30 * (fertilizerUse - RECOMMENDED_FERTILIZER) / RECOMMENDED_FERTILIZER);
-    }
-    score += rotation ? 10 : -10;
-    score = Math.max(0, Math.min(100, score));
-    
-    // Add to history
-    sustainabilityHistory.push({
-        date: new Date().toLocaleDateString(),
-        score: Math.round(score),
-        water: waterUsage,
-        fertilizer: fertilizerUse,
-        rotation
-    });
-    
-    renderSustainabilityTrendChart();
-    displaySustainabilityTips(waterUsage, fertilizerUse, rotation, score);
-    showNotification(`Sustainability score logged: ${Math.round(score)}`, 'success');
 }
 
-function renderSustainabilityTrendChart() {
-    const container = document.getElementById('sustainability-trend-chart');
-    if (!container) return;
-    
-    // Add demo data if empty
-    if (sustainabilityHistory.length < 2) {
-        sustainabilityHistory = [
-            { date: 'Season 1', score: 65, water: 2.5, fertilizer: 2.0, rotation: false },
-            { date: 'Season 2', score: 72, water: 2.2, fertilizer: 1.8, rotation: true },
-            { date: 'Season 3', score: 78, water: 2.0, fertilizer: 1.6, rotation: true },
-            ...sustainabilityHistory
-        ];
-    }
-    
-    const trace = {
-        type: 'scatter',
-        mode: 'lines+markers',
-        name: 'Sustainability Score',
-        x: sustainabilityHistory.map(d => d.date),
-        y: sustainabilityHistory.map(d => d.score),
-        line: { color: '#22c55e', width: 3 },
-        marker: { size: 10 },
-        fill: 'tozeroy',
-        fillcolor: 'rgba(34, 197, 94, 0.2)'
-    };
-    
-    const layout = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Season' },
-        yaxis: { title: 'Score', range: [0, 100] },
-        margin: { l: 50, r: 30, t: 30, b: 50 }
-    };
-    
-    Plotly.newPlot(container, [trace], layout, {responsive: true});
-}
+// ═══════════════════════════════════════
+//  FERTILIZER CALCULATOR
+// ═══════════════════════════════════════
 
-function displaySustainabilityTips(water, fertilizer, rotation, score) {
-    const container = document.getElementById('sustainability-tips');
-    const tips = [];
-    
-    if (fertilizer > 1.5) {
-        tips.push('Reduce fertilizer use to below 1.5 tons/ha. Consider organic alternatives.');
-    }
-    if (water > 2.0) {
-        tips.push('Reduce water usage to below 2.0 ML/ha. Consider drip irrigation or mulching.');
-    }
-    if (!rotation) {
-        tips.push('Practice crop rotation next season to improve soil health.');
-    }
-    if (tips.length === 0) {
-        tips.push('Excellent! Your practices are highly sustainable. Keep it up!');
-    }
-    
-    container.innerHTML = `
-        <h3><i class="fas fa-lightbulb"></i> Improvement Tips</h3>
-        <div class="score-display">
-            <div class="score-circle ${score > 70 ? 'good' : score > 40 ? 'medium' : 'poor'}">
-                <span class="score-value">${Math.round(score)}</span>
-                <span class="score-label">Score</span>
-            </div>
-        </div>
-        <div class="tips-list">
-            ${tips.map(tip => `
-                <div class="tip-item">
-                    <i class="fas fa-${tip.includes('Excellent') ? 'check-circle' : 'lightbulb'}"></i>
-                    <span>${tip}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// ==================== FERTILIZER OPTIMIZER ====================
 async function calculateFertilizer() {
     const soil = document.getElementById('fert-soil').value;
     const crop = document.getElementById('fert-crop').value;
-    const land = parseFloat(document.getElementById('fert-land').value);
-    
-    showLoading('Calculating optimal fertilizer...');
-    
+    const land = parseFloat(document.getElementById('fert-land').value) || 5;
+    showLoading('Calculating fertilizer needs...');
     try {
-        const result = await api('/fertilizer', 'POST', {
-            soil_type: soil,
-            crop_type: crop,
-            land_size: land
-        });
-        
+        const data = await fetchAPI('/fertilizer', { land_size: land, soil_type: soil, crop_type: crop });
+        const container = document.getElementById('fertilizer-results');
+        container.innerHTML = `<div class="npk-cards mt-4">
+            <div class="npk-card n-card"><div class="npk-value">${data.nitrogen_kg}</div><div class="npk-label">Nitrogen (kg)</div></div>
+            <div class="npk-card p-card"><div class="npk-value">${data.phosphorus_kg}</div><div class="npk-label">Phosphorus (kg)</div></div>
+            <div class="npk-card k-card"><div class="npk-value">${data.potassium_kg}</div><div class="npk-label">Potassium (kg)</div></div>
+        </div>`;
+
+        Plotly.newPlot('fertilizer-chart', [{
+            values: [data.nitrogen_kg, data.phosphorus_kg, data.potassium_kg],
+            labels: ['Nitrogen (N)', 'Phosphorus (P)', 'Potassium (K)'],
+            type: 'pie',
+            marker: { colors: ['#16a34a', '#0ea5e9', '#8b5cf6'] },
+            hole: 0.45,
+            textinfo: 'label+percent'
+        }], {
+            margin: { t: 20, b: 20, l: 20, r: 20 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+            font: { family: 'Inter' },
+            showlegend: false
+        }, { responsive: true, displayModeBar: false });
+    } catch {
+        toast('Failed to calculate fertilizer', 'error');
+    } finally {
         hideLoading();
-        if (result) {
-            displayFertilizerResults(result, soil, crop, land);
-            renderFertilizerChart(result);
-            return;
-        }
-    } catch (error) {
-        hideLoading();
-        console.log('Using fallback fertilizer calculation');
     }
-    
-    // Fallback: Base requirements (kg/ha)
-    const cropNeeds = {
-        'Wheat': { n: 120, p: 60, k: 40 },
-        'Corn': { n: 150, p: 70, k: 60 },
-        'Rice': { n: 100, p: 50, k: 50 },
-        'Tomatoes': { n: 130, p: 80, k: 100 },
-        'Soybeans': { n: 30, p: 60, k: 40 }
-    };
-    
-    // Soil adjustments
-    const soilModifiers = {
-        'Loamy': { n: 1.0, p: 1.0, k: 1.0 },
-        'Sandy': { n: 1.3, p: 1.2, k: 1.3 },
-        'Clay': { n: 0.8, p: 1.1, k: 0.9 }
-    };
-    
-    const base = cropNeeds[crop] || { n: 100, p: 50, k: 40 };
-    const mod = soilModifiers[soil] || { n: 1, p: 1, k: 1 };
-    
-    const result = {
-        nitrogen: Math.round(base.n * mod.n * land),
-        phosphorus: Math.round(base.p * mod.p * land),
-        potassium: Math.round(base.k * mod.k * land)
-    };
-    
-    displayFertilizerResults(result, soil, crop, land);
-    renderFertilizerChart(result);
 }
 
-function displayFertilizerResults(result, soil, crop, land) {
-    const container = document.getElementById('fertilizer-results');
-    
-    // Handle both backend format (nitrogen_kg) and local format (nitrogen)
-    const nitrogen = result.nitrogen_kg || result.nitrogen || 0;
-    const phosphorus = result.phosphorus_kg || result.phosphorus || 0;
-    const potassium = result.potassium_kg || result.potassium || 0;
-    
-    container.innerHTML = `
-        <div class="fertilizer-result fade-in">
-            <div class="result-header">
-                <i class="fas fa-check-circle" style="color: #22c55e;"></i>
-                <h3>Fertilizer Calculation Complete</h3>
-            </div>
-            
-            <div class="result-summary">
-                <p>For <strong>${land} hectares</strong> of <strong>${soil.toLowerCase()}</strong> soil planting <strong>${crop.toLowerCase()}</strong>:</p>
-            </div>
-            
-            <div class="nutrient-cards">
-                <div class="nutrient-card nitrogen">
-                    <div class="nutrient-icon">N</div>
-                    <div class="nutrient-details">
-                        <h4>Nitrogen</h4>
-                        <span class="amount">${nitrogen} kg</span>
-                    </div>
-                </div>
-                <div class="nutrient-card phosphorus">
-                    <div class="nutrient-icon">P</div>
-                    <div class="nutrient-details">
-                        <h4>Phosphorus</h4>
-                        <span class="amount">${phosphorus} kg</span>
-                    </div>
-                </div>
-                <div class="nutrient-card potassium">
-                    <div class="nutrient-icon">K</div>
-                    <div class="nutrient-details">
-                        <h4>Potassium</h4>
-                        <span class="amount">${potassium} kg</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="eco-note">
-                <i class="fas fa-leaf"></i>
-                <span>These recommendations factor in sustainability by reducing excess fertilizer to lower carbon footprint.</span>
-            </div>
-        </div>
-    `;
+// ═══════════════════════════════════════
+//  FARM MAP (Leaflet)
+// ═══════════════════════════════════════
+
+function createFarmMap() {
+    const lat = parseFloat(document.getElementById('farm-lat').value) || 12.9716;
+    const lon = parseFloat(document.getElementById('farm-lon').value) || 77.5946;
+    const container = document.getElementById('farm-map-container');
+    container.innerHTML = ''; // reset
+
+    if (state.leafletMap) { state.leafletMap.remove(); state.leafletMap = null; }
+
+    state.leafletMap = L.map(container).setView([lat, lon], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(state.leafletMap);
+
+    // Farm center marker
+    L.marker([lat, lon]).addTo(state.leafletMap)
+        .bindPopup(`<b>Farm Center</b><br>Lat: ${lat}<br>Lon: ${lon}`).openPopup();
+
+    // Simulated soil zones
+    const zones = [
+        { offset: [0.005, 0.005], color: '#8B4513', label: 'Clay Zone', radius: 200 },
+        { offset: [-0.004, 0.006], color: '#C2B280', label: 'Sandy Zone', radius: 180 },
+        { offset: [0.003, -0.004], color: '#228B22', label: 'Loamy Zone', radius: 250 },
+        { offset: [-0.006, -0.003], color: '#dc2626', label: 'Erosion Risk', radius: 120 },
+        { offset: [0.007, 0.002], color: '#2563eb', label: 'Waterlogging Risk', radius: 100 }
+    ];
+    zones.forEach(z => {
+        L.circle([lat + z.offset[0], lon + z.offset[1]], { color: z.color, fillColor: z.color, fillOpacity: 0.25, radius: z.radius })
+            .addTo(state.leafletMap).bindPopup(z.label);
+    });
+
+    // Show recommendations
+    const recCard = document.getElementById('map-recs-card');
+    recCard.style.display = '';
+    document.getElementById('map-rec-content').innerHTML = `
+        <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">
+            <li><strong>Clay zone:</strong> Good for rice and wheat — ensure drainage</li>
+            <li><strong>Sandy zone:</strong> Ideal for root crops — add organic matter</li>
+            <li><strong>Loamy zone:</strong> Versatile — great for most crops</li>
+            <li><strong>Erosion risk:</strong> Plant cover crops, build terraces</li>
+            <li><strong>Waterlogging:</strong> Improve drainage; avoid flood-sensitive crops</li>
+        </ul>`;
+    toast('Farm map created! 🗺️', 'success');
 }
 
-function renderFertilizerChart(result) {
-    const container = document.getElementById('fertilizer-chart');
-    if (!container) return;
-    
-    // Handle both backend format (nitrogen_kg) and local format (nitrogen)
-    const nitrogen = result.nitrogen_kg || result.nitrogen || 0;
-    const phosphorus = result.phosphorus_kg || result.phosphorus || 0;
-    const potassium = result.potassium_kg || result.potassium || 0;
-    
-    const data = [{
-        type: 'bar',
-        x: ['Nitrogen (N)', 'Phosphorus (P)', 'Potassium (K)'],
-        y: [nitrogen, phosphorus, potassium],
-        marker: {
-            color: ['#22c55e', '#3b82f6', '#f59e0b']
-        },
-        text: [`${nitrogen} kg`, `${phosphorus} kg`, `${potassium} kg`],
-        textposition: 'auto'
-    }];
-    
-    const layout = {
-        title: 'Recommended Fertilizer Amounts',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        yaxis: { title: 'Amount (kg)' },
-        margin: { l: 50, r: 30, t: 50, b: 50 }
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-// ==================== CROP ROTATION PLANNER ====================
-async function generateRotationPlan() {
-    const currentCrop = document.getElementById('current-crop').value;
-    
-    showLoading('Generating rotation plan...');
-    
+async function loadSavedMap() {
     try {
-        const result = await api('/crop_rotation', 'POST', {
-            current_crop: currentCrop
-        });
-        
-        hideLoading();
-        if (result && result.plan) {
-            displayRotationResults(currentCrop, result.plan);
-            renderRotationTimeline(currentCrop, result.plan);
-            return;
+        const data = await fetch(`${API}/farm_map/${state.user?.username || 'anonymous'}`).then(r => r.json());
+        if (data.map_data) {
+            document.getElementById('farm-lat').value = data.map_data.lat || 12.9716;
+            document.getElementById('farm-lon').value = data.map_data.lon || 77.5946;
+            createFarmMap();
+            toast('Map loaded', 'success');
+        } else {
+            toast('No saved map found', 'info');
         }
-    } catch (error) {
-        hideLoading();
-        console.log('Using fallback rotation plan');
-    }
-    
-    // Fallback: Rotation recommendations
-    const rotationRules = {
-        'Wheat': ['Soybean', 'Corn', 'Vegetables'],
-        'Corn': ['Soybean', 'Wheat', 'Cover Crop'],
-        'Rice': ['Wheat', 'Legumes', 'Vegetables'],
-        'Soybean': ['Corn', 'Wheat', 'Barley'],
-        'Tomato': ['Legumes', 'Corn', 'Grains'],
-        'Cotton': ['Wheat', 'Soybean', 'Corn']
-    };
-    
-    const nextCrops = rotationRules[currentCrop] || ['Legumes', 'Grains', 'Cover Crop'];
-    
-    displayRotationResults(currentCrop, nextCrops);
-    renderRotationTimeline(currentCrop, nextCrops);
+    } catch { toast('Could not load map', 'error'); }
 }
 
-function displayRotationResults(current, nextCrops) {
-    const container = document.getElementById('rotation-results');
-    
-    container.innerHTML = `
-        <div class="rotation-result fade-in">
-            <div class="result-header">
-                <i class="fas fa-recycle" style="color: #22c55e;"></i>
-                <h3>Rotation Plan Generated</h3>
-            </div>
-            
-            <div class="current-crop">
-                <h4>Current: ${current}</h4>
-            </div>
-            
-            <div class="rotation-sequence">
-                <h4>Recommended Rotation:</h4>
-                <div class="sequence-items">
-                    ${nextCrops.map((crop, i) => `
-                        <div class="sequence-item">
-                            <div class="season-badge">Season ${i + 2}</div>
-                            <div class="crop-name">${crop}</div>
-                        </div>
-                    `).join('<div class="arrow"><i class="fas fa-arrow-right"></i></div>')}
-                </div>
-            </div>
-            
-            <div class="benefits">
-                <h4><i class="fas fa-star"></i> Benefits</h4>
-                <ul>
-                    <li>Improves soil fertility and structure</li>
-                    <li>Breaks pest and disease cycles</li>
-                    <li>Reduces need for chemical inputs</li>
-                    <li>Increases long-term yields</li>
-                </ul>
-            </div>
-        </div>
-    `;
-}
-
-function renderRotationTimeline(current, nextCrops) {
-    const container = document.getElementById('rotation-timeline-chart');
-    if (!container) return;
-    
-    const allCrops = [current, ...nextCrops];
-    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'];
-    
-    const data = [{
-        type: 'bar',
-        orientation: 'h',
-        y: allCrops.map((_, i) => `Season ${i + 1}`),
-        x: allCrops.map(() => 1),
-        text: allCrops,
-        textposition: 'inside',
-        marker: {
-            color: colors.slice(0, allCrops.length)
-        },
-        hoverinfo: 'text'
-    }];
-    
-    const layout = {
-        title: 'Crop Rotation Timeline',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { visible: false },
-        yaxis: { autorange: 'reversed' },
-        margin: { l: 80, r: 30, t: 50, b: 30 },
-        barmode: 'stack'
-    };
-    
-    Plotly.newPlot(container, data, layout, {responsive: true});
-}
-
-// ==================== PEST PREDICTION ====================
-async function predictPests() {
-    const crop = document.getElementById('pest-crop').value;
-    const soilType = document.getElementById('pest-soil').value;
-    const temp = parseFloat(document.getElementById('pest-temp').value);
-    const humidity = parseFloat(document.getElementById('pest-humidity').value);
-    const rainfall = parseFloat(document.getElementById('pest-rainfall').value);
-    
-    showLoading('Analyzing pest risks...');
-    
+async function saveFarmMap() {
     try {
-        const result = await api('/pest_prediction', 'POST', {
-            crop_type: crop,
-            soil_type: soilType,
-            temperature: temp,
-            humidity: humidity,
-            rainfall: rainfall
+        await fetchAPI('/farm_map', {
+            username: state.user?.username || 'anonymous',
+            farm_name: state.user?.farm_name || 'My Farm',
+            map_data: { lat: parseFloat(document.getElementById('farm-lat').value), lon: parseFloat(document.getElementById('farm-lon').value) },
+            recommendations: [],
+            risk_areas: []
         });
-        
-        hideLoading();
-        if (result && result.risks) {
-            displayPestResults(result.risks, crop);
-            return;
+        toast('Map saved! 💾', 'success');
+    } catch { toast('Could not save map', 'error'); }
+}
+
+// ═══════════════════════════════════════
+//  SUSTAINABILITY
+// ═══════════════════════════════════════
+
+async function logSustainability() {
+    const water_score = parseFloat(document.getElementById('water-usage').value) || 2;
+    const fertilizer_use = parseFloat(document.getElementById('fertilizer-use').value) || 1.5;
+    const rotation = document.getElementById('crop-rotation').value === 'yes';
+    showLoading('Logging sustainability data...');
+    try {
+        const data = await fetchAPI('/sustainability', {
+            username: state.user?.username || 'anonymous',
+            water_score, fertilizer_use, rotation
+        });
+        document.getElementById('stat-sustain').textContent = `${data.score}%`;
+
+        // Tips
+        const tipsEl = document.getElementById('sustainability-tips');
+        let tipsHtml = '<h3 class="card-title"><i class="fas fa-lightbulb"></i> Improvement Tips</h3>';
+        if (data.tips?.length) {
+            tipsHtml += '<ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">';
+            data.tips.forEach(t => tipsHtml += `<li>${t}</li>`);
+            tipsHtml += '</ul>';
+        } else {
+            tipsHtml += '<p style="color:var(--farm-green);font-weight:600">🎉 Great work! Your practices are sustainable.</p>';
         }
-    } catch (error) {
+        tipsEl.innerHTML = tipsHtml;
+        loadSustainabilityChart();
+        toast(`Sustainability score: ${data.score}%`, 'success');
+    } catch {
+        toast('Failed to log data', 'error');
+    } finally {
         hideLoading();
-        console.log('Using fallback pest prediction');
-    }
-    
-    // Fallback: Simplified pest risk calculation
-    const risks = [];
-    
-    // Temperature-based risks
-    if (temp > 30 && humidity > 70) {
-        risks.push({ pest: 'Fungal Diseases', risk: 'high', advice: 'Apply preventive fungicide treatment' });
-    }
-    if (temp > 25 && humidity > 60) {
-        risks.push({ pest: 'Aphids', risk: 'medium', advice: 'Monitor plants weekly, consider neem oil spray' });
-    }
-    if (rainfall > 1000) {
-        risks.push({ pest: 'Root Rot', risk: 'medium', advice: 'Improve drainage, check waterlogging' });
-    }
-    if (temp < 15) {
-        risks.push({ pest: 'Frost Damage', risk: 'high', advice: 'Cover plants or use frost protection' });
-    }
-    
-    // Crop-specific risks
-    const cropPests = {
-        'Tomato': { pest: 'Tomato Hornworm', risk: 'medium', advice: 'Hand-pick or use Bt spray' },
-        'Cotton': { pest: 'Bollworm', risk: 'medium', advice: 'Use pheromone traps for monitoring' },
-        'Rice': { pest: 'Stem Borer', risk: 'medium', advice: 'Use light traps and biological control' }
-    };
-    
-    if (cropPests[crop]) {
-        risks.push(cropPests[crop]);
-    }
-    
-    if (risks.length === 0) {
-        risks.push({ pest: 'General', risk: 'low', advice: 'Conditions are favorable. Continue regular monitoring.' });
-    }
-    
-    displayPestResults(risks, crop);
-}
-
-function displayPestResults(risks, crop) {
-    const container = document.getElementById('pest-results');
-    
-    container.innerHTML = `
-        <div class="pest-result fade-in">
-            <div class="result-header">
-                <i class="fas fa-shield-alt" style="color: #22c55e;"></i>
-                <h3>Pest Risk Analysis for ${crop}</h3>
-            </div>
-            
-            <div class="risk-cards">
-                ${risks.map(r => `
-                    <div class="risk-card ${r.risk}">
-                        <div class="risk-header">
-                            <span class="pest-name">${r.pest}</span>
-                            <span class="risk-badge ${r.risk}">${r.risk.toUpperCase()} RISK</span>
-                        </div>
-                        <div class="risk-advice">
-                            <i class="fas fa-lightbulb"></i>
-                            <span>${r.advice}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div class="prevention-tips">
-                <h4><i class="fas fa-check-circle"></i> General Prevention Tips</h4>
-                <ul>
-                    <li>Maintain good field hygiene</li>
-                    <li>Practice crop rotation</li>
-                    <li>Use resistant varieties when available</li>
-                    <li>Monitor fields regularly for early detection</li>
-                </ul>
-            </div>
-        </div>
-    `;
-    
-    showNotification('Pest risk analysis complete', 'success');
-}
-
-// ==================== AI CHATBOT ====================
-const chatHistory = [];
-
-function handleChatKeypress(event) {
-    if (event.key === 'Enter') {
-        sendChatMessage();
     }
 }
+
+async function loadSustainabilityChart() {
+    try {
+        const data = await fetch(`${API}/sustainability/scores?username=${state.user?.username || 'anonymous'}`).then(r => r.json());
+        if (data.timestamps?.length) {
+            Plotly.newPlot('sustainability-trend-chart', [{
+                x: data.timestamps, y: data.scores,
+                type: 'scatter', mode: 'lines+markers',
+                line: { color: '#16a34a', width: 3, shape: 'spline' },
+                marker: { size: 8, color: '#16a34a' },
+                fill: 'tozeroy', fillcolor: 'rgba(22,163,74,0.08)'
+            }], {
+                yaxis: { title: 'Score', range: [0, 100] },
+                xaxis: { title: 'Date' },
+                margin: { t: 10, b: 40, l: 50, r: 20 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        }
+    } catch { /* offline ok */ }
+}
+
+// ═══════════════════════════════════════
+//  COMMUNITY
+// ═══════════════════════════════════════
+
+async function shareCommunityData() {
+    showLoading('Sharing anonymously...');
+    try {
+        await fetchAPI('/community', {
+            username: state.user?.username || 'anonymous',
+            crop_type: document.getElementById('community-crop').value,
+            yield_data: parseFloat(document.getElementById('community-yield').value) || 0,
+            market_price: parseFloat(document.getElementById('community-price').value) || 0,
+            region: document.getElementById('community-region').value,
+            season: document.getElementById('community-season').value,
+            sustainability_practice: document.getElementById('community-practice').value
+        });
+        toast('Data shared with the community! 🤝', 'success');
+        loadCommunityInsights();
+    } catch {
+        toast('Could not share data', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadCommunityInsights() {
+    try {
+        const data = await fetch(`${API}/community/insights`).then(r => r.json());
+        if (!data.insights?.length) return;
+        const crops = data.insights.map(i => i.crop_type);
+        const yields = data.insights.map(i => i.avg_yield);
+        Plotly.newPlot('community-chart', [{
+            x: crops, y: yields,
+            type: 'bar',
+            marker: { color: crops.map((_, i) => ['#16a34a', '#0ea5e9', '#eab308', '#8b5cf6', '#ef4444'][i % 5]), cornerradius: 8 },
+            text: yields.map(y => `${y} t/ha`),
+            textposition: 'outside'
+        }], {
+            yaxis: { title: 'Avg Yield (t/ha)' },
+            margin: { t: 10, b: 40, l: 50, r: 20 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+            font: { family: 'Inter' }
+        }, { responsive: true, displayModeBar: false });
+    } catch { /* offline ok */ }
+}
+
+// ═══════════════════════════════════════
+//  MARKET FORECAST
+// ═══════════════════════════════════════
+
+async function generateMarketForecast() {
+    const crop = document.getElementById('market-crop').value;
+    const period = document.getElementById('forecast-period').value;
+    showLoading('Generating market forecast...');
+    try {
+        const data = await fetch(`${API}/market/dashboard?crop=${encodeURIComponent(crop)}&period=${period}%20months`).then(r => r.json());
+        if (data.forecast?.length) {
+            const months = data.forecast.map(f => f.month_name || f.month);
+            const prices = data.forecast.map(f => f.price);
+            const confs = data.forecast.map(f => f.confidence * 100);
+            Plotly.newPlot('market-price-chart', [
+                { x: months, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Price (₹/ton)', line: { color: '#16a34a', width: 3, shape: 'spline' }, marker: { size: 8 } },
+                { x: months, y: confs, type: 'scatter', mode: 'lines', name: 'Confidence %', line: { color: '#0ea5e9', width: 2, dash: 'dot' }, yaxis: 'y2' }
+            ], {
+                yaxis: { title: '₹/ton' },
+                yaxis2: { title: 'Confidence %', overlaying: 'y', side: 'right', range: [0, 100] },
+                margin: { t: 10, b: 40, l: 60, r: 60 },
+                legend: { orientation: 'h', y: -0.15 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        }
+        // Insights
+        const insEl = document.getElementById('market-insights');
+        insEl.innerHTML = `<h3 class="card-title"><i class="fas fa-lightbulb"></i> Market Insights</h3>
+            <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">
+                <li><strong>Current Price:</strong> ₹${data.current_price?.toLocaleString()}/ton</li>
+                <li><strong>Predicted:</strong> ₹${data.predicted_price?.toLocaleString()}/ton</li>
+                <li><strong>Change:</strong> <span style="color:${data.price_change_percent >= 0 ? 'var(--farm-green)' : 'var(--farm-red)'}">${data.price_change_percent >= 0 ? '▲' : '▼'} ${Math.abs(data.price_change_percent)}%</span></li>
+                <li><strong>Recommendation:</strong> ${data.recommendation}</li>
+                <li>${data.analysis}</li>
+            </ul>`;
+        toast('Market forecast generated 📈', 'success');
+    } catch {
+        toast('Could not generate forecast', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ═══════════════════════════════════════
+//  CHATBOT
+// ═══════════════════════════════════════
 
 async function sendChatMessage() {
     const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    // Add user message
-    addChatMessage(message, 'user');
+    const query = input.value.trim();
+    if (!query) return;
     input.value = '';
-    
-    // Show typing indicator
-    addTypingIndicator();
-    
-    // Try backend API first
+    const messages = document.getElementById('chat-messages');
+
+    // User message
+    messages.innerHTML += `<div class="chat-msg user"><div class="chat-avatar"><i class="fas fa-user"></i></div><div class="chat-bubble">${escapeHtml(query)}</div></div>`;
+    // Typing indicator
+    messages.innerHTML += `<div class="chat-msg ai" id="typing-indicator"><div class="chat-avatar"><i class="fas fa-robot"></i></div><div class="chat-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+    messages.scrollTop = messages.scrollHeight;
+
     try {
-        const result = await api('/chatbot/ask', 'POST', {
-            username: 'web_user',
-            query: message
+        const data = await fetchAPI('/chatbot/ask', { username: state.user?.username || 'anonymous', query });
+        const typing = document.getElementById('typing-indicator');
+        if (typing) typing.remove();
+        const responseHtml = (data.response || 'Sorry, I could not process that.').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        messages.innerHTML += `<div class="chat-msg ai animate-fade-in"><div class="chat-avatar"><i class="fas fa-robot"></i></div><div class="chat-bubble">${responseHtml}</div></div>`;
+    } catch {
+        const typing = document.getElementById('typing-indicator');
+        if (typing) typing.remove();
+        messages.innerHTML += `<div class="chat-msg ai"><div class="chat-avatar"><i class="fas fa-robot"></i></div><div class="chat-bubble">Sorry, I'm offline right now. Please try again when connected.</div></div>`;
+    }
+    messages.scrollTop = messages.scrollHeight;
+}
+
+// ═══════════════════════════════════════
+//  WEATHER
+// ═══════════════════════════════════════
+
+async function getWeatherForecast() {
+    const lat = parseFloat(document.getElementById('weather-lat').value) || 12.9716;
+    const lon = parseFloat(document.getElementById('weather-lon').value) || 77.5946;
+    const crop = document.getElementById('weather-crop').value;
+    showLoading('Fetching real-time weather...');
+    try {
+        const data = await fetchAPI('/weather', { lat, lon, crop_type: crop });
+        const container = document.getElementById('weather-results');
+        // Current weather card
+        let html = `<div class="card"><h3 class="card-title"><i class="fas fa-sun"></i> Current Weather — ${data.current_weather?.city || ''}</h3>
+            <div class="stat-grid">
+                <div class="stat-card stat-green"><i class="fas fa-thermometer-half stat-icon"></i><div class="stat-value">${Math.round(data.current_weather?.temperature || 0)}°C</div><div class="stat-label">Temperature</div></div>
+                <div class="stat-card stat-blue"><i class="fas fa-tint stat-icon"></i><div class="stat-value">${data.current_weather?.humidity || 0}%</div><div class="stat-label">Humidity</div></div>
+                <div class="stat-card stat-amber"><i class="fas fa-wind stat-icon"></i><div class="stat-value">${data.current_weather?.wind_speed || 0}</div><div class="stat-label">Wind (m/s)</div></div>
+                <div class="stat-card stat-purple"><i class="fas fa-cloud stat-icon"></i><div class="stat-value">${data.current_weather?.clouds || 0}%</div><div class="stat-label">Clouds</div></div>
+            </div></div>`;
+
+        // Agricultural conditions
+        const risk = data.agricultural_conditions?.overall_risk || 'unknown';
+        const riskClass = risk === 'low' ? 'low-risk' : risk === 'medium' ? 'medium-risk' : 'high-risk';
+        html += `<div class="weather-risk-cards">
+            <div class="risk-card ${riskClass}"><i class="fas fa-shield-alt"></i><br>Risk: ${risk.toUpperCase()}</div>
+            <div class="risk-card low-risk"><i class="fas fa-thermometer-half"></i><br>Avg: ${data.metrics?.avg_temperature || '—'}°C</div>
+            <div class="risk-card low-risk"><i class="fas fa-cloud-rain"></i><br>Rain: ${data.metrics?.total_rainfall || '0'}mm</div>
+        </div>`;
+
+        // Recommendations
+        if (data.recommendations?.length) {
+            html += `<div class="card mt-4"><h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Agricultural Advisories</h3><ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">`;
+            data.recommendations.forEach(r => html += `<li>${r}</li>`);
+            html += '</ul></div>';
+        }
+        container.innerHTML = html;
+
+        // Forecast chart
+        if (data.forecast?.length) {
+            const times = data.forecast.map(f => f.datetime);
+            const temps = data.forecast.map(f => f.temperature);
+            const hums = data.forecast.map(f => f.humidity);
+            Plotly.newPlot('weather-forecast-chart', [
+                { x: times, y: temps, name: 'Temp °C', type: 'scatter', mode: 'lines+markers', line: { color: '#ef4444', width: 2 } },
+                { x: times, y: hums, name: 'Humidity %', type: 'scatter', mode: 'lines', line: { color: '#0ea5e9', width: 2, dash: 'dot' }, yaxis: 'y2' }
+            ], {
+                yaxis: { title: 'Temperature (°C)' },
+                yaxis2: { title: 'Humidity (%)', overlaying: 'y', side: 'right' },
+                margin: { t: 10, b: 40, l: 50, r: 50 },
+                legend: { orientation: 'h', y: -0.15 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        }
+        toast('Weather data updated 🌤️', 'success');
+    } catch {
+        toast('Weather service unavailable', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ═══════════════════════════════════════
+//  SOIL ANALYSIS
+// ═══════════════════════════════════════
+
+function previewSoilPhoto(input) {
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const preview = document.getElementById('soil-preview');
+        preview.innerHTML = `<img src="${e.target.result}" alt="Soil" style="max-height:180px;border-radius:12px;margin:0 auto">`;
+        preview.style.display = '';
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+async function analyzeSoil() {
+    const fileInput = document.getElementById('soil-photo');
+    if (!fileInput.files?.[0]) { toast('Please upload a soil photo', 'info'); return; }
+    showLoading('AI is analyzing your soil...');
+    try {
+        const formData = new FormData();
+        formData.append('soil_photo', fileInput.files[0]);
+        const res = await fetch(`${API}/soil_analysis`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+        showSoilResult(data.soil_type);
+    } catch (err) {
+        toast(err.message || 'Soil analysis failed', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function selectSoilType(type) {
+    document.querySelectorAll('.soil-opt').forEach(o => o.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    showSoilResult(type);
+}
+
+function showSoilResult(soilType) {
+    const info = {
+        Loamy: { color: '#8B7355', desc: 'Best all-around soil. Rich in nutrients with good drainage. Ideal for wheat, corn, vegetables.' },
+        Sandy: { color: '#C2B280', desc: 'Drains quickly, warms fast in spring. Good for root crops, groundnut, watermelon.' },
+        Clay: { color: '#8B4513', desc: 'Heavy, retains water. Excellent for rice and wheat. Add organic matter for better structure.' },
+        Black: { color: '#3B3131', desc: 'Rich in calcium and magnesium. Ideal for cotton, soybean, and citrus. Good water retention.' },
+        Red: { color: '#A0522D', desc: 'Iron-rich, slightly acidic. Good for pulses, millets, and groundnut. Add lime to improve pH.' }
+    };
+    const i = info[soilType] || { color: '#888', desc: 'Unknown soil type.' };
+    document.getElementById('soil-results').innerHTML = `
+        <div class="card animate-scale-in">
+            <h3 class="card-title"><i class="fas fa-check-circle" style="color:var(--farm-green)"></i> Soil Type Detected: <strong>${soilType}</strong></h3>
+            <div style="display:flex;align-items:center;gap:1rem;margin:1rem 0">
+                <div style="width:64px;height:64px;border-radius:16px;background:${i.color}"></div>
+                <p style="font-size:0.92rem;flex:1">${i.desc}</p>
+            </div>
+            <p class="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
+        </div>`;
+    // Auto-set soil type in farm setup
+    const sel = document.getElementById('soil-type');
+    for (const opt of sel.options) {
+        if (opt.value === soilType) { sel.value = soilType; break; }
+    }
+}
+
+// ═══════════════════════════════════════
+//  PEST PREDICTION
+// ═══════════════════════════════════════
+
+async function predictPests() {
+    const crop = document.getElementById('pest-crop').value;
+    const soil = document.getElementById('pest-soil').value;
+    const temp = parseFloat(document.getElementById('pest-temp').value) || 25;
+    const humidity = parseFloat(document.getElementById('pest-humidity').value) || 65;
+    const rainfall = parseFloat(document.getElementById('pest-rainfall').value) || 500;
+    showLoading('Analyzing pest risks...');
+    try {
+        const data = await fetchAPI('/pest_prediction', { crop_type: crop, soil_type: soil, temperature: temp, humidity, rainfall });
+        const container = document.getElementById('pest-results');
+        const risk = data.overall_risk || 'low';
+        let html = `<div class="card"><h3 class="card-title"><i class="fas fa-shield-alt"></i> Overall Risk: <span style="color:${risk === 'high' ? 'var(--farm-red)' : risk === 'medium' ? 'var(--farm-yellow)' : 'var(--farm-green)'}">${risk.toUpperCase()}</span></h3>
+            <p class="muted-text">${data.analysis || ''}</p></div>`;
+
+        if (data.predictions?.length) {
+            html += '<div class="pest-grid mt-4">';
+            data.predictions.forEach(p => {
+                const sev = p.severity || 'low';
+                html += `<div class="pest-card ${sev}-risk">
+                    <h4>${p.pest}</h4>
+                    <span class="pest-risk-badge ${sev}">${sev} risk</span>
+                    <p style="margin-top:0.5rem;font-size:0.85rem">Probability: <strong>${Math.round(p.probability * 100)}%</strong></p>
+                    <p style="font-size:0.82rem;color:var(--fg-muted);margin-top:0.25rem">${p.recommendation || ''}</p>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        if (data.prevention_tips?.length) {
+            html += `<div class="card mt-4"><h3 class="card-title"><i class="fas fa-lightbulb"></i> Prevention Tips</h3>
+                <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">`;
+            data.prevention_tips.forEach(t => html += `<li>${t}</li>`);
+            html += '</ul></div>';
+        }
+        container.innerHTML = html;
+        toast('Pest analysis complete 🐛', 'success');
+    } catch {
+        toast('Failed to predict pests', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ═══════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════
+
+async function loadHistory() {
+    const container = document.getElementById('history-table-container');
+    try {
+        const recs = await fetch(`${API}/previous_recommendations?username=${state.user?.username || 'anonymous'}`).then(r => r.json());
+        if (recs?.length) {
+            let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop / Type</th><th>Score</th><th>Details</th></tr></thead><tbody>';
+            recs.forEach(r => {
+                html += `<tr><td>${r.timestamp || '—'}</td><td>${r.crop || '—'}</td><td>${r.score ? Math.round(r.score) : '—'}</td><td style="max-width:300px;font-size:0.82rem">${(r.recommendation || '').substring(0, 120)}...</td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            // Analytics chart
+            Plotly.newPlot('history-analytics-chart', [{
+                x: recs.map(r => r.timestamp),
+                y: recs.map(r => r.score || 0),
+                type: 'scatter', mode: 'lines+markers',
+                line: { color: '#16a34a', width: 3 },
+                marker: { size: 8 }
+            }], {
+                yaxis: { title: 'Score' },
+                margin: { t: 10, b: 40, l: 50, r: 20 },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { family: 'Inter' }
+            }, { responsive: true, displayModeBar: false });
+        } else if (state.recommendations.length) {
+            // Use local data
+            let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop</th><th>Score</th></tr></thead><tbody>';
+            state.recommendations.forEach(r => {
+                const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 30) || '—';
+                const score = r.central_coordinator?.overall_score || '—';
+                html += `<tr><td>${r.timestamp || '—'}</td><td>${crop}</td><td>${score}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch {
+        if (state.recommendations.length) {
+            let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop</th><th>Score</th></tr></thead><tbody>';
+            state.recommendations.slice(0, 10).forEach(r => {
+                const crop = r.central_coordinator?.final_crop || '—';
+                const score = r.central_coordinator?.overall_score || '—';
+                html += `<tr><td>${new Date(r.timestamp).toLocaleDateString()}</td><td>${crop}</td><td>${score}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    }
+}
+
+function exportRecommendations() {
+    if (!state.recommendations.length) { toast('No recommendations to export', 'info'); return; }
+    let csv = 'Date,Crop,Score,Details\n';
+    state.recommendations.forEach(r => {
+        const crop = r.central_coordinator?.final_crop || '—';
+        const score = r.central_coordinator?.overall_score || '';
+        const details = (r.central_coordinator?.reasoning || '').replace(/,/g, ';').replace(/\n/g, ' ');
+        csv += `"${r.timestamp}","${crop}","${score}","${details}"\n`;
+    });
+    downloadFile(csv, 'agrismart_recommendations.csv', 'text/csv');
+    toast('Exported as CSV', 'success');
+}
+
+// ═══════════════════════════════════════
+//  OFFLINE
+// ═══════════════════════════════════════
+
+function setupNetworkListeners() {
+    window.addEventListener('online', () => { state.isOffline = false; updateOfflineUI(); toast('Back online! 🌐', 'success'); });
+    window.addEventListener('offline', () => { state.isOffline = true; updateOfflineUI(); toast('You are offline — data will sync later', 'info'); });
+}
+
+function updateOfflineUI() {
+    const bar = document.getElementById('offline-bar');
+    if (bar) bar.style.display = state.isOffline ? '' : 'none';
+}
+
+function updateOfflinePage() {
+    const box = document.getElementById('offline-status-box');
+    if (state.isOffline) {
+        box.className = 'status-box offline';
+        box.innerHTML = '<i class="fas fa-wifi-slash"></i><span>You are offline — basic features available</span>';
+    } else {
+        box.className = 'status-box online';
+        box.innerHTML = '<i class="fas fa-wifi text-green"></i><span>You are online — All features available</span>';
+    }
+    document.getElementById('offline-recs-count').textContent = state.recommendations.length;
+    const pending = JSON.parse(localStorage.getItem('agri_pending_sync') || '[]');
+    document.getElementById('offline-pending-count').textContent = pending.length;
+}
+
+async function syncOfflineData() {
+    if (state.isOffline) { toast('Cannot sync while offline', 'info'); return; }
+    showLoading('Syncing data...');
+    try {
+        const res = await fetch(`${API}/offline/sync/${state.user?.username || 'anonymous'}`, { method: 'POST' });
+        const data = await res.json();
+        localStorage.setItem('agri_pending_sync', '[]');
+        updateOfflinePage();
+        toast(`Synced ${data.synced_count || 0} items ✅`, 'success');
+    } catch {
+        toast('Sync failed — try again later', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ═══════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════
+
+function switchProfileTab(tab) {
+    document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ptab-content').forEach(c => c.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById(`ptab-${tab}`).classList.add('active');
+}
+
+async function loadProfileData() {
+    if (!state.user) return;
+    // Fill fields
+    document.getElementById('farmer-name').value = state.user.username || '';
+    document.getElementById('farm-name').value = state.user.farm_name || '';
+    document.getElementById('profile-phone').value = state.user.phone || '';
+    document.getElementById('profile-email').value = state.user.email || '';
+    document.getElementById('profile-location').value = state.user.location || '';
+    if (state.farmSetup) {
+        document.getElementById('profile-farm-size').value = state.farmSetup.land_size || 5;
+    }
+
+    // Try loading from server
+    try {
+        const data = await fetch(`${API}/user/profile/${state.user.username}`).then(r => r.json());
+        if (data.username) {
+            document.getElementById('profile-email').value = data.email || '';
+            document.getElementById('profile-phone').value = data.phone || '';
+            document.getElementById('profile-location').value = data.location || '';
+            if (data.experience_level) {
+                document.getElementById('experience-level').value = data.experience_level;
+            }
+            if (data.farm_size) {
+                document.getElementById('profile-farm-size').value = data.farm_size;
+            }
+        }
+    } catch { /* offline ok */ }
+
+    // Recent recs
+    const recsEl = document.getElementById('profile-recent-recs');
+    if (state.recommendations.length) {
+        let html = '';
+        state.recommendations.slice(0, 5).forEach(r => {
+            const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 40) || '—';
+            const score = r.central_coordinator?.overall_score || '';
+            html += `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.9rem">
+                <span>${crop}</span><span style="font-weight:600">${score ? score + '/10' : ''}</span></div>`;
         });
-        
-        removeTypingIndicator();
-        if (result && result.response) {
-            addChatMessage(result.response, 'ai');
-            return;
-        }
-    } catch (error) {
-        console.log('Using fallback chatbot');
+        recsEl.innerHTML = html;
     }
-    
-    // Fallback: Generate AI response locally
-    setTimeout(() => {
-        removeTypingIndicator();
-        const response = generateChatResponse(message);
-        addChatMessage(response, 'ai');
-    }, 500);
 }
 
-function addChatMessage(content, sender) {
-    const container = document.getElementById('chat-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}`;
-    
-    messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-${sender === 'user' ? 'user' : 'robot'}"></i>
-        </div>
-        <div class="message-content">
-            <p>${content}</p>
-        </div>
-    `;
-    
-    container.appendChild(messageDiv);
-    container.scrollTop = container.scrollHeight;
-    
-    chatHistory.push({ sender, content, timestamp: new Date() });
-}
-
-function addTypingIndicator() {
-    const container = document.getElementById('chat-messages');
-    const indicator = document.createElement('div');
-    indicator.className = 'chat-message ai typing-indicator';
-    indicator.id = 'typing-indicator';
-    indicator.innerHTML = `
-        <div class="message-avatar"><i class="fas fa-robot"></i></div>
-        <div class="message-content"><div class="typing-dots"><span></span><span></span><span></span></div></div>
-    `;
-    container.appendChild(indicator);
-    container.scrollTop = container.scrollHeight;
-}
-
-function removeTypingIndicator() {
-    const indicator = document.getElementById('typing-indicator');
-    if (indicator) indicator.remove();
-}
-
-function generateChatResponse(message) {
-    const lowerMsg = message.toLowerCase();
-    
-    // Knowledge base for farming queries
-    const responses = {
-        'soil': 'Soil health is crucial for farming success. Key factors include pH level (6.0-7.0 is ideal for most crops), organic matter content, and nutrient balance (NPK). Consider getting a soil test to understand your specific needs.',
-        'water': 'Irrigation needs vary by crop and soil type. Drip irrigation is 90% efficient and ideal for vegetables. Flood irrigation works for rice paddies. Monitor soil moisture and water during cooler parts of the day.',
-        'fertilizer': 'Use balanced NPK fertilizers based on soil test results. For most crops, apply nitrogen in split doses. Organic options like compost improve soil structure. Avoid over-fertilization to prevent nutrient runoff.',
-        'pest': 'Integrated Pest Management (IPM) is the best approach. Start with prevention (crop rotation, resistant varieties), then biological control, and use chemicals only as a last resort. Regular scouting helps catch problems early.',
-        'weather': 'Monitor weather forecasts for planting and harvesting decisions. Protect crops from frost with covers. During heat waves, increase irrigation and provide shade for sensitive crops.',
-        'crop': 'Choose crops based on your climate, soil type, and market demand. Consider crop rotation to maintain soil health. Diversification reduces risk from weather and market fluctuations.',
-        'wheat': 'Wheat grows best in cool, dry climates. Plant in fall (winter wheat) or spring. Requires well-drained soil with pH 6.0-7.0. Watch for rust diseases and aphids.',
-        'rice': 'Rice requires warm temperatures and standing water during growth. Prepare paddy fields carefully. Watch for stem borers and blast disease. Drain fields before harvest.',
-        'tomato': 'Tomatoes need warm soil, full sun, and consistent watering. Stake or cage plants for support. Watch for blossom end rot (calcium deficiency) and hornworms.'
-    };
-    
-    // Find matching response
-    for (const [keyword, response] of Object.entries(responses)) {
-        if (lowerMsg.includes(keyword)) {
-            return response;
-        }
+async function saveProfile() {
+    showLoading('Saving profile...');
+    try {
+        await fetchAPI('/user/profile', {
+            username: state.user?.username,
+            new_username: document.getElementById('farmer-name').value.trim() || undefined,
+            farm_name: document.getElementById('farm-name').value.trim() || undefined,
+            email: document.getElementById('profile-email').value.trim() || undefined,
+            phone: document.getElementById('profile-phone').value.trim() || undefined,
+            location: document.getElementById('profile-location').value.trim() || undefined,
+            experience_level: document.getElementById('experience-level').value || undefined,
+            farm_size: parseFloat(document.getElementById('profile-farm-size').value) || undefined
+        }, 'PUT');
+        // Update local state
+        state.user.farm_name = document.getElementById('farm-name').value.trim();
+        state.user.phone = document.getElementById('profile-phone').value.trim();
+        state.user.location = document.getElementById('profile-location').value.trim();
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        updateSidebarProfile();
+        toast('Profile saved! ✅', 'success');
+    } catch {
+        toast('Could not save profile', 'error');
+    } finally {
+        hideLoading();
     }
-    
-    // Default response
-    return "I can help with questions about soil, water management, fertilizers, pest control, weather impacts, and specific crops like wheat, rice, tomatoes, and more. What would you like to know?";
 }
 
-// ==================== PROFILE FUNCTIONS ====================
-function saveProfile() {
-    const name = document.getElementById('farm-name').value;
-    const land = document.getElementById('total-land').value;
-    const region = document.getElementById('farm-region').value;
-    
-    localStorage.setItem('farmProfile', JSON.stringify({ name, land, region }));
-    showNotification('Profile saved successfully!', 'success');
-}
-
-// ==================== CHART INITIALIZATION FUNCTIONS ====================
-function initWeatherChart() {
-    const container = document.getElementById('weather-forecast-chart');
-    if (!container) return;
-    
-    // Show placeholder chart with sample data
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const traces = [
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'High Temp (°C)',
-            x: days,
-            y: [28, 30, 29, 31, 32, 30, 28],
-            line: { color: '#ef4444', width: 3 },
-            marker: { size: 8 }
-        },
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Low Temp (°C)',
-            x: days,
-            y: [22, 23, 22, 24, 25, 24, 22],
-            line: { color: '#3b82f6', width: 3 },
-            marker: { size: 8 }
-        }
-    ];
-    
-    const layout = {
-        title: 'Enter location to get actual forecast',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Day' },
-        yaxis: { title: 'Temperature (°C)' },
-        legend: { orientation: 'h', y: -0.2 },
-        margin: { l: 50, r: 30, t: 50, b: 80 }
+function exportProfileData() {
+    const data = {
+        user: state.user,
+        farmSetup: state.farmSetup,
+        recommendations: state.recommendations,
+        exportDate: new Date().toISOString()
     };
-    
-    Plotly.newPlot(container, traces, layout, {responsive: true});
+    downloadFile(JSON.stringify(data, null, 2), 'agrismart_data.json', 'application/json');
+    toast('Data exported as JSON', 'success');
 }
 
-function initMarketCharts() {
-    const container = document.getElementById('market-price-chart');
-    if (!container) return;
-    
-    // Show placeholder with trend data
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const traces = [
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Rice (₹/quintal)',
-            x: months,
-            y: [2100, 2150, 2200, 2180, 2250, 2300],
-            line: { color: '#22c55e', width: 3 }
-        },
-        {
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Wheat (₹/quintal)',
-            x: months,
-            y: [1950, 1980, 2020, 2050, 2030, 2080],
-            line: { color: '#f59e0b', width: 3 }
-        }
-    ];
-    
-    const layout = {
-        title: 'Select crop and generate forecast for detailed analysis',
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#e5e7eb' },
-        xaxis: { title: 'Month' },
-        yaxis: { title: 'Price (₹/quintal)' },
-        legend: { orientation: 'h', y: -0.2 },
-        margin: { l: 60, r: 30, t: 50, b: 80 }
-    };
-    
-    Plotly.newPlot(container, traces, layout, {responsive: true});
+// ═══════════════════════════════════════
+//  LANGUAGE
+// ═══════════════════════════════════════
+
+function toggleLangMenu() {
+    document.getElementById('lang-menu').classList.toggle('open');
 }
 
-// Export all new functions
-window.refreshAnalytics = refreshAnalytics;
-window.initWeatherChart = initWeatherChart;
-window.initMarketCharts = initMarketCharts;
-window.getWeatherForecast = getWeatherForecast;
-window.generateMarketForecast = generateMarketForecast;
-window.logSustainability = logSustainability;
-window.calculateFertilizer = calculateFertilizer;
-window.generateRotationPlan = generateRotationPlan;
-window.predictPests = predictPests;
-window.sendChatMessage = sendChatMessage;
-window.handleChatKeypress = handleChatKeypress;
-window.saveProfile = saveProfile;
+function changeLanguage(lang) {
+    state.language = lang;
+    localStorage.setItem('agri_lang', lang);
+    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    document.getElementById('lang-label').textContent = labels[lang] || lang.toUpperCase();
+    document.getElementById('lang-menu').classList.remove('open');
+    if (document.getElementById('settings-language')) {
+        document.getElementById('settings-language').value = lang;
+    }
+    // Apply translations to entire UI
+    applyTranslations(lang);
+    const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
+    toast(`${langNames[lang] || lang.toUpperCase()} ✓`, 'info');
+}
+
+// Close lang menu on outside click
+document.addEventListener('click', (e) => {
+    const langFloat = document.getElementById('lang-float');
+    if (langFloat && !langFloat.contains(e.target)) {
+        document.getElementById('lang-menu').classList.remove('open');
+    }
+});
+
+// ═══════════════════════════════════════
+//  VOICE
+// ═══════════════════════════════════════
+
+function toggleVoiceInterface() {
+    // Delegate to voice-interface.js if available
+    if (typeof VoiceInterface !== 'undefined' && VoiceInterface.toggle) {
+        VoiceInterface.toggle();
+    } else if (typeof toggleVoice === 'function') {
+        toggleVoice();
+    } else {
+        toast('Voice interface loading...', 'info');
+    }
+}
+
+// ═══════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════
+
+async function fetchAPI(endpoint, body, method = 'POST') {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(`${API}${endpoint}`, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    return data;
+}
+
+function showLoading(msg) {
+    const el = document.getElementById('loading-overlay');
+    document.getElementById('loading-message').textContent = msg || 'Processing...';
+    el.style.display = '';
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function toast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+    const div = document.createElement('div');
+    div.className = `toast ${type}`;
+    div.innerHTML = `<i class="fas ${icons[type] || icons.info} toast-icon"></i><span>${message}</span>`;
+    container.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; div.style.transform = 'translateX(80px)'; setTimeout(() => div.remove(), 300); }, 4000);
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ─── Service Worker Registration ───
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}

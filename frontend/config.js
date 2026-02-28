@@ -18,9 +18,9 @@ const AppConfig = {
             return 'http://127.0.0.1:8001';
         }
         
-        // For deployed web version - use the same API
-        console.log('🌐 Web deployment detected');
-        return 'https://agrismart-api-m8nz.onrender.com';
+        // For deployed web version — served from same origin (Render)
+        console.log('🌐 Web deployment detected — using same origin');
+        return window.location.origin;
     },
     
     // Check if running as mobile app
@@ -74,3 +74,4 @@ console.log('🚀 API Base URL:', window.API_BASE);
 
 // Export for use
 window.AppConfig = AppConfig;
+// Removed: Migrated to farm-growth-hub

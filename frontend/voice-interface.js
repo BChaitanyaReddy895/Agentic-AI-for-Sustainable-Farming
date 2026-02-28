@@ -1677,3 +1677,4 @@ window.OFFLINE_CROP_DATA = OFFLINE_CROP_DATA;
 document.addEventListener('DOMContentLoaded', () => {
     window.voiceInterface = initVoiceInterface();
 });
+// Removed: Migrated to farm-growth-hub

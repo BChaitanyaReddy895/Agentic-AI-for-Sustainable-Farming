@@ -13,38 +13,50 @@ from models.weather_Analyst import WeatherAnalyst
 from models.sustainability_Expert import SustainabilityExpert
 import re  # For parsing market prices from the message
 
-# Google Gemini integration for versatile Q&A
+# Groq LLM integration for versatile Q&A (Llama 3.3 70B)
 import requests
 
-GEMINI_API_KEY = "AIzaSyAc6h2kfVtvwcVJchGp-saN2sgw2tJVDJc"
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 def get_gemini_response(prompt):
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "contents": [{"parts": [{"text": prompt}]}]
+    """Call Groq (Llama 3.3 70B) for general Q&A.
+
+    Function name kept for backward compatibility.
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
     }
-    params = {"key": GEMINI_API_KEY}
+    data = {
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are an expert agricultural assistant. Give clear, actionable advice for sustainable farming."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.5,
+        "max_tokens": 2048,
+    }
     try:
-        response = requests.post(GEMINI_API_URL, headers=headers, params=params, json=data, timeout=15)
+        response = requests.post(GROQ_API_URL, headers=headers, json=data, timeout=20)
         response.raise_for_status()
         result = response.json()
-        # Debug: Log the full Gemini API response
-        print("[Gemini API raw response]", result)
-        # Extract the text from the Gemini response
-        if "candidates" in result and result["candidates"]:
-            return result["candidates"][0]["content"]["parts"][0]["text"]
+        print("[Groq API] Response received successfully")
+        choices = result.get("choices", [])
+        if choices:
+            return choices[0]["message"]["content"]
         else:
-            print("[Gemini API error] No candidates in response.")
-            return "Sorry, I couldn't find an answer to your question right now. (No candidates from Gemini)"
+            print("[Groq API error] No choices in response.")
+            return "Sorry, I couldn't find an answer to your question right now."
     except requests.exceptions.Timeout:
-        print("[Gemini API error] Request timed out.")
+        print("[Groq API error] Request timed out.")
         return "Sorry, the AI service timed out. Please try again."
     except requests.exceptions.RequestException as e:
-        print(f"[Gemini API error] RequestException: {e}")
+        print(f"[Groq API error] RequestException: {e}")
         return f"Sorry, there was a problem reaching the AI service: {e}"
     except Exception as e:
-        print(f"[Gemini API error] Unexpected: {e}")
+        print(f"[Groq API error] Unexpected: {e}")
         return f"Sorry, an unexpected error occurred: {e}"
 
 # Custom AssistantAgent class to override generate_reply

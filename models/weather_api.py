@@ -1,52 +1,39 @@
+"""
+weather_api — Open-Meteo weather helper (free, no API key)
+=========================================================
+"""
 import requests
 
-API_KEY = "8acd7401e3d1478a87596f7e00e76226"
-BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
-def get_current_weather(city_name):
+
+def _geocode(city_name: str):
+    """Resolve city name → (lat, lon) via Open-Meteo geocoding."""
+    resp = requests.get(GEOCODE_URL, params={
+        "name": city_name, "count": 1, "language": "en", "format": "json",
+    }, timeout=8)
+    resp.raise_for_status()
+    results = resp.json().get("results", [])
+    if not results:
+        raise Exception(f"City '{city_name}' not found")
+    return results[0]["latitude"], results[0]["longitude"]
+
+
+def get_current_weather(city_name: str) -> dict:
     """
-    Fetch current weather data for a given city using OpenWeatherMap API.
-    Returns a dictionary with temperature (Celsius) and rainfall (mm, if available).
+    Fetch current weather data for a given city using Open-Meteo API.
+    Returns a dictionary with temperature (°C) and rainfall (mm).
     """
-    params = {
-        'q': city_name,
-        'appid': API_KEY,
-        'units': 'metric'
-    }
-    response = requests.get(BASE_URL, params=params)
-    data = response.json()
-    if response.status_code != 200:
-        raise Exception(f"Weather API error: {data.get('message', 'Unknown error')}")
-    temp = data['main']['temp']
-    # Rainfall may not always be present
-    rain = data.get('rain', {}).get('1h', 0.0)
+    lat, lon = _geocode(city_name)
+    resp = requests.get(FORECAST_URL, params={
+        "latitude": lat, "longitude": lon,
+        "current": "temperature_2m,precipitation",
+        "timezone": "auto",
+    }, timeout=10)
+    resp.raise_for_status()
+    cur = resp.json().get("current", {})
     return {
-        'temperature': temp,
-        'rainfall': rain
-    } 
-import requests
-
-API_KEY = "8acd7401e3d1478a87596f7e00e76226"
-BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-
-def get_current_weather(city_name):
-    """
-    Fetch current weather data for a given city using OpenWeatherMap API.
-    Returns a dictionary with temperature (Celsius) and rainfall (mm, if available).
-    """
-    params = {
-        'q': city_name,
-        'appid': API_KEY,
-        'units': 'metric'
+        "temperature": cur.get("temperature_2m", 0),
+        "rainfall": cur.get("precipitation", 0),
     }
-    response = requests.get(BASE_URL, params=params)
-    data = response.json()
-    if response.status_code != 200:
-        raise Exception(f"Weather API error: {data.get('message', 'Unknown error')}")
-    temp = data['main']['temp']
-    # Rainfall may not always be present
-    rain = data.get('rain', {}).get('1h', 0.0)
-    return {
-        'temperature': temp,
-        'rainfall': rain
-    } 

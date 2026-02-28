@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import json
 import base64
@@ -189,8 +190,8 @@ DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'database/sust
 if not os.path.exists(os.path.dirname(DB_PATH)):
     DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database', 'sustainable_farming.db'))
 
-# OpenWeatherMap API Key
-OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', 'e6f39f1d5c2c4ecea6d180422252609')
+# Open-Meteo API — free, no API key required
+OPEN_METEO_FORECAST = "https://api.open-meteo.com/v1/forecast"
 
 # Models
 class UserSignup(BaseModel):
@@ -528,54 +529,75 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
             fertilizer=req.nitrogen,
             pesticide=estimated_pesticide,
             crop_yield=estimated_yield,
+            land_size=req.land_size,
             city_name=None # We rely on user input coordinates/data in this request object
         )
         
         # Map CentralCoordinator result to API response structure
+        # Now using REAL AI-generated insights from each agent (not hardcoded)
         
-        # 1. Farmer Advisor
+        # 1. Farmer Advisor — uses actual AI reasoning and confidence
         response["agents"]["farmer_advisor"] = {
             "name": "🚜 Farmer Advisor",
             "recommended_crop": result['Recommended Crop'],
-            "confidence": 85.0, # The models don't return confidence explicitly, assuming high
-            "advice": f"Based on your farm conditions (pH {req.ph}, {req.soil_type} soil), {result['Recommended Crop']} is the optimal choice.",
+            "confidence": result.get('Farmer Confidence', 85.0),
+            "advice": result.get('Farmer Advice', f"{result['Recommended Crop']} recommended for your conditions."),
+            "reasoning": result.get('Farmer Reasoning', ''),
+            "alternatives": result.get('Alternatives', []),
             "original_prediction": result['Recommended Crop'],
-            "model_used": "CentralCoordinator/FarmerAdvisor"
+            "model_used": "Groq Llama-3.3-70B Agent"
         }
         
-        # 2. Market Researcher
+        # 2. Market Researcher — uses AI-generated market analysis
         response["agents"]["market_researcher"] = {
             "name": "💰 Market Researcher",
             "market_score": result['Market Score'],
-            "price_trend": "Rising" if result['Market Score'] > 5 else "Stable", # Simplified inference
-            "advice": f"Market analysis gives a score of {result['Market Score']}/10 for {result['Recommended Crop']}."
+            "price_trend": result.get('Price Trend', 'Stable'),
+            "advice": result.get('Market Insights', f"Market score: {result['Market Score']}/10 for {result['Recommended Crop']}."),
+            "reasoning": result.get('Market Reasoning', '')
         }
         
-        # 3. Weather Analyst
+        # 3. Weather Analyst — uses AI-generated weather analysis
         response["agents"]["weather_analyst"] = {
             "name": "🌤️ Weather Analyst",
             "weather_score": result['Weather Suitability Score'],
             "risk_level": "Low" if result['Weather Suitability Score'] > 7 else "Medium" if result['Weather Suitability Score'] > 4 else "High",
-            "forecast": f"Predicted Temp: {result['Predicted Temperature']}°C, Rainfall: {result['Predicted Rainfall']}mm",
-            "advice": f"Weather suitability is {result['Weather Suitability Score']}/10."
+            "forecast": result.get('Weather Forecast', f"Temp: {result['Predicted Temperature']}°C, Rainfall: {result['Predicted Rainfall']}mm"),
+            "advice": result.get('Weather Advice', f"Weather suitability: {result['Weather Suitability Score']}/10."),
+            "reasoning": result.get('Weather Reasoning', '')
         }
         
-        # 4. Sustainability Expert
+        # 4. Sustainability Expert — uses AI-generated sustainability analysis
         response["agents"]["sustainability_expert"] = {
             "name": "🌱 Sustainability Expert",
             "sustainability_score": result['Sustainability Score'],
-            "environmental_impact": "Low" if result['Sustainability Score'] > 7 else "Medium",
-            "recommendations": "Follow standard crop rotation.",
-            "advice": f"Sustainability Score: {result['Sustainability Score']}/10. Carbon: {result['Carbon Footprint Score']}, Water: {result['Water Score']}."
+            "environmental_impact": "Low" if result['Sustainability Score'] > 7 else "Medium" if result['Sustainability Score'] > 4 else "High",
+            "recommendations": result.get('Sustainability Recommendations', 'Follow sustainable practices.'),
+            "advice": result.get('Sustainability Reasoning', f"Sustainability: {result['Sustainability Score']}/10.")
         }
         
-        # Central Coordinator Final
+        # Central Coordinator — AI-synthesised recommendation
+        pest_advice = result.get('Pest/Disease Advice')
+        pest_items = []
+        if isinstance(pest_advice, dict):
+             pest_items = list(pest_advice.values())
+        elif isinstance(pest_advice, str):
+             pest_items = [pest_advice]
+        elif isinstance(pest_advice, list):
+             pest_items = pest_advice
+        
         response["central_coordinator"] = {
             "final_crop": result['Recommended Crop'],
             "overall_score": result['Final Score'],
-            "confidence_level": "High",
-            "reasoning": f"Aggregated analysis yields a final score of {result['Final Score']}/10.",
-            "action_items": result.get('Warnings', []) + list(result.get('Pest/Disease Advice', {}).values())
+            "confidence_level": result.get('AI Confidence', 'Medium'),
+            "reasoning": result.get('AI Synthesis', f"Final score: {result['Final Score']}/10."),
+            "action_items": result.get('Warnings', []) + pest_items,
+            "action_plan": result.get('AI Action Plan', ''),
+            "key_factors": result.get('AI Key Factors', []),
+            "risk_summary": result.get('AI Risk Summary', ''),
+            "pest_ipm_plan": result.get('Pest IPM Plan', ''),
+            "conflicts_resolved": result.get('AI Conflicts Resolved', 'None'),
+            "agent_scores": result.get('Agent Scores', {}),
         }
         
         # Chart Data
@@ -594,8 +616,13 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
 
     except Exception as e:
         print(f"Error in multi_agent_recommendation: {e}")
-        # Fallback to simple rule-based if models fail
+        response["success"] = False
+        response["error"] = str(e)
+    
+    return response
 
+    """
+    DELETE_ME:
             market_result = market_researcher.forecast_market_trends(
                 crop=response["agents"]["farmer_advisor"]["recommended_crop"],
                 area=req.land_size,
@@ -740,35 +767,12 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
             ]
         }]
         
-        # Save recommendation to database
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO recommendations 
-                (username, crop, score, rationale, market_score, weather_score, 
-                 sustainability_score, carbon_score, water_score, erosion_score, timestamp, recommendation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                req.username,
-                recommended_crop,
-                overall_score,
-                response["central_coordinator"]["reasoning"],
-                market_score,
-                weather_score,
-                sustainability_score,
-                sustainability_score * 0.9,  # Carbon score approximation
-                weather_score * 0.85,  # Water score approximation
-                sustainability_score * 0.8,  # Erosion score approximation
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                json.dumps(response)
-            ))
-            conn.commit()
+        # Database save removed
+
         
     except Exception as e:
-        response["success"] = False
-        response["error"] = str(e)
-    
-    return response
+        pass
+    """ # End of DELETED_ZONE
 
 @app.post("/recommendation")
 def get_recommendation(req: RecommendationRequest):
@@ -816,125 +820,145 @@ def optimize_fertilizer(req: FertilizerRequest):
     result = optimizer.calculate_fertilizer(req.land_size, req.soil_type, req.crop_type)
     return result
 
-# Weather API endpoint - REAL weather data
+# WMO weather code descriptions
+def _wmo_desc(code: int) -> str:
+    return {
+        0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast",
+        45: "foggy", 48: "depositing rime fog",
+        51: "light drizzle", 53: "moderate drizzle", 55: "dense drizzle",
+        61: "slight rain", 63: "moderate rain", 65: "heavy rain",
+        71: "slight snow", 73: "moderate snow", 75: "heavy snow",
+        80: "slight rain showers", 81: "moderate rain showers", 82: "violent rain showers",
+        95: "thunderstorm", 96: "thunderstorm with slight hail", 99: "thunderstorm with heavy hail",
+    }.get(code, f"weather code {code}")
+
+
+# Weather API endpoint - REAL weather data via Open-Meteo (free, no key)
 @app.post("/weather")
 def get_weather(req: WeatherRequest):
-    """Get real weather data from OpenWeatherMap API"""
+    """Get real weather data from Open-Meteo API (free, no API key needed)"""
     try:
+        # Single call gets both current + 7-day forecast
+        params = {
+            "latitude": req.lat,
+            "longitude": req.lon,
+            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,surface_pressure,cloud_cover",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,relative_humidity_2m_mean",
+            "timezone": "auto",
+            "forecast_days": 7,
+        }
+        resp = requests.get(OPEN_METEO_FORECAST, params=params, timeout=12)
+        resp.raise_for_status()
+        data = resp.json()
+
+        cur = data.get("current", {})
+        daily = data.get("daily", {})
+
         # Current weather
-        current_url = f"https://api.openweathermap.org/data/2.5/weather?lat={req.lat}&lon={req.lon}&appid={OPENWEATHER_API_KEY}&units=metric"
-        current_response = requests.get(current_url, timeout=10)
-        
-        # 5-day forecast
-        forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={req.lat}&lon={req.lon}&appid={OPENWEATHER_API_KEY}&units=metric"
-        forecast_response = requests.get(forecast_url, timeout=10)
-        
-        if current_response.status_code == 200 and forecast_response.status_code == 200:
-            current_data = current_response.json()
-            forecast_data = forecast_response.json()
-            
-            # Process current weather
-            current_weather = {
-                "temperature": current_data["main"]["temp"],
-                "feels_like": current_data["main"]["feels_like"],
-                "humidity": current_data["main"]["humidity"],
-                "pressure": current_data["main"]["pressure"],
-                "description": current_data["weather"][0]["description"],
-                "icon": current_data["weather"][0]["icon"],
-                "wind_speed": current_data["wind"]["speed"],
-                "clouds": current_data["clouds"]["all"],
-                "city": current_data.get("name", "Unknown")
-            }
-            
-            # Process forecast
-            forecast_list = []
-            for item in forecast_data["list"][:8]:  # Next 24 hours (3-hour intervals)
-                forecast_list.append({
-                    "datetime": item["dt_txt"],
-                    "temperature": item["main"]["temp"],
-                    "humidity": item["main"]["humidity"],
-                    "description": item["weather"][0]["description"],
-                    "rain": item.get("rain", {}).get("3h", 0)
-                })
-            
-            # Calculate metrics
-            temps = [f["temperature"] for f in forecast_list]
-            humidities = [f["humidity"] for f in forecast_list]
-            rainfall = sum([f["rain"] for f in forecast_list])
-            
-            metrics = {
-                "avg_temperature": round(sum(temps) / len(temps), 1),
-                "max_temperature": round(max(temps), 1),
-                "min_temperature": round(min(temps), 1),
-                "avg_humidity": round(sum(humidities) / len(humidities), 1),
-                "total_rainfall": round(rainfall, 1)
-            }
-            
-            # Agricultural analysis
-            risk_level = "low"
-            recommendations = []
-            
-            if metrics["avg_temperature"] > 35:
-                risk_level = "high"
-                recommendations.append("High temperature alert - increase irrigation frequency")
-            elif metrics["avg_temperature"] > 30:
-                risk_level = "medium"
-                recommendations.append("Warm conditions - monitor soil moisture")
-            
-            if metrics["total_rainfall"] > 50:
-                recommendations.append("Heavy rainfall expected - ensure proper drainage")
-            elif metrics["total_rainfall"] < 5:
-                recommendations.append("Low rainfall - plan for irrigation")
-            
-            if metrics["avg_humidity"] > 80:
-                recommendations.append("High humidity - watch for fungal diseases")
-                risk_level = "medium" if risk_level == "low" else risk_level
-            
-            # Crop-specific recommendations
-            if req.crop_type:
-                if req.crop_type.lower() in ["rice", "paddy"]:
-                    if metrics["total_rainfall"] > 30:
-                        recommendations.append(f"Good conditions for {req.crop_type}")
-                elif req.crop_type.lower() in ["wheat", "corn"]:
-                    if metrics["avg_temperature"] < 25:
-                        recommendations.append(f"Favorable temperature for {req.crop_type}")
-            
-            return {
-                "current_weather": current_weather,
-                "forecast": forecast_list,
-                "metrics": metrics,
-                "agricultural_conditions": {
-                    "overall_risk": risk_level,
-                    "crop_suitability": "good" if risk_level == "low" else "moderate" if risk_level == "medium" else "poor"
-                },
-                "recommendations": recommendations,
-                "analysis": f"Current conditions: {current_weather['temperature']}°C with {current_weather['description']}. "
-                           f"Expected {metrics['total_rainfall']}mm rainfall over next 24 hours. "
-                           f"Risk level: {risk_level.upper()}."
-            }
-        else:
-            raise HTTPException(status_code=502, detail="Weather API unavailable")
-            
+        current_weather = {
+            "temperature": cur.get("temperature_2m"),
+            "feels_like": cur.get("apparent_temperature"),
+            "humidity": cur.get("relative_humidity_2m"),
+            "pressure": cur.get("surface_pressure"),
+            "description": _wmo_desc(cur.get("weather_code", 0)),
+            "icon": "",  # Open-Meteo does not provide icon codes
+            "wind_speed": cur.get("wind_speed_10m"),
+            "clouds": cur.get("cloud_cover", 0),
+            "city": "Location"
+        }
+
+        # 7-day daily forecast
+        forecast_list = []
+        dates = daily.get("time", [])
+        for i, dt in enumerate(dates):
+            t_max = daily["temperature_2m_max"][i]
+            t_min = daily["temperature_2m_min"][i]
+            forecast_list.append({
+                "datetime": dt,
+                "temperature": round((t_max + t_min) / 2, 1),
+                "temp_max": t_max,
+                "temp_min": t_min,
+                "humidity": daily.get("relative_humidity_2m_mean", [60]*7)[i],
+                "description": _wmo_desc(daily["weather_code"][i]),
+                "rain": daily["precipitation_sum"][i],
+            })
+
+        # Metrics
+        temps = [f["temperature"] for f in forecast_list]
+        humidities = [f["humidity"] for f in forecast_list]
+        rainfall = sum(f["rain"] for f in forecast_list)
+
+        metrics = {
+            "avg_temperature": round(sum(temps) / max(len(temps), 1), 1),
+            "max_temperature": round(max(temps), 1) if temps else 0,
+            "min_temperature": round(min(temps), 1) if temps else 0,
+            "avg_humidity": round(sum(humidities) / max(len(humidities), 1), 1),
+            "total_rainfall": round(rainfall, 1),
+        }
+
+        # Agricultural analysis
+        risk_level = "low"
+        recommendations = []
+
+        if metrics["avg_temperature"] > 35:
+            risk_level = "high"
+            recommendations.append("High temperature alert - increase irrigation frequency")
+        elif metrics["avg_temperature"] > 30:
+            risk_level = "medium"
+            recommendations.append("Warm conditions - monitor soil moisture")
+
+        if metrics["total_rainfall"] > 50:
+            recommendations.append("Heavy rainfall expected - ensure proper drainage")
+        elif metrics["total_rainfall"] < 5:
+            recommendations.append("Low rainfall - plan for irrigation")
+
+        if metrics["avg_humidity"] > 80:
+            recommendations.append("High humidity - watch for fungal diseases")
+            risk_level = "medium" if risk_level == "low" else risk_level
+
+        # Crop-specific
+        if req.crop_type:
+            if req.crop_type.lower() in ["rice", "paddy"]:
+                if metrics["total_rainfall"] > 30:
+                    recommendations.append(f"Good conditions for {req.crop_type}")
+            elif req.crop_type.lower() in ["wheat", "corn"]:
+                if metrics["avg_temperature"] < 25:
+                    recommendations.append(f"Favorable temperature for {req.crop_type}")
+
+        return {
+            "current_weather": current_weather,
+            "forecast": forecast_list,
+            "metrics": metrics,
+            "agricultural_conditions": {
+                "overall_risk": risk_level,
+                "crop_suitability": "good" if risk_level == "low" else "moderate" if risk_level == "medium" else "poor",
+            },
+            "recommendations": recommendations,
+            "analysis": f"Current conditions: {current_weather['temperature']}°C with {current_weather['description']}. "
+                       f"Expected {metrics['total_rainfall']}mm rainfall over the next 7 days. "
+                       f"Risk level: {risk_level.upper()}.",
+        }
+
     except requests.Timeout:
         raise HTTPException(status_code=504, detail="Weather API timeout")
     except Exception as e:
-        # Fallback with calculated data
+        # Fallback with estimated data
         return {
             "current_weather": {
                 "temperature": 28.0,
                 "humidity": 65,
                 "description": "partly cloudy",
-                "wind_speed": 3.5
+                "wind_speed": 3.5,
             },
             "forecast": [],
             "metrics": {
                 "avg_temperature": 27.5,
                 "total_rainfall": 15.0,
-                "avg_humidity": 62.0
+                "avg_humidity": 62.0,
             },
             "agricultural_conditions": {"overall_risk": "medium"},
             "recommendations": ["Weather API temporarily unavailable - using estimated data"],
-            "analysis": "Using estimated weather conditions. Please check again later for live data."
+            "analysis": "Using estimated weather conditions. Please check again later for live data.",
         }
 
 # Pest/Disease Prediction endpoint
@@ -1586,6 +1610,11 @@ def update_user_profile(profile: UserProfileUpdate):
 
 @app.get("/")
 def root():
+    """Serve frontend index.html if it exists, else API info"""
+    frontend_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+    index_path = os.path.join(frontend_dir, 'index.html')
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
     return {
         "message": "Sustainable Farming AI API v2.0",
         "endpoints": {
@@ -1601,3 +1630,8 @@ def root():
             "user": ["/user/profile/{username}"]
         }
     }
+
+# Mount frontend static files (MUST be after all API routes)
+_frontend_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+if os.path.isdir(_frontend_dir):
+    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")

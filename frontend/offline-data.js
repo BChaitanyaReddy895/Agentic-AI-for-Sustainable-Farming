@@ -478,3 +478,4 @@ window.offlineDB = null;
 document.addEventListener('DOMContentLoaded', () => {
     window.offlineDB = new OfflineDataManager();
 });
+// Removed: Migrated to farm-growth-hub

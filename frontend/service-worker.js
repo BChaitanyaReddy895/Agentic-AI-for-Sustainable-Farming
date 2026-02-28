@@ -291,3 +291,4 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('[ServiceWorker] Script loaded v3.0');
+// Removed: Migrated to farm-growth-hub

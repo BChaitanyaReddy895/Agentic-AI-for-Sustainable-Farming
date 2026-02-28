@@ -300,4 +300,48 @@
         justify-content: space-between;
         width: 100%;
     }
+
+    /* --- Visual Score Bars (recommendation) --- */
+    .score-bar-row {
+        flex-wrap: nowrap !important;
+    }
+    .score-bar-row span:nth-child(2) {
+        width: 70px !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* --- Agent Discussion Panel --- */
+    .agent-discussion > div {
+        flex-direction: column !important;
+    }
+    .agent-discussion > div > div:first-child {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1rem !important;
+    }
+
+    /* --- Recommendation Charts Grid --- */
+    .rec-charts-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* --- Rec Hero --- */
+    .rec-hero {
+        padding: 1rem !important;
+    }
+    .rec-hero > div {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+
+    /* --- Agent Results Grid --- */
+    .agent-results-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* --- Info Grid (key factors / warnings) --- */
+    .rec-info-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
+/* Removed: Migrated to farm-growth-hub */
