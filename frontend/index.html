@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#16a34a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="AgriSmart AI — Smart Sustainable Farming Assistant">
@@ -1118,8 +1119,63 @@
     </div>
 </div>
 
-<!-- ═══════════════ VOICE FAB ═══════════════ -->
-<button class="voice-fab" id="voice-btn" title="Voice Assistant" onclick="toggleVoiceInterface()"><i class="fas fa-microphone"></i></button>
+<!-- ═══════════════ VOICE ASSISTANT ═══════════════ -->
+<button class="voice-fab" id="voice-btn" title="Voice Assistant" onclick="toggleVoicePanel()"><i class="fas fa-microphone" id="voice-btn-icon"></i></button>
+
+<!-- Voice Assistant Panel -->
+<div class="voice-panel" id="voice-panel" style="display:none">
+    <div class="voice-panel-backdrop" onclick="closeVoicePanel()"></div>
+    <div class="voice-panel-card">
+        <!-- Header -->
+        <div class="vp-header">
+            <div class="vp-title"><i class="fas fa-robot"></i> <span data-i18n="voice.title">Voice Assistant</span></div>
+            <button class="vp-close" onclick="closeVoicePanel()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- State Indicator -->
+        <div class="vp-state" id="vp-state">
+            <div class="vp-state-icon" id="vp-state-icon">
+                <i class="fas fa-microphone"></i>
+            </div>
+            <div class="vp-state-text" id="vp-state-text">Tap the mic to speak</div>
+            <!-- Sound wave animation -->
+            <div class="vp-wave" id="vp-wave" style="display:none">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- Big Mic Button -->
+        <button class="vp-mic-btn" id="vp-mic-btn" onclick="toggleVoiceListening()">
+            <i class="fas fa-microphone" id="vp-mic-icon"></i>
+        </button>
+
+        <!-- Transcript -->
+        <div class="vp-transcript" id="vp-transcript" style="display:none">
+            <div class="vp-transcript-label">You said:</div>
+            <div class="vp-transcript-text" id="vp-transcript-text"></div>
+        </div>
+
+        <!-- Response -->
+        <div class="vp-response" id="vp-response" style="display:none">
+            <div class="vp-response-label"><i class="fas fa-robot"></i> AI Response:</div>
+            <div class="vp-response-text" id="vp-response-text"></div>
+            <button class="vp-replay-btn" onclick="replayVoiceResponse()"><i class="fas fa-volume-up"></i> Listen Again</button>
+        </div>
+
+        <!-- Quick Commands -->
+        <div class="vp-commands">
+            <div class="vp-commands-label">Try saying:</div>
+            <div class="vp-chips">
+                <button class="vp-chip" onclick="voiceQuickCommand('weather')">🌤️ Weather</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('recommend crop')">🌾 Crop Advice</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('pest problem')">🐛 Pest Help</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('fertilizer')">💊 Fertilizer</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('market price')">📈 Prices</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('help')">❓ Help</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ═══════════════ WALKTHROUGH OVERLAY ═══════════════ -->
 <div class="walkthrough-overlay" id="walkthrough-overlay" style="display:none">

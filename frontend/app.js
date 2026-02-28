@@ -2452,18 +2452,229 @@ document.addEventListener('click', (e) => {
 });
 
 // ═══════════════════════════════════════
-//  VOICE
+//  VOICE ASSISTANT PANEL
 // ═══════════════════════════════════════
 
-function toggleVoiceInterface() {
-    // Delegate to voice-interface.js if available
-    if (typeof VoiceInterface !== 'undefined' && VoiceInterface.toggle) {
-        VoiceInterface.toggle();
-    } else if (typeof toggleVoice === 'function') {
-        toggleVoice();
+let voicePanelOpen = false;
+let lastVoiceResponse = '';
+
+function toggleVoicePanel() {
+    const panel = document.getElementById('voice-panel');
+    if (!panel) return;
+    if (voicePanelOpen) {
+        closeVoicePanel();
     } else {
-        toast('Voice interface loading...', 'info');
+        openVoicePanel();
     }
+}
+
+function openVoicePanel() {
+    const panel = document.getElementById('voice-panel');
+    if (!panel) return;
+    panel.style.display = 'flex';
+    voicePanelOpen = true;
+    document.getElementById('voice-btn').classList.add('panel-open');
+    // Reset state
+    setVoiceState('idle');
+    document.getElementById('vp-transcript').style.display = 'none';
+    document.getElementById('vp-response').style.display = 'none';
+    // Update command labels for current language
+    updateVoiceCommandLabels();
+}
+
+function closeVoicePanel() {
+    const panel = document.getElementById('voice-panel');
+    if (!panel) return;
+    panel.style.display = 'none';
+    voicePanelOpen = false;
+    document.getElementById('voice-btn').classList.remove('panel-open');
+    // Stop any ongoing listening/speaking
+    if (window.voiceInterface) {
+        window.voiceInterface.stopListening();
+        window.voiceInterface.stopSpeaking();
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function toggleVoiceListening() {
+    if (!window.voiceInterface) {
+        toast('Voice not supported in this browser', 'error');
+        return;
+    }
+    if (window.voiceInterface.isListening) {
+        window.voiceInterface.stopListening();
+        setVoiceState('idle');
+    } else {
+        // Sync language from app's lang selector
+        const appLang = localStorage.getItem('agri_lang') || 'en';
+        window.voiceInterface.setLanguage(appLang);
+        // Clear previous results
+        document.getElementById('vp-transcript').style.display = 'none';
+        document.getElementById('vp-response').style.display = 'none';
+        // Start listening
+        const started = window.voiceInterface.startListening();
+        if (started) {
+            setVoiceState('listening');
+        } else {
+            setVoiceState('error');
+        }
+    }
+}
+
+function setVoiceState(state) {
+    const stateIcon = document.getElementById('vp-state-icon');
+    const stateText = document.getElementById('vp-state-text');
+    const wave = document.getElementById('vp-wave');
+    const micBtn = document.getElementById('vp-mic-btn');
+    const micIcon = document.getElementById('vp-mic-icon');
+    const fabBtn = document.getElementById('voice-btn');
+    const fabIcon = document.getElementById('voice-btn-icon');
+
+    // Remove all state classes
+    micBtn.classList.remove('listening', 'processing', 'speaking', 'error');
+    fabBtn.classList.remove('listening', 'speaking', 'error');
+    wave.style.display = 'none';
+
+    const lang = localStorage.getItem('agri_lang') || 'en';
+    const texts = {
+       idle:       { en: 'Tap the mic to speak', hi: 'माइक दबाएं और बोलें', kn: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ', te: 'మైక్ నొక్కి మాట్లాడండి', ta: 'மைக் அழுத்தி பேசுங்கள்' },
+       listening:  { en: '🎤 Listening... speak now', hi: '🎤 सुन रहे हैं... अभी बोलें', kn: '🎤 ಕೇಳುತ್ತಿದ್ದೇನೆ... ಈಗ ಮಾತನಾಡಿ', te: '🎤 వింటున్నాను... ఇప్పుడు మాట్లాడండి', ta: '🎤 கேட்கிறேன்... இப்போது பேசுங்கள்' },
+       processing: { en: '🧠 Thinking...', hi: '🧠 सोच रहे हैं...', kn: '🧠 ಯೋಚಿಸುತ್ತಿದ್ದೇನೆ...', te: '🧠 ఆలోచిస్తున్నాను...', ta: '🧠 சிந்திக்கிறேன்...' },
+       speaking:   { en: '🔊 Speaking...', hi: '🔊 बोल रहे हैं...', kn: '🔊 ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ...', te: '🔊 చెప్తున్నాను...', ta: '🔊 பேசுகிறேன்...' },
+       error:      { en: '❌ Could not hear. Try again.', hi: '❌ सुनाई नहीं दिया। फिर बोलें।', kn: '❌ ಕೇಳಿಸಲಿಲ್ಲ. ಮತ್ತೆ ಹೇಳಿ.', te: '❌ వినబడలేదు. మళ్ళీ చెప్పండి.', ta: '❌ கேட்கவில்லை. மீண்டும் சொல்லுங்கள்.' }
+    };
+    stateText.textContent = texts[state]?.[lang] || texts[state]?.en || '';
+
+    switch(state) {
+        case 'listening':
+            stateIcon.innerHTML = '<i class="fas fa-ear-listen" style="color:#ef4444"></i>';
+            stateIcon.className = 'vp-state-icon listening';
+            wave.style.display = 'flex';
+            micBtn.classList.add('listening');
+            micIcon.className = 'fas fa-stop';
+            fabBtn.classList.add('listening');
+            fabIcon.className = 'fas fa-stop';
+            break;
+        case 'processing':
+            stateIcon.innerHTML = '<i class="fas fa-brain" style="color:#8b5cf6"></i>';
+            stateIcon.className = 'vp-state-icon processing';
+            micBtn.classList.add('processing');
+            micIcon.className = 'fas fa-spinner fa-spin';
+            fabIcon.className = 'fas fa-spinner fa-spin';
+            break;
+        case 'speaking':
+            stateIcon.innerHTML = '<i class="fas fa-volume-up" style="color:#3b82f6"></i>';
+            stateIcon.className = 'vp-state-icon speaking';
+            micBtn.classList.add('speaking');
+            micIcon.className = 'fas fa-volume-up';
+            fabBtn.classList.add('speaking');
+            fabIcon.className = 'fas fa-volume-up';
+            break;
+        case 'error':
+            stateIcon.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444"></i>';
+            stateIcon.className = 'vp-state-icon error';
+            micBtn.classList.add('error');
+            micIcon.className = 'fas fa-microphone';
+            fabIcon.className = 'fas fa-microphone';
+            break;
+        default: // idle
+            stateIcon.innerHTML = '<i class="fas fa-microphone" style="color:#22c55e"></i>';
+            stateIcon.className = 'vp-state-icon';
+            micIcon.className = 'fas fa-microphone';
+            fabIcon.className = 'fas fa-microphone';
+    }
+}
+
+function showVoiceTranscript(text) {
+    const el = document.getElementById('vp-transcript');
+    const textEl = document.getElementById('vp-transcript-text');
+    if (el && textEl) {
+        textEl.textContent = text;
+        el.style.display = 'block';
+    }
+}
+
+function showVoiceResponse(text) {
+    const el = document.getElementById('vp-response');
+    const textEl = document.getElementById('vp-response-text');
+    if (el && textEl) {
+        lastVoiceResponse = text;
+        textEl.textContent = text;
+        el.style.display = 'block';
+    }
+}
+
+function replayVoiceResponse() {
+    if (lastVoiceResponse && window.voiceInterface) {
+        setVoiceState('speaking');
+        window.voiceInterface.speak(lastVoiceResponse);
+        // Monitor when speech ends
+        const checkEnd = setInterval(() => {
+            if (!window.speechSynthesis.speaking) {
+                clearInterval(checkEnd);
+                setVoiceState('idle');
+            }
+        }, 300);
+    }
+}
+
+async function handleVoiceQuery(text) {
+    // Show what user said
+    showVoiceTranscript(text);
+    setVoiceState('processing');
+
+    try {
+        // Call the chatbot API
+        const response = await fetch(`${API}/chatbot/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: text, username: localStorage.getItem('agri_username') || 'farmer' })
+        });
+        const data = await response.json();
+        const answer = data.response || 'Sorry, I could not get an answer.';
+
+        // Clean markdown/HTML for display
+        const cleanAnswer = answer.replace(/[#*_`]/g, '').replace(/<[^>]*>/g, '').trim();
+        showVoiceResponse(cleanAnswer);
+
+        // Speak the response
+        setVoiceState('speaking');
+        if (window.voiceInterface) {
+            // Truncate for TTS
+            const speakText = cleanAnswer.length > 500 ? cleanAnswer.substring(0, 500) + '...' : cleanAnswer;
+            window.voiceInterface.speak(speakText);
+        }
+
+        // Monitor when speech ends
+        const checkEnd = setInterval(() => {
+            if (!window.speechSynthesis.speaking) {
+                clearInterval(checkEnd);
+                setVoiceState('idle');
+            }
+        }, 300);
+
+    } catch (err) {
+        console.error('Voice query error:', err);
+        showVoiceResponse('Could not connect to server. Please try again.');
+        setVoiceState('error');
+        setTimeout(() => setVoiceState('idle'), 2000);
+    }
+}
+
+function voiceQuickCommand(command) {
+    if (!window.voiceInterface) return;
+    showVoiceTranscript(command);
+    // Let voice-interface process the command
+    window.voiceInterface.processVoiceCommandEnhanced(command, []);
+}
+
+function updateVoiceCommandLabels() {
+    // Could localize chip labels in future
+}
+
+// Legacy compatibility
+function toggleVoiceInterface() {
+    toggleVoicePanel();
 }
 
 // ═══════════════════════════════════════

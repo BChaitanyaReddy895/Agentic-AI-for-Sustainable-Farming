@@ -787,9 +787,12 @@ class VoiceInterface {
                 }
             }
 
-            // Show interim results
+            // Show interim results in panel
             if (interimTranscript) {
                 this.updateTranscript(interimTranscript, false);
+                if (typeof showVoiceTranscript === 'function') {
+                    showVoiceTranscript(interimTranscript + '...');
+                }
             }
 
             // Process final results
@@ -797,9 +800,19 @@ class VoiceInterface {
                 console.log('📝 Recognized:', finalTranscript);
                 console.log('📝 All alternatives:', allAlternatives);
                 this.updateTranscript(finalTranscript, true);
+                if (typeof showVoiceTranscript === 'function') {
+                    showVoiceTranscript(finalTranscript);
+                }
                 
                 // Try to match with all alternatives
-                this.processVoiceCommandEnhanced(finalTranscript, allAlternatives);
+                const matched = this.processVoiceCommandEnhanced(finalTranscript, allAlternatives);
+                
+                // If no command matched, send as free-form query to AI
+                if (!matched) {
+                    if (typeof handleVoiceQuery === 'function') {
+                        handleVoiceQuery(finalTranscript);
+                    }
+                }
                 
                 if (this.onResultCallback) {
                     this.onResultCallback(finalTranscript);
@@ -811,6 +824,7 @@ class VoiceInterface {
             console.error('❌ Speech recognition error:', event.error);
             this.isListening = false;
             this.updateUI('error');
+            if (typeof setVoiceState === 'function') setVoiceState('error');
             
             let errorMessage = '';
             const langCode = this.currentLanguage.split('-')[0];
@@ -845,6 +859,7 @@ class VoiceInterface {
         this.recognition.onend = () => {
             this.isListening = false;
             this.updateUI('idle');
+            // Don't reset panel to idle here - let handleVoiceQuery control state
             
             // Restart if continuous mode
             if (this.continuousMode && this.autoStart) {
@@ -1085,20 +1100,41 @@ class VoiceInterface {
         const langCode = this.currentLanguage.split('-')[0];
         const responses = this.responses[langCode] || this.responses['en'];
         
+        // Show response in voice panel
+        const showInPanel = (msg) => {
+            if (typeof showVoiceResponse === 'function') showVoiceResponse(msg);
+            if (typeof setVoiceState === 'function') setVoiceState('speaking');
+        };
+
+        // Monitor TTS end to reset state
+        const monitorSpeechEnd = () => {
+            const check = setInterval(() => {
+                if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
+                    clearInterval(check);
+                    if (typeof setVoiceState === 'function') setVoiceState('idle');
+                }
+            }, 300);
+        };
+
         switch(intent) {
             case 'weather':
+                showInPanel(responses.weatherOpening);
                 this.speak(responses.weatherOpening);
                 this.triggerWeatherCheck();
+                monitorSpeechEnd();
                 break;
             case 'recommendation':
+                showInPanel(responses.recommendOpening);
                 this.speak(responses.recommendOpening);
                 this.triggerRecommendation();
+                monitorSpeechEnd();
                 break;
             case 'pest':
+                showInPanel(responses.pestOpening);
                 this.speak(responses.pestOpening);
                 this.triggerPestPrediction();
+                monitorSpeechEnd();
                 if (crop) {
-                    // Pre-fill crop if mentioned
                     setTimeout(() => {
                         const cropSelect = document.getElementById('pest-crop-select');
                         if (cropSelect) {
@@ -1108,15 +1144,22 @@ class VoiceInterface {
                 }
                 break;
             case 'fertilizer':
+                showInPanel(responses.fertilizerOpening);
                 this.speak(responses.fertilizerOpening);
                 this.triggerFertilizerCalc();
+                monitorSpeechEnd();
                 break;
             case 'market':
+                showInPanel(responses.marketOpening);
                 this.speak(responses.marketOpening);
                 this.safeNavigate('market');
+                monitorSpeechEnd();
                 break;
             case 'irrigation':
-                this.speak(this.getIrrigationAdvice(crop, langCode));
+                const irrMsg = this.getIrrigationAdvice(crop, langCode);
+                showInPanel(irrMsg);
+                this.speak(irrMsg);
+                monitorSpeechEnd();
                 break;
             case 'soil':
                 this.triggerSoilAnalysis();
@@ -1125,7 +1168,6 @@ class VoiceInterface {
                 this.speakHelp();
                 break;
             default:
-                // Send to chatbot as fallback
                 this.sendToChatbot(originalText);
         }
     }
@@ -1144,10 +1186,11 @@ class VoiceInterface {
     }
 
     sendToChatbot(text) {
-        const chatInput = document.getElementById('chat-input');
-        if (chatInput && typeof sendChatMessage === 'function') {
-            chatInput.value = text;
-            sendChatMessage();
+        // Route to the voice panel's AI query handler
+        if (typeof handleVoiceQuery === 'function') {
+            handleVoiceQuery(text);
+        } else {
+            console.warn('handleVoiceQuery not available, cannot process:', text);
         }
     }
 
@@ -1200,9 +1243,8 @@ class VoiceInterface {
             return true;
         }
 
-        // Default: send to chatbot
-        this.sendToChatbot(text);
-        return true;
+        // Default: return false so caller can handle as free-form query
+        return false;
     }
 
     matchesAnyKeyword(text, keywords) {
@@ -1452,17 +1494,8 @@ let voiceInterface = null;
 function initVoiceInterface() {
     voiceInterface = new VoiceInterface();
     
-    // Set up voice button
-    const voiceBtn = document.getElementById('voice-btn');
-    if (voiceBtn) {
-        voiceBtn.addEventListener('click', () => {
-            if (voiceInterface.isListening) {
-                voiceInterface.stopListening();
-            } else {
-                voiceInterface.startListening();
-            }
-        });
-    }
+    // Voice button is now handled by toggleVoicePanel() in app.js
+    // No duplicate click listener needed
     
     // Set up language selector
     setupLanguageSelector();
