@@ -925,6 +925,8 @@ document.addEventListener('DOMContentLoaded', () => {
         el.classList.add('animate-on-scroll');
         scrollAnimObserver.observe(el);
     });
+    // Init draggable SOS button
+    initDraggableSOS();
 });
 
 // ═══════════════════════════════════════
@@ -2619,6 +2621,12 @@ function replayVoiceResponse() {
 }
 
 async function handleVoiceQuery(text) {
+    // If a voice conversation flow is active, route there
+    if (voiceConvo && voiceConvo.active) {
+        handleConvoResponse(text);
+        return;
+    }
+
     // Show what user said
     showVoiceTranscript(text);
     setVoiceState('processing');
@@ -2677,9 +2685,471 @@ function toggleVoiceInterface() {
     toggleVoicePanel();
 }
 
-// ═══════════════════════════════════════
-//  UTILITIES
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  VOICE CONVERSATION ENGINE
+//  Multi-step conversational flows for entire app via voice
+//  Handles: login, signup, farm setup, navigation, actions
+// ═══════════════════════════════════════════════════════════════
+
+const voiceConvo = {
+    active: false,
+    flow: null,      // current flow name
+    step: 0,         // current step index
+    data: {},        // collected data
+    listening: false
+};
+
+// All voice flows defined as step arrays
+const voiceFlows = {
+    signup: [
+        { ask: { en: 'What is your name?', hi: 'आपका नाम क्या है?', kn: 'ನಿಮ್ಮ ಹೆಸರೇನು?', te: 'మీ పేరు ఏమిటి?', ta: 'உங்கள் பெயர் என்ன?' }, field: 'username' },
+        { ask: { en: 'What is your farm name?', hi: 'आपके खेत का नाम क्या है?', kn: 'ನಿಮ್ಮ ಜಮೀನಿನ ಹೆಸರೇನು?', te: 'మీ పొలం పేరు ఏమిటి?', ta: 'உங்கள் பண்ணை பெயர் என்ன?' }, field: 'farm_name' },
+        { ask: { en: 'What is your phone number? Say skip if you don\'t want to share.', hi: 'आपका फोन नंबर क्या है? नहीं देना हो तो "छोड़ें" बोलें।', kn: 'ನಿಮ್ಮ ಫೋನ್ ನಂಬರ್ ಏನು? "ಬಿಡಿ" ಎಂದು ಹೇಳಿ.', te: 'మీ ఫోన్ నంబర్ ఏమిటి? "వదిలేయండి" అని చెప్పండి.', ta: 'உங்கள் தொலைபேசி எண் என்ன? "விடு" என்று சொல்லுங்கள்.' }, field: 'phone', optional: true },
+        { ask: { en: 'Where is your farm located? Which village or city?', hi: 'आपका खेत कहां है? कौन सा गांव या शहर?', kn: 'ನಿಮ್ಮ ಜಮೀನು ಎಲ್ಲಿದೆ? ಯಾವ ಊರು?', te: 'మీ పొలం ఎక్కడ ఉంది? ఏ ఊరు?', ta: 'உங்கள் பண்ணை எங்கே? எந்த கிராமம்?' }, field: 'location', optional: true }
+    ],
+    login: [
+        { ask: { en: 'What is your phone number to login?', hi: 'लॉगिन के लिए अपना फोन नंबर बताएं।', kn: 'ಲಾಗಿನ್ ಆಗಲು ನಿಮ್ಮ ಫೋನ್ ನಂಬರ್ ಹೇಳಿ.', te: 'లాగిన్ కోసం మీ ఫోన్ నంబర్ చెప్పండి.', ta: 'லாகின் செய்ய உங்கள் தொலைபேசி எண் சொல்லுங்கள்.' }, field: 'phone' }
+    ],
+    farmSetup: [
+        { ask: { en: 'What crop do you want to grow? For example: Rice, Wheat, Corn, Tomato, Cotton.', hi: 'आप कौन सी फसल उगाना चाहते हैं? जैसे: चावल, गेहूं, मक्का, टमाटर, कपास।', kn: 'ಯಾವ ಬೆಳೆ ಬೆಳೆಯಬೇಕು? ಉದಾ: ಭತ್ತ, ಗೋಧಿ, ಜೋಳ, ಟೊಮೆಟೊ.', te: 'ఏ పంట పండించాలనుకుంటున్నారు? ఉదా: వరి, గోధుమ, మొక్కజొన్న.', ta: 'என்ன பயிர் பயிரிட விரும்புகிறீர்கள்? உதா: அரிசி, கோதுமை.' }, field: 'crop' },
+        { ask: { en: 'What type of soil do you have? Loamy, Sandy, Clay, Black, or Red?', hi: 'आपकी मिट्टी कैसी है? दोमट, रेतीली, चिकनी, काली, या लाल?', kn: 'ನಿಮ್ಮ ಮಣ್ಣು ಯಾವ ರೀತಿ? ಮರಳು, ಜೇಡಿ, ಕಪ್ಪು, ಕೆಂಪು?', te: 'మీ మట్టి ఏ రకం? ఒండ్రు, ఇసుక, బంక, నల్ల, ఎర్ర?', ta: 'உங்கள் மண் எந்த வகை? கரிசல், மணல், களிமண்?' }, field: 'soil' },
+        { ask: { en: 'How big is your farm in acres? Say a number.', hi: 'आपका खेत कितने एकड़ का है? संख्या बताएं।', kn: 'ನಿಮ್ಮ ಜಮೀನು ಎಷ್ಟು ಎಕರೆ? ಸಂಖ್ಯೆ ಹೇಳಿ.', te: 'మీ పొలం ఎంత ఎకరాలు? సంఖ్య చెప్పండి.', ta: 'உங்கள் பண்ணை எத்தனை ஏக்கர்? எண் சொல்லுங்கள்.' }, field: 'landSize' }
+    ],
+    pestCheck: [
+        { ask: { en: 'Which crop has the problem? For example: Rice, Wheat, Tomato, Cotton.', hi: 'किस फसल में समस्या है? जैसे: चावल, गेहूं, टमाटर, कपास।', kn: 'ಯಾವ ಬೆಳೆಯಲ್ಲಿ ಸಮಸ್ಯೆ? ಉದಾ: ಭತ್ತ, ಗೋಧಿ, ಟೊಮೆಟೊ.', te: 'ఏ పంటలో సమస్య? ఉదా: వరి, గోధుమ, టమాటా.', ta: 'எந்த பயிரில் பிரச்சனை? உதா: அரிசி, தக்காளி.' }, field: 'crop' }
+    ]
+};
+
+function vcLang() { return localStorage.getItem('agri_lang') || 'en'; }
+
+function vcSpeak(msgObj, callback) {
+    const lang = vcLang();
+    const text = (typeof msgObj === 'string') ? msgObj : (msgObj[lang] || msgObj.en || msgObj);
+    showVoiceResponse(text);
+    setVoiceState('speaking');
+    if (window.voiceInterface) {
+        window.voiceInterface.speak(text);
+    }
+    // Wait for speech to finish, then call back
+    const check = setInterval(() => {
+        if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
+            clearInterval(check);
+            if (callback) setTimeout(callback, 300);
+        }
+    }, 250);
+}
+
+function vcListen() {
+    if (!window.voiceInterface) return;
+    voiceConvo.listening = true;
+    const appLang = vcLang();
+    window.voiceInterface.setLanguage(appLang);
+    setVoiceState('listening');
+    window.voiceInterface.recognition.lang = window.voiceInterface.currentLanguage;
+    try { window.voiceInterface.recognition.start(); } catch(e) {}
+}
+
+// Start a conversational flow
+function startVoiceFlow(flowName) {
+    const flow = voiceFlows[flowName];
+    if (!flow) return;
+    voiceConvo.active = true;
+    voiceConvo.flow = flowName;
+    voiceConvo.step = 0;
+    voiceConvo.data = {};
+    // Open voice panel if not open
+    if (!voicePanelOpen) openVoicePanel();
+    // Ask first question
+    askCurrentStep();
+}
+
+function askCurrentStep() {
+    const flow = voiceFlows[voiceConvo.flow];
+    if (!flow || voiceConvo.step >= flow.length) {
+        completeVoiceFlow();
+        return;
+    }
+    const step = flow[voiceConvo.step];
+    vcSpeak(step.ask, () => {
+        vcListen();
+    });
+}
+
+function handleConvoResponse(text) {
+    if (!voiceConvo.active) return false;
+    const flow = voiceFlows[voiceConvo.flow];
+    if (!flow) return false;
+    const step = flow[voiceConvo.step];
+    const lower = text.toLowerCase().trim();
+
+    // Check for skip/cancel
+    if (['skip', 'छोड़ें', 'ಬಿಡಿ', 'వదిలేయండి', 'விடு', 'next', 'अगला'].some(w => lower.includes(w))) {
+        if (step.optional) {
+            voiceConvo.data[step.field] = '';
+            voiceConvo.step++;
+            askCurrentStep();
+            return true;
+        }
+    }
+    if (['cancel', 'stop', 'रुको', 'बंद', 'ನಿಲ್ಲಿ', 'ఆపు', 'நிறுத்து'].some(w => lower.includes(w))) {
+        endVoiceConvo({ en: 'Cancelled.', hi: 'रद्द किया।', kn: 'ರದ್ದಾಗಿದೆ.', te: 'రద్దు చేయబడింది.', ta: 'ரத்து செய்யப்பட்டது.' });
+        return true;
+    }
+
+    // Process based on field type
+    let value = text.trim();
+    if (step.field === 'crop') {
+        value = matchCropFromText(lower) || value;
+    } else if (step.field === 'soil') {
+        value = matchSoilFromText(lower) || value;
+    } else if (step.field === 'landSize') {
+        const num = lower.replace(/[^\d.]/g, '');
+        value = num || '5';
+    } else if (step.field === 'phone') {
+        value = lower.replace(/[^\d+]/g, '') || value;
+    }
+
+    voiceConvo.data[step.field] = value;
+    showVoiceTranscript(text);
+
+    // Confirm what we heard
+    const lang = vcLang();
+    const confirmMsgs = {
+        en: `Got it: ${value}`,
+        hi: `समझ गया: ${value}`,
+        kn: `ಅರ್ಥವಾಯಿತು: ${value}`,
+        te: `అర్థమైంది: ${value}`,
+        ta: `புரிந்தது: ${value}`
+    };
+    vcSpeak(confirmMsgs, () => {
+        voiceConvo.step++;
+        askCurrentStep();
+    });
+    return true;
+}
+
+function matchCropFromText(text) {
+    const crops = { rice: 'Grains', wheat: 'Grains', corn: 'Grains', tomato: 'Vegetables', potato: 'Vegetables', cotton: 'Cash Crops', soybean: 'Oilseeds', sugarcane: 'Cash Crops' };
+    const cropNames = { 'चावल': 'rice', 'गेहूं': 'wheat', 'धान': 'rice', 'मक्का': 'corn', 'टमाटर': 'tomato', 'आलू': 'potato', 'कपास': 'cotton', 'ಅಕ್ಕಿ': 'rice', 'ಗೋಧಿ': 'wheat', 'ಜೋಳ': 'corn', 'ಟೊಮೆಟೊ': 'tomato', 'వరి': 'rice', 'గోధుమ': 'wheat', 'அரிசி': 'rice', 'கோதுமை': 'wheat' };
+    for (const [name, eng] of Object.entries(cropNames)) {
+        if (text.includes(name)) return eng;
+    }
+    for (const name of Object.keys(crops)) {
+        if (text.includes(name)) return name;
+    }
+    return null;
+}
+
+function matchSoilFromText(text) {
+    const soilMap = { 'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red', 'दोमट': 'Loamy', 'रेतीली': 'Sandy', 'चिकनी': 'Clay', 'काली': 'Black', 'लाल': 'Red', 'ಮರಳು': 'Sandy', 'ಕಪ್ಪು': 'Black', 'ಕೆಂಪು': 'Red' };
+    for (const [kw, soil] of Object.entries(soilMap)) {
+        if (text.includes(kw)) return soil;
+    }
+    return null;
+}
+
+function completeVoiceFlow() {
+    voiceConvo.active = false;
+    const flow = voiceConvo.flow;
+    const data = voiceConvo.data;
+
+    switch (flow) {
+        case 'signup':
+            executeVoiceSignup(data);
+            break;
+        case 'login':
+            executeVoiceLogin(data);
+            break;
+        case 'farmSetup':
+            executeVoiceFarmSetup(data);
+            break;
+        case 'pestCheck':
+            executeVoicePestCheck(data);
+            break;
+    }
+}
+
+async function executeVoiceSignup(data) {
+    vcSpeak({ en: 'Creating your account...', hi: 'आपका खाता बना रहे हैं...', kn: 'ನಿಮ್ಮ ಖಾತೆ ರಚಿಸುತ್ತಿದ್ದೇವೆ...', te: 'మీ ఖాతా తయారు చేస్తున్నాము...', ta: 'உங்கள் கணக்கை உருவாக்குகிறோம்...' });
+    try {
+        await fetchAPI('/signup', { username: data.username, farm_name: data.farm_name, profile_picture: null });
+    } catch(e) { /* may already exist, ok */ }
+    state.user = { username: data.username, farm_name: data.farm_name, phone: data.phone || '', location: data.location || '' };
+    localStorage.setItem('agri_user', JSON.stringify(state.user));
+    enterApp();
+    vcSpeak({ en: `Welcome ${data.username}! Your farm ${data.farm_name} is ready. You are now on the home page.`, hi: `स्वागत है ${data.username}! आपका खेत ${data.farm_name} तैयार है। अब आप होम पेज पर हैं।`, kn: `ಸ್ವಾಗತ ${data.username}! ನಿಮ್ಮ ಜಮೀನು ${data.farm_name} ಸಿದ್ಧ. ಈಗ ನೀವು ಹೋಮ್ ಪೇಜಿನಲ್ಲಿದ್ದೀರಿ.`, te: `స్వాగతం ${data.username}! మీ పొలం ${data.farm_name} సిద్ధం. ఇప్పుడు మీరు హోమ్ పేజీలో ఉన్నారు.`, ta: `வரவேற்கிறோம் ${data.username}! உங்கள் பண்ணை ${data.farm_name} தயார்.` }, () => setVoiceState('idle'));
+}
+
+async function executeVoiceLogin(data) {
+    vcSpeak({ en: 'Logging you in...', hi: 'लॉगिन कर रहे हैं...', kn: 'ಲಾಗಿನ್ ಆಗುತ್ತಿದೆ...', te: 'లాగిన్ అవుతున్నారు...', ta: 'லாகின் செய்கிறோம்...' });
+    try {
+        const res = await fetchAPI('/login', { username: data.phone });
+        state.user = res;
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        enterApp();
+        vcSpeak({ en: `Welcome back, ${res.username}!`, hi: `फिर से स्वागत है, ${res.username}!`, kn: `ಮರಳಿ ಸ್ವಾಗತ, ${res.username}!`, te: `మళ్ళీ స్వాగతం, ${res.username}!`, ta: `மீண்டும் வரவேற்கிறோம், ${res.username}!` }, () => setVoiceState('idle'));
+    } catch {
+        vcSpeak({ en: 'Account not found. Please sign up first. Say "sign me up" to create an account.', hi: 'खाता नहीं मिला। कृपया पहले साइन अप करें। "मुझे साइन अप करो" बोलें।', kn: 'ಖಾತೆ ಸಿಕ್ಕಿಲ್ಲ. ದಯವಿಟ್ಟು ಮೊದಲು ಸೈನ್ ಅಪ್ ಮಾಡಿ.', te: 'ఖాతా దొరకలేదు. దయచేసి ముందు సైన్ అప్ చేయండి.', ta: 'கணக்கு கிடைக்கவில்லை. இணைக்க "என்னை பதிவு செய்" என்று சொல்லுங்கள்.' }, () => setVoiceState('idle'));
+    }
+}
+
+async function executeVoiceFarmSetup(data) {
+    vcSpeak({ en: 'Saving your farm details...', hi: 'खेत की जानकारी सहेज रहे हैं...', kn: 'ಜಮೀನಿನ ವಿವರ ಉಳಿಸುತ್ತಿದ್ದೇವೆ...', te: 'పొలం వివరాలు సేవ్ చేస్తున్నాము...', ta: 'பண்ணை விவரங்கள் சேமிக்கிறோம்...' });
+    // Use GPS for lat/lon
+    let lat = 12.97, lon = 77.59;
+    try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+        lat = pos.coords.latitude; lon = pos.coords.longitude;
+    } catch {}
+
+    // Map crop name to preference category  
+    const cropMap = { rice: 'Grains', wheat: 'Grains', corn: 'Grains', tomato: 'Vegetables', potato: 'Vegetables', cotton: 'Cash Crops', soybean: 'Oilseeds' };
+    const cropPref = cropMap[data.crop?.toLowerCase()] || data.crop || 'Grains';
+
+    // Fetch weather for auto-filling
+    let temp = 28, hum = 65, rain = 100;
+    try {
+        const wRes = await fetch(`${API}/weather?lat=${lat}&lon=${lon}`);
+        const wData = await wRes.json();
+        if (wData.current) {
+            temp = Math.round(wData.current.temperature);
+            hum = Math.round(wData.current.humidity);
+            rain = Math.round(wData.current.rainfall || 100);
+        }
+    } catch {}
+
+    const landAcres = parseFloat(data.landSize) || 5;
+    state.farmSetup = {
+        land_size: Math.round(landAcres * 0.4047 * 100) / 100,
+        soil_type: data.soil || 'Loamy',
+        crop_preference: cropPref,
+        nitrogen: 50, phosphorus: 30, potassium: 40,
+        temperature: temp, humidity: hum, ph: 6.5, rainfall: rain,
+        lat, lon, locMethod: 'gps', city: ''
+    };
+    localStorage.setItem('agri_farm_setup', JSON.stringify(state.farmSetup));
+    try { await fetchAPI('/farm_details', { username: state.user?.username || 'anonymous', land_size: state.farmSetup.land_size, soil_type: state.farmSetup.soil_type, crop_preference: state.farmSetup.crop_preference }); } catch {}
+    
+    navigate('farm-setup');
+    vcSpeak({ en: `Farm saved! ${data.crop || 'Crops'} on ${data.landSize || 5} acres of ${data.soil || 'Loamy'} soil. Say "get recommendation" for AI advice.`, hi: `खेत सहेजा गया! ${data.crop || 'फसल'} ${data.landSize || 5} एकड़ ${data.soil || 'दोमट'} मिट्टी पर। AI सलाह के लिए "सलाह दो" बोलें।`, kn: `ಜಮೀನು ಉಳಿಸಲಾಗಿದೆ! ${data.crop || 'ಬೆಳೆ'} ${data.landSize || 5} ಎಕರೆ ${data.soil || 'ಮರಳು'} ಮಣ್ಣಿನಲ್ಲಿ.`, te: `పొలం సేవ్ అయింది! ${data.crop || 'పంట'} ${data.landSize || 5} ఎకరాల ${data.soil || 'ఒండ్రు'} మట్టిలో.`, ta: `பண்ணை சேமிக்கப்பட்டது! ${data.crop || 'பயிர்'} ${data.landSize || 5} ஏக்கர் ${data.soil || 'கரிசல்'} மண்ணில்.` }, () => setVoiceState('idle'));
+}
+
+async function executeVoicePestCheck(data) {
+    const crop = data.crop || 'Rice';
+    vcSpeak({ en: `Checking pests for ${crop}...`, hi: `${crop} के लिए कीट जांच कर रहे हैं...`, kn: `${crop} ಗೆ ಕೀಟ ಪರೀಕ್ಷೆ ಮಾಡುತ್ತಿದ್ದೇವೆ...`, te: `${crop} కోసం పురుగు పరీక్ష చేస్తున్నాము...`, ta: `${crop} க்கான பூச்சி சோதனை...` });
+    navigate('pest-prediction');
+    // Use stored farm data or defaults
+    const fs = state.farmSetup || { temperature: 28, humidity: 65, rainfall: 100, soil_type: 'Loamy' };
+    try {
+        const result = await fetchAPI('/pest_prediction', { crop_type: crop, temperature: fs.temperature, humidity: fs.humidity, rainfall: fs.rainfall, soil_type: fs.soil_type });
+        const risk = result.risk_level || 'Unknown';
+        const pests = (result.pests || []).slice(0, 3).map(p => p.pest_name || p.name || p).join(', ');
+        const tips = (result.prevention_tips || []).slice(0, 2).join('. ');
+        vcSpeak({ en: `${crop} pest risk is ${risk}. Main pests: ${pests}. Tips: ${tips}`, hi: `${crop} कीट खतरा ${risk} है। मुख्य कीट: ${pests}। सुझाव: ${tips}`, kn: `${crop} ಕೀಟ ಅಪಾಯ ${risk}. ಕೀಟಗಳು: ${pests}. ಸಲಹೆ: ${tips}`, te: `${crop} పురుగు ముప్పు ${risk}. పురుగులు: ${pests}. సలహా: ${tips}`, ta: `${crop} பூச்சி ஆபத்து ${risk}. பூச்சிகள்: ${pests}` }, () => setVoiceState('idle'));
+    } catch(e) {
+        vcSpeak({ en: 'Could not check pests. Please try again.', hi: 'कीट जांच नहीं हो पाई। फिर कोशिश करें।' }, () => setVoiceState('idle'));
+    }
+}
+
+function endVoiceConvo(msg) {
+    voiceConvo.active = false;
+    voiceConvo.flow = null;
+    if (msg) vcSpeak(msg, () => setVoiceState('idle'));
+    else setVoiceState('idle');
+}
+
+// ── Master voice intent detection ──
+// Intercepts ALL recognized text and routes to flows or actions
+function processVoiceMasterCommand(text) {
+    const t = text.toLowerCase().trim();
+
+    // If a convo flow is active, route there first
+    if (voiceConvo.active) {
+        return handleConvoResponse(text);
+    }
+
+    // ── Registration / Login ──
+    if (['sign me up', 'register', 'create account', 'new account', 'sign up', 'मुझे साइन अप करो', 'नया खाता', 'खाता बनाओ', 'ಸೈನ್ ಅಪ್', 'ಹೊಸ ಖಾತೆ', 'సైన్ అప్', 'புதிய கணக்கு'].some(w => t.includes(w))) {
+        startVoiceFlow('signup');
+        return true;
+    }
+    if (['log me in', 'login', 'log in', 'sign in', 'मुझे लॉगिन करो', 'लॉगिन', 'ಲಾಗಿನ್', 'లాగిన్', 'உள்நுழை'].some(w => t.includes(w))) {
+        if (state.user) {
+            vcSpeak({ en: 'You are already logged in!', hi: 'आप पहले से लॉगिन हैं!', kn: 'ನೀವು ಈಗಾಗಲೇ ಲಾಗಿನ್ ಆಗಿದ್ದೀರಿ!', te: 'మీరు ఇప్పటికే లాగిన్ అయ్యారు!', ta: 'நீங்கள் ஏற்கனவே உள்நுழைந்துள்ளீர்கள்!' });
+            return true;
+        }
+        startVoiceFlow('login');
+        return true;
+    }
+    if (['logout', 'log out', 'sign out', 'लॉगआउट', 'बाहर', 'ಲಾಗ್ಔಟ್', 'లాగ్ అవుట్', 'வெளியேறு'].some(w => t.includes(w))) {
+        logout();
+        vcSpeak({ en: 'You have been logged out.', hi: 'आप लॉगआउट हो गए।', kn: 'ನೀವು ಲಾಗ್ ಔಟ್ ಆಗಿದ್ದೀರಿ.', te: 'మీరు లాగ్ అవుట్ అయ్యారు.', ta: 'நீங்கள் வெளியேறிவிட்டீர்கள்.' });
+        return true;
+    }
+
+    // ── Navigation ──
+    if (['go home', 'go to home', 'home page', 'dashboard', 'होम', 'घर', 'ಹೋಮ್', 'హోమ్', 'வீடு', 'முகப்பு'].some(w => t.includes(w))) {
+        navigate('dashboard'); vcSpeak({ en: 'Home page', hi: 'होम पेज', kn: 'ಹೋಮ್ ಪೇಜ್', te: 'హోమ్ పేజీ', ta: 'முகப்பு' }); return true;
+    }
+    if (['go to farm', 'farm setup', 'setup farm', 'set up farm', 'खेत सेटअप', 'ಜಮೀನು ಸೆಟಪ್', 'పొలం సెటప్', 'பண்ணை அமைப்பு'].some(w => t.includes(w))) {
+        navigate('farm-setup'); vcSpeak({ en: 'Farm setup page. You can say "set up my farm" to fill details by voice.', hi: 'खेत सेटअप पेज। "मेरा खेत सेट करो" बोलें।' }); return true;
+    }
+    if (['set up my farm', 'setup my farm', 'fill farm', 'मेरा खेत सेट करो', 'खेत भरो', 'ಜಮೀನು ಸೆಟ್ ಮಾಡಿ', 'పొలం సెట్ చేయండి', 'பண்ணை அமை'].some(w => t.includes(w))) {
+        startVoiceFlow('farmSetup'); return true;
+    }
+    if (['go to weather', 'show weather', 'weather page', 'मौसम पेज', 'ಹವಾಮಾನ', 'వాతావరణం పేజీ', 'வானிலை பக்கம்'].some(w => t.includes(w))) {
+        navigate('weather'); vcSpeak({ en: 'Weather page', hi: 'मौसम पेज' }); return true;
+    }
+    if (['go to pest', 'pest page', 'pest prediction', 'कीट पेज', 'ಕೀಟ ಪೇಜ್', 'పురుగు పేజీ', 'பூச்சி பக்கம்'].some(w => t.includes(w))) {
+        navigate('pest-prediction'); vcSpeak({ en: 'Pest prediction page', hi: 'कीट भविष्यवाणी पेज' }); return true;
+    }
+    if (['go to soil', 'soil page', 'soil analysis', 'मिट्टी पेज', 'ಮಣ್ಣು ಪೇಜ್', 'మట్టి పేజీ', 'மண் பக்கம்'].some(w => t.includes(w))) {
+        navigate('soil-analysis'); vcSpeak({ en: 'Soil analysis page', hi: 'मिट्टी विश्लेषण पेज' }); return true;
+    }
+    if (['go to community', 'community page', 'समुदाय', 'ಸಮುದಾಯ', 'సముదాయం', 'சமூகம்'].some(w => t.includes(w))) {
+        navigate('community'); vcSpeak({ en: 'Community page', hi: 'समुदाय पेज' }); return true;
+    }
+    if (['go to profile', 'settings', 'profile page', 'my profile', 'सेटिंग्स', 'प्रोफ़ाइल', 'ಸೆಟ್ಟಿಂಗ್ಸ್', 'సెట్టింగ్‌లు', 'அமைப்புகள்'].some(w => t.includes(w))) {
+        navigate('profile'); vcSpeak({ en: 'Settings page', hi: 'सेटिंग्स पेज' }); return true;
+    }
+    if (['go to history', 'history page', 'my history', 'इतिहास', 'ಇತಿಹಾಸ', 'చరిత్ర', 'வரலாறு'].some(w => t.includes(w))) {
+        navigate('history'); vcSpeak({ en: 'History page', hi: 'इतिहास पेज' }); return true;
+    }
+    if (['go to sustainability', 'sustainability', 'टिकाऊपन', 'ಸುಸ್ಥಿರತೆ', 'సుస్థిరత', 'நிலைத்தன்மை'].some(w => t.includes(w))) {
+        navigate('sustainability'); vcSpeak({ en: 'Sustainability page', hi: 'टिकाऊपन पेज' }); return true;
+    }
+
+    // ── Actions ──
+    if (['get recommendation', 'recommend crop', 'crop advice', 'what should i grow', 'फसल सलाह', 'क्या उगाऊं', 'फसल बताओ', 'सलाह दो', 'ಬೆಳೆ ಸಲಹೆ', 'ಏನು ಬೆಳೆಸಲಿ', 'పంట సలహా', 'ఏం పండించాలి', 'பயிர் ஆலோசனை'].some(w => t.includes(w))) {
+        if (!state.farmSetup) {
+            vcSpeak({ en: 'First, let me set up your farm.', hi: 'पहले अपना खेत सेट करें।' }, () => startVoiceFlow('farmSetup'));
+        } else {
+            vcSpeak({ en: 'Getting AI crop recommendation...', hi: 'AI फसल सिफारिश ला रहे हैं...' });
+            navigate('recommendation');
+            setTimeout(() => getRecommendation(), 500);
+        }
+        return true;
+    }
+    if (['check weather', 'today weather', 'weather forecast', 'मौसम बताओ', 'मौसम कैसा है', 'ಹವಾಮಾನ ಹೇಳಿ', 'వాతావరణం చెప్పు', 'வானிலை சொல்'].some(w => t.includes(w))) {
+        navigate('weather');
+        vcSpeak({ en: 'Checking weather...', hi: 'मौसम देख रहे हैं...' });
+        setTimeout(() => getWeatherForecast(), 500);
+        return true;
+    }
+    if (['check pest', 'pest problem', 'my crop is sick', 'crop disease', 'कीड़ा लगा है', 'फसल में रोग', 'ಕೀಟ ಸಮಸ್ಯೆ', 'పురుగు సమస్య', 'பூச்சி பிரச்சனை'].some(w => t.includes(w))) {
+        startVoiceFlow('pestCheck');
+        return true;
+    }
+    if (['analyze soil', 'soil test', 'check soil', 'मिट्टी जांचो', 'ಮಣ್ಣು ಪರೀಕ್ಷೆ', 'మట్టి పరీక్ష', 'மண் சோதனை'].some(w => t.includes(w))) {
+        navigate('soil-analysis');
+        vcSpeak({ en: 'Soil analysis page. Upload a photo or select soil type.', hi: 'मिट्टी विश्लेषण। फोटो अपलोड करें या मिट्टी चुनें।' });
+        return true;
+    }
+    if (['detect location', 'find my location', 'where am i', 'gps', 'मेरा स्थान', 'मेरी लोकेशन', 'ಸ್ಥಳ ಪತ್ತೆ', 'నా స్థానం', 'என் இடம்'].some(w => t.includes(w))) {
+        if (typeof detectMyLocation === 'function') detectMyLocation();
+        vcSpeak({ en: 'Detecting your location...', hi: 'आपका स्थान ढूंढ रहे हैं...' });
+        return true;
+    }
+    if (['simple mode', 'easy mode', 'सरल मोड', 'आसान मोड', 'ಸರಳ ಮೋಡ್', 'సింపుల్ మోడ్', 'எளிய முறை'].some(w => t.includes(w))) {
+        toggleSimpleMode();
+        const isOn = document.body.classList.contains('simple-mode');
+        vcSpeak({ en: isOn ? 'Simple mode activated' : 'Simple mode off', hi: isOn ? 'सरल मोड चालू' : 'सरल मोड बंद' });
+        return true;
+    }
+    if (['one tap advice', 'quick advice', 'smart advice', 'एक टैप सलाह', 'ಒಂದು ಟ್ಯಾಪ್ ಸಲಹೆ', 'ఒక్క ట్యాప్ సలహా'].some(w => t.includes(w))) {
+        if (typeof oneTapAdvice === 'function') oneTapAdvice();
+        return true;
+    }
+
+    // ── What can I do? (help) ──
+    if (['what can i do', 'what can you do', 'help me', 'help', 'क्या कर सकते हो', 'मदद', 'सहायता', 'ಏನು ಮಾಡಬಹುದು', 'ಸಹಾಯ', 'ఏం చేయవచ్చు', 'సహాయం', 'என்ன செய்யலாம்', 'உதவி'].some(w => t.includes(w))) {
+        vcSpeak({ en: 'You can say: Login me, Sign me up, Set up my farm, Get crop recommendation, Check weather, Check pest, Analyze soil, Go to community, Go to settings, Detect location, Simple mode, or Logout. Ask any farming question and I will answer!', hi: 'आप बोल सकते हैं: लॉगिन करो, साइन अप करो, खेत सेट करो, फसल सलाह दो, मौसम बताओ, कीड़ा जांचो, मिट्टी जांचो, समुदाय, सेटिंग्स, लोकेशन ढूंढो, सरल मोड, या लॉगआउट। कोई भी खेती का सवाल पूछें!' });
+        return true;
+    }
+
+    return false; // Not handled — let it fall through to chatbot
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DRAGGABLE SOS BUTTON
+// ═══════════════════════════════════════════════════════════════
+
+function initDraggableSOS() {
+    const btn = document.querySelector('.emergency-pest-btn');
+    if (!btn) return;
+
+    let isDragging = false;
+    let startX, startY, origX, origY;
+    let hasMoved = false;
+
+    // Restore saved position
+    const savedPos = localStorage.getItem('agri_sos_position');
+    if (savedPos) {
+        const { x, y } = JSON.parse(savedPos);
+        btn.style.left = x + 'px';
+        btn.style.bottom = 'auto';
+        btn.style.top = y + 'px';
+        btn.style.right = 'auto';
+    }
+
+    function onStart(e) {
+        isDragging = true;
+        hasMoved = false;
+        const touch = e.touches ? e.touches[0] : e;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        const rect = btn.getBoundingClientRect();
+        origX = rect.left;
+        origY = rect.top;
+        btn.style.transition = 'none';
+        btn.style.zIndex = '10000';
+        e.preventDefault();
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+        let newX = origX + dx;
+        let newY = origY + dy;
+        // Keep within viewport
+        newX = Math.max(0, Math.min(window.innerWidth - btn.offsetWidth, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - btn.offsetHeight, newY));
+        btn.style.left = newX + 'px';
+        btn.style.top = newY + 'px';
+        btn.style.bottom = 'auto';
+        btn.style.right = 'auto';
+        e.preventDefault();
+    }
+
+    function onEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        btn.style.transition = '';
+        btn.style.zIndex = '';
+        // Save position
+        const rect = btn.getBoundingClientRect();
+        localStorage.setItem('agri_sos_position', JSON.stringify({ x: rect.left, y: rect.top }));
+        // If didn't move, treat as click
+        if (!hasMoved) {
+            emergencyPestHelp();
+        }
+    }
+
+    // Touch events
+    btn.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    // Mouse events
+    btn.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+
+    // Prevent default click since we handle it in onEnd
+    btn.onclick = (e) => { if (hasMoved) { e.preventDefault(); e.stopPropagation(); } };
+}
 
 async function fetchAPI(endpoint, body, method = 'POST') {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };

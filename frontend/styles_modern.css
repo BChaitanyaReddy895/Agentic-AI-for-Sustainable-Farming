@@ -2790,13 +2790,18 @@ html {
     color: white;
     border: none;
     border-radius: 50px;
-    cursor: pointer;
+    cursor: grab;
     font-size: 0.9rem;
     font-weight: 700;
     font-family: 'Inter', sans-serif;
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
     animation: emergencyPulse 1.5s ease-in-out infinite;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: box-shadow 0.2s, transform 0.2s;
 }
+.emergency-pest-btn:active { cursor: grabbing; animation: none; transform: scale(1.08); box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6); }
 .emergency-pest-btn:hover { transform: scale(1.05); }
 .epb-pulse {
     position: absolute;

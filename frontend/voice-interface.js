@@ -804,13 +804,21 @@ class VoiceInterface {
                     showVoiceTranscript(finalTranscript);
                 }
                 
-                // Try to match with all alternatives
-                const matched = this.processVoiceCommandEnhanced(finalTranscript, allAlternatives);
-                
-                // If no command matched, send as free-form query to AI
-                if (!matched) {
-                    if (typeof handleVoiceQuery === 'function') {
-                        handleVoiceQuery(finalTranscript);
+                // Try master voice command (conversational flows, navigation, actions) first
+                let masterHandled = false;
+                if (typeof processVoiceMasterCommand === 'function') {
+                    masterHandled = processVoiceMasterCommand(finalTranscript);
+                }
+
+                if (!masterHandled) {
+                    // Try to match with all alternatives
+                    const matched = this.processVoiceCommandEnhanced(finalTranscript, allAlternatives);
+                    
+                    // If no command matched, send as free-form query to AI
+                    if (!matched) {
+                        if (typeof handleVoiceQuery === 'function') {
+                            handleVoiceQuery(finalTranscript);
+                        }
                     }
                 }
                 
