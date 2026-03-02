@@ -599,7 +599,6 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
     background: hsl(142 50% 12%);
     color: hsl(0 0% 100% / 0.75);
     padding: 2.5rem 1.5rem 1rem;
-    margin-left: var(--sidebar-width);
 }
 .footer-grid {
     display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr;
@@ -635,7 +634,7 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 .footer-socials a:hover { color: #86efac; }
 
 @media (max-width: 768px) {
-    .app-footer { margin-left: 0; padding-bottom: 5rem; }
+    .app-footer { padding-bottom: 5rem; }
     .footer-grid { grid-template-columns: 1fr 1fr; gap: 1.5rem; }
     .top-header { padding: 0.5rem 1rem; }
     .hamburger-btn { display: block; }
