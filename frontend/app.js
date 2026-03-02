@@ -2798,10 +2798,16 @@ function handleConvoResponse(text) {
 
     // Process based on field type
     let value = text.trim();
-    if (step.field === 'crop') {
-        value = matchCropFromText(lower) || value;
+    if (step.field === 'username') {
+        value = extractName(text);
+    } else if (step.field === 'farm_name') {
+        value = extractFarmName(text);
+    } else if (step.field === 'location') {
+        value = extractLocation(text);
+    } else if (step.field === 'crop') {
+        value = matchCropFromText(lower) || extractKeyword(text);
     } else if (step.field === 'soil') {
-        value = matchSoilFromText(lower) || value;
+        value = matchSoilFromText(lower) || extractKeyword(text);
     } else if (step.field === 'landSize') {
         const num = lower.replace(/[^\d.]/g, '');
         value = num || '5';
@@ -2844,6 +2850,116 @@ function matchSoilFromText(text) {
     const soilMap = { 'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red', 'दोमट': 'Loamy', 'रेतीली': 'Sandy', 'चिकनी': 'Clay', 'काली': 'Black', 'लाल': 'Red', 'ಮರಳು': 'Sandy', 'ಕಪ್ಪು': 'Black', 'ಕೆಂಪು': 'Red' };
     for (const [kw, soil] of Object.entries(soilMap)) {
         if (text.includes(kw)) return soil;
+    }
+    return null;
+}
+
+// ── Smart field extraction from natural speech ──
+function extractName(text) {
+    const t = text.trim();
+    // Patterns: "my name is X", "I am X", "name is X", "it's X", "call me X", "मेरा नाम X है", "నా పేరు X", "என் பெயர் X", "ನನ್ನ ಹೆಸರು X"
+    const patterns = [
+        /(?:my name is|i am|i'm|name is|it's|call me|this is)\s+(.+)/i,
+        /(?:मेरा नाम|मै|मैं)\s+(.+?)(?:\s+है|\s*$)/i,
+        /(?:నా పేరు|నేను)\s+(.+)/i,
+        /(?:என் பெயர்|நான்)\s+(.+)/i,
+        /(?:ನನ್ನ ಹೆಸರು|ನಾನು)\s+(.+)/i,
+        /(?:আমার নাম|আমি)\s+(.+)/i,
+        /(?:माझे नाव|मी)\s+(.+)/i,
+        /(?:મારું નામ|હું)\s+(.+)/i,
+        /(?:ମୋ ନାମ|ମୁଁ)\s+(.+)/i,
+        /(?:ਮੇਰਾ ਨਾਮ|ਮੈਂ)\s+(.+)/i,
+    ];
+    for (const pat of patterns) {
+        const m = t.match(pat);
+        if (m && m[1]) return m[1].trim().replace(/[.!?,]+$/, '');
+    }
+    // If single/two words, likely just the name
+    const words = t.split(/\s+/).filter(w => w.length > 0);
+    if (words.length <= 3) return t;
+    // Fallback: take last meaningful word(s) — skip filler
+    const fillers = ['is', 'am', 'my', 'name', 'i', 'me', 'the', 'a', 'it', 'yeah', 'yes', 'ok', 'so', 'well', 'please', 'sir'];
+    const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
+    return meaningful.length > 0 ? meaningful.join(' ') : t;
+}
+
+function extractFarmName(text) {
+    const t = text.trim();
+    // Patterns: "my farm is X", "farm name is X", "it is X", "called X", "मेरे खेत का नाम X", "నా పొలం X", "என் பண்ணை X"
+    const patterns = [
+        /(?:my farm is|farm name is|farm is called|it is|it's|called)\s+(.+)/i,
+        /(?:मेरे खेत का नाम|खेत का नाम|मेरा खेत)\s+(.+?)(?:\s+है|\s*$)/i,
+        /(?:నా పొలం పేరు|పొలం పేరు|నా పొలం)\s+(.+)/i,
+        /(?:என் பண்ணை பெயர்|பண்ணை பெயர்|என் பண்ணை)\s+(.+)/i,
+        /(?:ನನ್ನ ಜಮೀನಿನ ಹೆಸರು|ಜಮೀನು)\s+(.+)/i,
+    ];
+    for (const pat of patterns) {
+        const m = t.match(pat);
+        if (m && m[1]) return m[1].trim().replace(/[.!?,]+$/, '');
+    }
+    const words = t.split(/\s+/).filter(w => w.length > 0);
+    if (words.length <= 3) return t;
+    const fillers = ['is', 'my', 'farm', 'name', 'the', 'a', 'it', 'called', 'yes', 'ok', 'so', 'well', 'please'];
+    const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
+    return meaningful.length > 0 ? meaningful.join(' ') : t;
+}
+
+function extractLocation(text) {
+    const t = text.trim();
+    const patterns = [
+        /(?:i am from|i live in|from|located in|located at|my farm is in|my village is|village is|city is|in)\s+(.+)/i,
+        /(?:मैं|मेरा गांव|गांव|शहर)\s+(.+?)(?:\s+से|\s+में|\s+है|\s*$)/i,
+        /(?:నేను|నా ఊరు|ఊరు)\s+(.+)/i,
+        /(?:நான்|என் கிராமம்|கிராமம்)\s+(.+)/i,
+        /(?:ನಾನು|ನನ್ನ ಊರು|ಊರು)\s+(.+)/i,
+    ];
+    for (const pat of patterns) {
+        const m = t.match(pat);
+        if (m && m[1]) return m[1].trim().replace(/[.!?,]+$/, '');
+    }
+    const words = t.split(/\s+/).filter(w => w.length > 0);
+    if (words.length <= 3) return t;
+    const fillers = ['i', 'am', 'from', 'my', 'is', 'in', 'at', 'the', 'a', 'it', 'live', 'located', 'village', 'city', 'farm', 'yes', 'ok'];
+    const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
+    return meaningful.length > 0 ? meaningful.join(' ') : t;
+}
+
+function extractKeyword(text) {
+    const t = text.trim();
+    const fillers = ['i', 'want', 'to', 'grow', 'have', 'my', 'is', 'the', 'a', 'it', 'it\'s', 'soil', 'type', 'crop', 'yes', 'ok', 'use', 'like', 'please', 'sir'];
+    const words = t.split(/\s+/).filter(w => !fillers.includes(w.toLowerCase()) && w.length > 1);
+    return words.length > 0 ? words[words.length - 1] : t;
+}
+
+// ── Language switch detection from any language ──
+function detectLanguageSwitch(text) {
+    const t = text.toLowerCase().trim();
+    // Map keywords in ANY language to lang codes
+    const langKeywords = {
+        'en': ['english', 'change to english', 'speak english', 'in english', 'switch to english', 'अंग्रेजी', 'ఇంగ్లీష్', 'ஆங்கிலம்', 'ಇಂಗ್ಲಿಷ್', 'ইংরেজি'],
+        'hi': ['hindi', 'हिंदी', 'हिन्दी', 'change to hindi', 'speak hindi', 'speak in hindi', 'switch to hindi', 'हिंदी में बोलो', 'హిందీ', 'ஹிந்தி', 'ಹಿಂದಿ'],
+        'te': ['telugu', 'తెలుగు', 'change to telugu', 'speak telugu', 'speak in telugu', 'switch to telugu', 'తెలుగులో మాట్లాడు', 'తెలుగులో చెప్పు', 'తెలుగు లో', 'तेलुगु', 'தெலுங்கு', 'ತೆಲುಗು'],
+        'kn': ['kannada', 'ಕನ್ನಡ', 'change to kannada', 'speak kannada', 'speak in kannada', 'switch to kannada', 'ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ', 'ಕನ್ನಡದಲ್ಲಿ', 'कन्नड़', 'கன்னடம்', 'కన్నడ'],
+        'ta': ['tamil', 'தமிழ்', 'change to tamil', 'speak tamil', 'speak in tamil', 'switch to tamil', 'தமிழில் பேசு', 'தமிழில்', 'तमिल', 'తమిళం', 'ತಮಿಳು'],
+        'ml': ['malayalam', 'മലയാളം', 'change to malayalam', 'speak malayalam', 'switch to malayalam', 'മലയാളത്തിൽ', 'मलयालम', 'మలయాళం', 'ಮಲಯಾಳಂ'],
+        'bn': ['bengali', 'bangla', 'বাংলা', 'change to bengali', 'speak bengali', 'switch to bengali', 'বাংলায় বলো', 'बंगाली', 'బెంగాలీ'],
+        'gu': ['gujarati', 'ગુજરાતી', 'change to gujarati', 'speak gujarati', 'switch to gujarati', 'ગુજરાતીમાં', 'गुजराती', 'గుజరాతీ'],
+        'mr': ['marathi', 'मराठी', 'change to marathi', 'speak marathi', 'switch to marathi', 'मराठीत बोल', 'మరాఠీ', 'மராத்தி'],
+        'pa': ['punjabi', 'ਪੰਜਾਬੀ', 'change to punjabi', 'speak punjabi', 'switch to punjabi', 'ਪੰਜਾਬੀ ਵਿੱਚ', 'पंजाबी', 'పంజాబీ'],
+        'or': ['odia', 'oriya', 'ଓଡ଼ିଆ', 'change to odia', 'speak odia', 'switch to odia', 'ଓଡ଼ିଆରେ', 'ओडिया', 'ఒడియా']
+    };
+
+    // Check if text contains language change intent
+    const changeIntents = ['change', 'switch', 'speak', 'talk', 'convert', 'बदलो', 'बोलो', 'भाषा', 'మార్చు', 'మాట్లాడు', 'భాష', 'மாற்று', 'பேசு', 'மொழி', 'ಬದಲಿಸಿ', 'ಮಾತನಾಡಿ', 'ಭಾಷೆ', 'বলো', 'ভাষা', 'બોલો', 'ભાષા', 'बोला', 'भाषा', 'ਬੋਲੋ', 'ਭਾਸ਼ਾ', 'କୁହ', 'ভාৱা'];
+    const hasIntent = changeIntents.some(w => t.includes(w));
+
+    for (const [code, keywords] of Object.entries(langKeywords)) {
+        for (const kw of keywords) {
+            if (t.includes(kw)) {
+                // If it's just the language name or has a change intent, switch
+                if (hasIntent || t.split(/\s+/).length <= 3) return code;
+            }
+        }
     }
     return null;
 }
@@ -2984,6 +3100,17 @@ function processVoiceMasterCommand(text) {
     if (['logout', 'log out', 'sign out', 'लॉगआउट', 'बाहर', 'ಲಾಗ್ಔಟ್', 'లాగ్ అవుట్', 'வெளியேறு'].some(w => t.includes(w))) {
         logout();
         vcSpeak({ en: 'You have been logged out.', hi: 'आप लॉगआउट हो गए।', kn: 'ನೀವು ಲಾಗ್ ಔಟ್ ಆಗಿದ್ದೀರಿ.', te: 'మీరు లాగ్ అవుట్ అయ్యారు.', ta: 'நீங்கள் வெளியேறிவிட்டீர்கள்.' });
+        return true;
+    }
+
+    // ── Language Switching ──
+    const langSwitch = detectLanguageSwitch(t);
+    if (langSwitch) {
+        changeLanguage(langSwitch);
+        if (window.voiceInterface) window.voiceInterface.setLanguage(langSwitch);
+        const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
+        const name = langNames[langSwitch] || langSwitch;
+        vcSpeak({ en: `Language changed to ${name}. I will now speak in ${name}.`, hi: `भाषा ${name} में बदल दी गई। अब मैं ${name} में बात करूंगा।`, kn: `ಭಾಷೆ ${name} ಗೆ ಬದಲಾಯಿಸಿದ್ದೇವೆ.`, te: `భాష ${name} కి మార్చబడింది.`, ta: `மொழி ${name} ஆக மாற்றப்பட்டது.` });
         return true;
     }
 
