@@ -37,52 +37,168 @@
 <div class="auth-screen" id="auth-screen">
     <div class="auth-bg">
         <div class="auth-gradient"></div>
+        <!-- Decorative shapes -->
+        <div class="auth-shape auth-shape-1"></div>
+        <div class="auth-shape auth-shape-2"></div>
+        <div class="auth-shape auth-shape-3"></div>
     </div>
-    <div class="auth-container">
-        <!-- Logo -->
-        <div class="auth-logo-wrap">
-            <div class="auth-logo-icon"><i class="fas fa-leaf"></i></div>
-            <h1 class="auth-app-name" data-i18n="auth.appName">AgriSmart AI</h1>
-            <p class="auth-tagline" data-i18n="auth.tagline">Smart Sustainable Farming</p>
-        </div>
-        <!-- Auth Card -->
-        <div class="auth-card glass">
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-tab="signup" onclick="switchAuthTab('signup')" data-i18n="auth.createAccount">Create Account</button>
-                <button class="auth-tab" data-tab="login" onclick="switchAuthTab('login')" data-i18n="auth.login">Login</button>
+    <div class="auth-layout">
+        <!-- Left Panel — Branding + Illustration -->
+        <div class="auth-left-panel">
+            <div class="auth-logo-wrap">
+                <div class="auth-logo-icon"><i class="fas fa-leaf"></i></div>
+                <h1 class="auth-app-name" data-i18n="auth.appName">AgriSmart AI</h1>
+                <p class="auth-tagline" data-i18n="auth.tagline">Smart Sustainable Farming</p>
             </div>
-            <!-- Signup -->
-            <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)">
-                <div class="form-group">
-                    <label><i class="fas fa-user"></i> <span data-i18n="auth.yourName">Your Name *</span></label>
-                    <input type="text" id="signup-name" placeholder="Enter your name" data-i18n-placeholder="auth.namePlaceholder" required>
+            <div class="auth-illustration">
+                <svg viewBox="0 0 280 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="30" y="140" width="220" height="60" rx="8" fill="#f0fdf4" opacity="0.6"/>
+                    <path d="M80 140 Q80 100, 110 80 Q120 75, 115 60 Q125 50, 140 55 Q155 50, 165 60 Q160 75, 170 80 Q200 100, 200 140" fill="#22c55e" opacity="0.3"/>
+                    <path d="M120 140 Q120 120, 140 105 Q160 120, 160 140" fill="#16a34a" opacity="0.5"/>
+                    <circle cx="140" cy="75" r="6" fill="#facc15"/>
+                    <line x1="140" y1="105" x2="140" y2="140" stroke="#15803d" stroke-width="3"/>
+                    <line x1="140" y1="115" x2="155" y2="105" stroke="#15803d" stroke-width="2"/>
+                    <line x1="140" y1="125" x2="125" y2="115" stroke="#15803d" stroke-width="2"/>
+                    <circle cx="60" cy="50" r="20" fill="#fbbf24" opacity="0.3"/>
+                    <path d="M50 160 L55 145 L60 160Z" fill="#16a34a" opacity="0.4"/>
+                    <path d="M210 155 L215 140 L220 155Z" fill="#16a34a" opacity="0.4"/>
+                    <path d="M70 155 L75 142 L80 155Z" fill="#22c55e" opacity="0.3"/>
+                    <path d="M195 158 L200 145 L205 158Z" fill="#22c55e" opacity="0.3"/>
+                </svg>
+            </div>
+            <div class="auth-features-list">
+                <div class="auth-feature"><i class="fas fa-check-circle"></i> AI-powered crop recommendations</div>
+                <div class="auth-feature"><i class="fas fa-check-circle"></i> Real-time weather & pest alerts</div>
+                <div class="auth-feature"><i class="fas fa-check-circle"></i> Market prices & profit tracking</div>
+                <div class="auth-feature"><i class="fas fa-check-circle"></i> Available in 11 Indian languages</div>
+            </div>
+        </div>
+        <!-- Right Panel — Auth Card -->
+        <div class="auth-right-panel">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <h2 class="auth-card-title" id="auth-card-title">Create your account</h2>
+                    <p class="auth-card-subtitle" id="auth-card-subtitle">Start your smart farming journey today</p>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-home"></i> <span data-i18n="auth.farmName">Farm Name *</span></label>
-                    <input type="text" id="signup-farm" placeholder="e.g. Green Valley Farm" data-i18n-placeholder="auth.farmPlaceholder" required>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="signup" onclick="switchAuthTab('signup')" data-i18n="auth.createAccount">Sign Up</button>
+                    <button class="auth-tab" data-tab="login" onclick="switchAuthTab('login')" data-i18n="auth.login">Log In</button>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-phone"></i> <span data-i18n="auth.phone">Phone</span></label>
-                    <input type="tel" id="signup-phone" placeholder="Phone number" data-i18n-placeholder="auth.phonePlaceholder">
+                <!-- Signup -->
+                <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)" novalidate>
+                    <div class="auth-form-row">
+                        <div class="form-group">
+                            <label for="signup-name"><span data-i18n="auth.yourName">Full Name</span> <span class="required">*</span></label>
+                            <div class="input-wrap">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" id="signup-name" placeholder="Enter your name" data-i18n-placeholder="auth.namePlaceholder" required>
+                            </div>
+                            <span class="field-error" id="signup-name-error"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-farm"><span data-i18n="auth.farmName">Farm Name</span> <span class="required">*</span></label>
+                            <div class="input-wrap">
+                                <i class="fas fa-home input-icon"></i>
+                                <input type="text" id="signup-farm" placeholder="e.g. Green Valley Farm" data-i18n-placeholder="auth.farmPlaceholder" required>
+                            </div>
+                            <span class="field-error" id="signup-farm-error"></span>
+                        </div>
+                    </div>
+                    <div class="auth-form-row">
+                        <div class="form-group">
+                            <label for="signup-phone"><span data-i18n="auth.phone">Phone Number</span> <span class="required">*</span></label>
+                            <div class="input-wrap">
+                                <i class="fas fa-phone input-icon"></i>
+                                <input type="tel" id="signup-phone" placeholder="+91 XXXXXXXXXX" data-i18n-placeholder="auth.phonePlaceholder" required>
+                            </div>
+                            <span class="field-error" id="signup-phone-error"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-location"><span data-i18n="auth.location">Location</span></label>
+                            <div class="input-wrap">
+                                <i class="fas fa-map-marker-alt input-icon"></i>
+                                <input type="text" id="signup-location" placeholder="Village / City" data-i18n-placeholder="auth.locationPlaceholder">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password"><span data-i18n="auth.password">Password</span> <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="signup-password" placeholder="Create a password" required minlength="6">
+                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        </div>
+                        <div class="password-strength" id="signup-pwd-strength"><div class="pwd-bar"></div></div>
+                        <span class="field-error" id="signup-password-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-confirm-password"><span>Confirm Password</span> <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="signup-confirm-password" placeholder="Confirm your password" required>
+                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('signup-confirm-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        </div>
+                        <span class="field-error" id="signup-confirm-error"></span>
+                    </div>
+                    <div class="auth-checkbox-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="signup-terms" required>
+                            <span class="checkmark"></span>
+                            <span>I agree to the <a href="#" class="auth-link" onclick="event.preventDefault()">Terms of Service</a> & <a href="#" class="auth-link" onclick="event.preventDefault()">Privacy Policy</a></span>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full btn-auth">
+                        <span data-i18n="auth.getStarted">Create Account</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+                <!-- Login -->
+                <form id="login-form" class="auth-form" onsubmit="handleLogin(event)" novalidate>
+                    <div class="form-group">
+                        <label for="login-phone"><span data-i18n="auth.phoneNumber">Phone Number</span></label>
+                        <div class="input-wrap">
+                            <i class="fas fa-phone input-icon"></i>
+                            <input type="tel" id="login-phone" placeholder="+91 XXXXXXXXXX" data-i18n-placeholder="auth.loginPhonePlaceholder" required>
+                        </div>
+                        <span class="field-error" id="login-phone-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password"><span data-i18n="auth.password">Password</span></label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="login-password" placeholder="Enter your password" required>
+                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        </div>
+                        <span class="field-error" id="login-password-error"></span>
+                    </div>
+                    <div class="auth-options-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="login-remember">
+                            <span class="checkmark"></span>
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="auth-link forgot-link" onclick="event.preventDefault(); toast('Password reset link sent to your phone', 'info')">Forgot password?</a>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full btn-auth">
+                        <span data-i18n="auth.loginBtn">Log In</span>
+                        <i class="fas fa-sign-in-alt"></i>
+                    </button>
+                </form>
+                <!-- Divider -->
+                <div class="auth-divider"><span>or continue with</span></div>
+                <!-- Social Login -->
+                <div class="social-login-row">
+                    <button type="button" class="btn-social btn-google" onclick="toast('Google sign-in coming soon!', 'info')">
+                        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.56c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                        <span>Google</span>
+                    </button>
+                    <button type="button" class="btn-social btn-phone-otp" onclick="toast('OTP login coming soon!', 'info')">
+                        <i class="fas fa-sms"></i>
+                        <span>Phone OTP</span>
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-map-marker-alt"></i> <span data-i18n="auth.location">Location</span></label>
-                    <input type="text" id="signup-location" placeholder="Village / City" data-i18n-placeholder="auth.locationPlaceholder">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full"><i class="fas fa-arrow-right"></i> <span data-i18n="auth.getStarted">Get Started</span></button>
-            </form>
-            <!-- Login -->
-            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label><i class="fas fa-phone"></i> <span data-i18n="auth.phoneNumber">Phone Number</span></label>
-                    <input type="tel" id="login-phone" placeholder="Enter phone" data-i18n-placeholder="auth.loginPhonePlaceholder" required>
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> <span data-i18n="auth.password">Password</span></label>
-                    <input type="password" id="login-password" placeholder="Password" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full"><i class="fas fa-sign-in-alt"></i> <span data-i18n="auth.loginBtn">Login</span></button>
-            </form>
+                <p class="auth-footer-text">Protected by enterprise-grade encryption <i class="fas fa-shield-alt"></i></p>
+            </div>
         </div>
     </div>
 </div>
@@ -106,26 +222,33 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a class="sidebar-link active" data-page="dashboard" onclick="navigate('dashboard')"><i class="fas fa-home"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
+            <span class="sidebar-section-label">Main</span>
+            <a class="sidebar-link active" data-page="dashboard" onclick="navigate('dashboard')"><i class="fas fa-th-large"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
             <a class="sidebar-link" data-page="farm-setup" onclick="navigate('farm-setup')"><i class="fas fa-tractor"></i><span data-i18n="nav.farmSetup">Farm Setup</span></a>
             <a class="sidebar-link" data-page="recommendation" onclick="navigate('recommendation')"><i class="fas fa-seedling"></i><span data-i18n="nav.recommendations">AI Recommendations</span></a>
+
+            <span class="sidebar-section-label">Planning &amp; Tools</span>
             <a class="sidebar-link" data-page="rotation" onclick="navigate('rotation')"><i class="fas fa-calendar-alt"></i><span data-i18n="nav.cropPlanner">Crop Planner</span></a>
             <a class="sidebar-link" data-page="fertilizer" onclick="navigate('fertilizer')"><i class="fas fa-flask"></i><span data-i18n="nav.fertilizer">Fertilizer Calculator</span></a>
-            <a class="sidebar-link" data-page="farm-map" onclick="navigate('farm-map')"><i class="fas fa-map"></i><span data-i18n="nav.farmMap">Farm Map</span></a>
-            <a class="sidebar-link" data-page="sustainability" onclick="navigate('sustainability')"><i class="fas fa-chart-bar"></i><span data-i18n="nav.sustainability">Sustainability</span></a>
-            <a class="sidebar-link" data-page="community" onclick="navigate('community')"><i class="fas fa-users"></i><span data-i18n="nav.community">Community</span></a>
-            <a class="sidebar-link" data-page="market" onclick="navigate('market')"><i class="fas fa-chart-line"></i><span data-i18n="nav.market">Market Forecast</span></a>
-            <a class="sidebar-link" data-page="chatbot" onclick="navigate('chatbot')"><i class="fas fa-comment-dots"></i><span data-i18n="nav.chatbot">AI Assistant</span><span class="sidebar-badge">AI</span></a>
+            <a class="sidebar-link" data-page="farm-map" onclick="navigate('farm-map')"><i class="fas fa-map-marked-alt"></i><span data-i18n="nav.farmMap">Farm Map</span></a>
+            <a class="sidebar-link" data-page="crop-diagnosis" onclick="navigate('crop-diagnosis')"><i class="fas fa-camera"></i><span data-i18n="nav.cropDiagnosis">Crop Diagnosis</span></a>
+
+            <span class="sidebar-section-label">Intelligence</span>
             <a class="sidebar-link" data-page="weather" onclick="navigate('weather')"><i class="fas fa-cloud-sun"></i><span data-i18n="nav.weather">Weather</span></a>
             <a class="sidebar-link" data-page="soil-analysis" onclick="navigate('soil-analysis')"><i class="fas fa-microscope"></i><span data-i18n="nav.soilAnalysis">Soil Analysis</span></a>
             <a class="sidebar-link" data-page="pest-prediction" onclick="navigate('pest-prediction')"><i class="fas fa-bug"></i><span data-i18n="nav.pestPrediction">Pest Prediction</span></a>
-            <div class="sidebar-divider"></div>
-            <span class="sidebar-section-label">New Features</span>
-            <a class="sidebar-link" data-page="crop-diagnosis" onclick="navigate('crop-diagnosis')"><i class="fas fa-camera"></i><span data-i18n="nav.cropDiagnosis">Crop Diagnosis</span><span class="sidebar-badge new-badge">NEW</span></a>
-            <a class="sidebar-link" data-page="govt-schemes" onclick="navigate('govt-schemes')"><i class="fas fa-landmark"></i><span data-i18n="nav.govtSchemes">Govt Schemes</span><span class="sidebar-badge new-badge">NEW</span></a>
-            <a class="sidebar-link" data-page="mandi-prices" onclick="navigate('mandi-prices')"><i class="fas fa-store"></i><span data-i18n="nav.mandiPrices">Mandi Prices</span><span class="sidebar-badge new-badge">NEW</span></a>
-            <a class="sidebar-link" data-page="voice-notes" onclick="navigate('voice-notes')"><i class="fas fa-microphone-alt"></i><span data-i18n="nav.voiceNotes">Voice Notes</span><span class="sidebar-badge new-badge">NEW</span></a>
-            <a class="sidebar-link" data-page="expense-tracker" onclick="navigate('expense-tracker')"><i class="fas fa-wallet"></i><span data-i18n="nav.expenseTracker">Expense Tracker</span><span class="sidebar-badge new-badge">NEW</span></a>
+            <a class="sidebar-link" data-page="sustainability" onclick="navigate('sustainability')"><i class="fas fa-chart-bar"></i><span data-i18n="nav.sustainability">Sustainability</span></a>
+
+            <span class="sidebar-section-label">Market &amp; Finance</span>
+            <a class="sidebar-link" data-page="market" onclick="navigate('market')"><i class="fas fa-chart-line"></i><span data-i18n="nav.market">Market Forecast</span></a>
+            <a class="sidebar-link" data-page="mandi-prices" onclick="navigate('mandi-prices')"><i class="fas fa-store"></i><span data-i18n="nav.mandiPrices">Mandi Prices</span></a>
+            <a class="sidebar-link" data-page="expense-tracker" onclick="navigate('expense-tracker')"><i class="fas fa-wallet"></i><span data-i18n="nav.expenseTracker">Expense Tracker</span></a>
+            <a class="sidebar-link" data-page="govt-schemes" onclick="navigate('govt-schemes')"><i class="fas fa-landmark"></i><span data-i18n="nav.govtSchemes">Govt Schemes</span></a>
+
+            <span class="sidebar-section-label">Social</span>
+            <a class="sidebar-link" data-page="community" onclick="navigate('community')"><i class="fas fa-users"></i><span data-i18n="nav.community">Community</span></a>
+            <a class="sidebar-link" data-page="chatbot" onclick="navigate('chatbot')"><i class="fas fa-comment-dots"></i><span data-i18n="nav.chatbot">AI Assistant</span><span class="sidebar-badge">AI</span></a>
+            <a class="sidebar-link" data-page="voice-notes" onclick="navigate('voice-notes')"><i class="fas fa-microphone-alt"></i><span data-i18n="nav.voiceNotes">Voice Notes</span></a>
         </nav>
         <div class="sidebar-footer">
             <a class="sidebar-link" data-page="history" onclick="navigate('history')"><i class="fas fa-history"></i><span data-i18n="nav.history">My History</span></a>
@@ -140,6 +263,55 @@
 
     <!-- ──── MAIN AREA ──── -->
     <div class="main-area">
+
+        <!-- Top Header Bar -->
+        <header class="top-header" id="top-header">
+            <div class="top-header-left">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="openMobileMenu()" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
+                    <a href="#" onclick="navigate('dashboard'); return false;">Home</a>
+                    <i class="fas fa-chevron-right bc-sep"></i>
+                    <span id="breadcrumb-current">Dashboard</span>
+                </nav>
+            </div>
+            <div class="top-header-right">
+                <div class="header-search" id="header-search">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="global-search" placeholder="Search features..." oninput="handleGlobalSearch(this.value)" autocomplete="off">
+                    <div class="search-results" id="search-results" style="display:none"></div>
+                </div>
+                <button class="header-icon-btn" id="notif-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-dot" id="notif-dot"></span>
+                </button>
+                <div class="header-user-dropdown" id="header-user-dd">
+                    <button class="header-avatar-btn" onclick="toggleUserDropdown()">
+                        <div class="header-avatar" id="header-avatar">F</div>
+                        <span class="header-username" id="header-username">Farmer</span>
+                        <i class="fas fa-chevron-down header-caret"></i>
+                    </button>
+                    <div class="user-dropdown-menu" id="user-dropdown-menu" style="display:none">
+                        <a onclick="navigate('profile')"><i class="fas fa-user-circle"></i> My Profile</a>
+                        <a onclick="navigate('profile')"><i class="fas fa-cog"></i> Settings</a>
+                        <a onclick="navigate('history')"><i class="fas fa-history"></i> History</a>
+                        <div class="dropdown-divider"></div>
+                        <a onclick="logout()" class="dropdown-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- Notification Panel -->
+        <div class="notif-panel" id="notif-panel" style="display:none">
+            <div class="notif-panel-header">
+                <h4>Notifications</h4>
+                <button class="notif-clear" onclick="clearNotifications()">Clear all</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty"><i class="fas fa-bell-slash"></i><p>No new notifications</p></div>
+            </div>
+        </div>
 
         <!-- Offline Banner -->
         <div class="offline-bar" id="offline-bar" style="display:none">
@@ -291,8 +463,8 @@
                     </div>
                     <div class="stat-card stat-purple">
                         <i class="fas fa-users stat-icon"></i>
-                        <div class="stat-value">5K+</div>
-                        <div class="stat-label" data-i18n="dash.farmers">Farmers</div>
+                        <div class="stat-value" id="stat-community">—</div>
+                        <div class="stat-label" data-i18n="dash.community">Community Posts</div>
                     </div>
                 </div>
 
@@ -1389,6 +1561,48 @@
 
     </div><!-- /main-area -->
 
+    <!-- Footer -->
+    <footer class="app-footer" id="app-footer">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-brand">
+                    <div class="footer-logo"><i class="fas fa-leaf"></i></div>
+                    <span>AgriSmart AI</span>
+                </div>
+                <p class="footer-desc">Empowering farmers with AI-driven insights for sustainable and profitable agriculture.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <a onclick="navigate('dashboard')">Dashboard</a>
+                <a onclick="navigate('recommendation')">AI Recommendations</a>
+                <a onclick="navigate('weather')">Weather</a>
+                <a onclick="navigate('market')">Market Prices</a>
+            </div>
+            <div class="footer-col">
+                <h4>Tools</h4>
+                <a onclick="navigate('crop-diagnosis')">Crop Diagnosis</a>
+                <a onclick="navigate('fertilizer')">Fertilizer Calculator</a>
+                <a onclick="navigate('pest-prediction')">Pest Prediction</a>
+                <a onclick="navigate('expense-tracker')">Expense Tracker</a>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <a onclick="navigate('chatbot')">AI Chat Support</a>
+                <a onclick="navigate('community')">Community</a>
+                <a href="#" onclick="event.preventDefault()">Help Center</a>
+                <a href="#" onclick="event.preventDefault()">Privacy Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 AgriSmart AI. All rights reserved.</p>
+            <div class="footer-socials">
+                <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                <a href="https://github.com/BChaitanyaReddy895/Agentic-AI-for-Sustainable-Farming" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+            </div>
+        </div>
+    </footer>
+
     <!-- ──── MOBILE BOTTOM NAV ──── -->
     <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
         <button class="mob-item" onclick="openMobileMenu()"><i class="fas fa-bars"></i><span data-i18n="mob.menu">Menu</span></button>
@@ -1397,6 +1611,11 @@
         <button class="mob-item" data-page="chatbot" onclick="navigate('chatbot')"><i class="fas fa-comment-dots"></i><span data-i18n="mob.chat">Chat</span></button>
         <button class="mob-item" data-page="profile" onclick="navigate('profile')"><i class="fas fa-user"></i><span data-i18n="mob.profile">Profile</span></button>
     </nav>
+
+    <!-- Back to Top -->
+    <button class="back-to-top" id="back-to-top" onclick="scrollToTop()" aria-label="Back to top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
 
 </div><!-- /app-shell -->
 

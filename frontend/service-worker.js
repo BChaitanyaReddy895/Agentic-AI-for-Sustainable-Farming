@@ -1,7 +1,7 @@
 // AgriSmart AI - Service Worker for Offline Support
-// Version: 7.0.0 - 5 New Features: Crop Diagnosis, Govt Schemes, Mandi Prices, Voice Notes, Expense Tracker
+// Version: 8.0.0 - Production UI Overhaul: Auth, Header, Footer, Sidebar, Animations
 
-const CACHE_NAME = 'agrismart-v7.0.0';
+const CACHE_NAME = 'agrismart-v8.0.0';
 const OFFLINE_URL = './index.html';
 
 // Files to cache for offline use

@@ -973,28 +973,86 @@ function typeText(element, text, speed = 15) {
 }
 
 // ═══════════════════════════════════════
+//  AUTH — Production-ready
+// ═══════════════════════════════════════
 
 function switchAuthTab(tab) {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('active', f.id === `${tab}-form`));
+    const titleEl = document.getElementById('auth-card-title');
+    const subtitleEl = document.getElementById('auth-card-subtitle');
+    if (titleEl) titleEl.textContent = tab === 'signup' ? 'Create your account' : 'Welcome back';
+    if (subtitleEl) subtitleEl.textContent = tab === 'signup' ? 'Start your smart farming journey today' : 'Log in to continue to your farm dashboard';
 }
+
+function togglePasswordVisibility(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const isPassword = inp.type === 'password';
+    inp.type = isPassword ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) { icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye'; }
+}
+
+function checkPasswordStrength(password) {
+    const bar = document.querySelector('#signup-pwd-strength .pwd-bar');
+    if (!bar) return;
+    bar.className = 'pwd-bar';
+    if (password.length === 0) { bar.style.width = '0'; return; }
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    if (score <= 2) bar.classList.add('weak');
+    else if (score <= 3) bar.classList.add('medium');
+    else bar.classList.add('strong');
+}
+
+// Attach password strength checker
+document.addEventListener('DOMContentLoaded', () => {
+    const pwdInput = document.getElementById('signup-password');
+    if (pwdInput) pwdInput.addEventListener('input', () => checkPasswordStrength(pwdInput.value));
+});
 
 async function handleSignup(e) {
     e.preventDefault();
+    // Clear errors
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+
     const username = document.getElementById('signup-name').value.trim();
     const farm_name = document.getElementById('signup-farm').value.trim();
     const phone = document.getElementById('signup-phone').value.trim();
     const location = document.getElementById('signup-location').value.trim();
-    if (!username || !farm_name) return toast('Please fill required fields', 'error');
+    const password = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
+    const termsChecked = document.getElementById('signup-terms')?.checked;
+
+    // Validate
+    let hasError = false;
+    function setError(id, msg) {
+        const errEl = document.getElementById(id);
+        if (errEl) { errEl.textContent = msg; errEl.closest('.form-group')?.classList.add('has-error'); }
+        hasError = true;
+    }
+    if (!username) setError('signup-name-error', 'Name is required');
+    if (!farm_name) setError('signup-farm-error', 'Farm name is required');
+    if (!phone || phone.length < 10) setError('signup-phone-error', 'Valid phone number required');
+    if (!password || password.length < 6) setError('signup-password-error', 'Password must be at least 6 characters');
+    if (password !== confirmPassword) setError('signup-confirm-error', 'Passwords do not match');
+    if (!termsChecked) { toast('Please accept the Terms of Service', 'error'); hasError = true; }
+    if (hasError) return;
+
     showLoading('Creating your account...');
     try {
         const res = await fetchAPI('/signup', { username, farm_name, profile_picture: null });
         state.user = { username, farm_name, phone, location };
         localStorage.setItem('agri_user', JSON.stringify(state.user));
-        toast('Welcome to AgriSmart AI! 🌱', 'success');
+        toast('Welcome to AgriSmart AI!', 'success');
         enterApp();
     } catch (err) {
-        // If user already exists, try login
         if (err.message && err.message.includes('already exists')) {
             toast('Username exists — logging you in', 'info');
             state.user = { username, farm_name, phone, location };
@@ -1010,14 +1068,34 @@ async function handleSignup(e) {
 
 async function handleLogin(e) {
     e.preventDefault();
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+
     const phone = document.getElementById('login-phone').value.trim();
-    if (!phone) return toast('Enter your phone number', 'error');
+    const password = document.getElementById('login-password').value;
+
+    let hasError = false;
+    function setError(id, msg) {
+        const errEl = document.getElementById(id);
+        if (errEl) { errEl.textContent = msg; errEl.closest('.form-group')?.classList.add('has-error'); }
+        hasError = true;
+    }
+    if (!phone) setError('login-phone-error', 'Phone number is required');
+    if (!password) setError('login-password-error', 'Password is required');
+    if (hasError) return;
+
     showLoading('Logging in...');
     try {
         const res = await fetchAPI('/login', { username: phone });
         state.user = res;
         localStorage.setItem('agri_user', JSON.stringify(state.user));
-        toast(`Welcome back, ${res.username}! 🌾`, 'success');
+        // Remember me
+        if (document.getElementById('login-remember')?.checked) {
+            localStorage.setItem('agri_remember', phone);
+        } else {
+            localStorage.removeItem('agri_remember');
+        }
+        toast(`Welcome back, ${res.username}!`, 'success');
         enterApp();
     } catch {
         toast('User not found — please sign up first', 'error');
@@ -1032,6 +1110,14 @@ function restoreSession() {
         state.user = JSON.parse(saved);
         enterApp();
     }
+    // Remember me — pre-fill login phone
+    const remembered = localStorage.getItem('agri_remember');
+    if (remembered) {
+        const lp = document.getElementById('login-phone');
+        const lr = document.getElementById('login-remember');
+        if (lp) lp.value = remembered;
+        if (lr) lr.checked = true;
+    }
     const savedSetup = localStorage.getItem('agri_farm_setup');
     if (savedSetup) state.farmSetup = JSON.parse(savedSetup);
     const savedRecs = localStorage.getItem('agri_recommendations');
@@ -1042,9 +1128,18 @@ function enterApp() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app-shell').style.display = 'flex';
     updateSidebarProfile();
+    updateHeaderProfile();
     updateDashboard();
     loadDashboardWeather();
     navigate('dashboard');
+}
+
+function updateHeaderProfile() {
+    if (!state.user) return;
+    const avatar = document.getElementById('header-avatar');
+    const uname = document.getElementById('header-username');
+    if (avatar) avatar.textContent = (state.user.username || 'F')[0].toUpperCase();
+    if (uname) uname.textContent = state.user.username || 'Farmer';
 }
 
 function logout() {
@@ -1076,6 +1171,11 @@ function navigate(pageId) {
     // Picture nav active
     document.querySelectorAll('.pic-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
     closeMobileMenu();
+    // Update breadcrumb
+    updateBreadcrumb(pageId);
+    // Scroll to top of main area
+    const mainArea = document.querySelector('.main-area');
+    if (mainArea) mainArea.scrollTop = 0;
     // Audio narration for illiterate farmers (Simple Mode)
     narratePage(pageId);
     // Lazy-load actions
@@ -4011,4 +4111,143 @@ function downloadFile(content, filename, mimeType) {
 // ─── Service Worker Registration ───
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+
+// ═══════════════════════════════════════
+//  PRODUCTION UI — Header, Footer, Breadcrumb, Back-to-top, Search, Notifications
+// ═══════════════════════════════════════
+
+const pageNameMap = {
+    'dashboard': 'Dashboard',
+    'farm-setup': 'Farm Setup',
+    'recommendation': 'AI Recommendations',
+    'rotation': 'Crop Planner',
+    'fertilizer': 'Fertilizer Calculator',
+    'farm-map': 'Farm Map',
+    'sustainability': 'Sustainability',
+    'community': 'Community',
+    'market': 'Market Forecast',
+    'chatbot': 'AI Assistant',
+    'weather': 'Weather',
+    'soil-analysis': 'Soil Analysis',
+    'pest-prediction': 'Pest Prediction',
+    'history': 'My History',
+    'offline': 'Offline Mode',
+    'profile': 'Settings',
+    'crop-diagnosis': 'Crop Diagnosis',
+    'govt-schemes': 'Govt Schemes',
+    'mandi-prices': 'Mandi Prices',
+    'voice-notes': 'Voice Notes',
+    'expense-tracker': 'Expense Tracker'
+};
+
+function updateBreadcrumb(pageId) {
+    const el = document.getElementById('breadcrumb-current');
+    if (el) el.textContent = pageNameMap[pageId] || pageId;
+}
+
+// ─── Global Search ───
+function handleGlobalSearch(query) {
+    const resultsEl = document.getElementById('search-results');
+    if (!resultsEl) return;
+    if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
+    const q = query.toLowerCase();
+    const matches = Object.entries(pageNameMap).filter(([key, name]) =>
+        name.toLowerCase().includes(q) || key.includes(q)
+    ).slice(0, 6);
+    if (!matches.length) { resultsEl.style.display = 'none'; return; }
+    resultsEl.innerHTML = matches.map(([key, name]) =>
+        `<div class="search-result-item" onclick="navigate('${key}'); document.getElementById('search-results').style.display='none'; document.getElementById('global-search').value='';"><i class="fas fa-arrow-right"></i> ${name}</div>`
+    ).join('');
+    resultsEl.style.display = 'block';
+}
+
+// Close search results on outside click
+document.addEventListener('click', (e) => {
+    const sr = document.getElementById('search-results');
+    const si = document.getElementById('global-search');
+    if (sr && !sr.contains(e.target) && e.target !== si) sr.style.display = 'none';
+});
+
+// ─── Notifications ───
+function toggleNotifPanel() {
+    const panel = document.getElementById('notif-panel');
+    if (!panel) return;
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    // Close user dropdown if open
+    const dd = document.getElementById('user-dropdown-menu');
+    if (dd) dd.style.display = 'none';
+}
+
+function addNotification(message, icon = 'fas fa-info-circle') {
+    const list = document.getElementById('notif-list');
+    const dot = document.getElementById('notif-dot');
+    if (!list) return;
+    // Remove empty state
+    const empty = list.querySelector('.notif-empty');
+    if (empty) empty.remove();
+    const item = document.createElement('div');
+    item.className = 'notif-item';
+    item.innerHTML = `<div class="notif-item-icon"><i class="${icon}"></i></div><div><div class="notif-item-text">${message}</div><div class="notif-item-time">Just now</div></div>`;
+    list.prepend(item);
+    if (dot) { dot.classList.add('active'); dot.style.display = 'block'; }
+}
+
+function clearNotifications() {
+    const list = document.getElementById('notif-list');
+    const dot = document.getElementById('notif-dot');
+    if (list) list.innerHTML = '<div class="notif-empty"><i class="fas fa-bell-slash"></i><p>No new notifications</p></div>';
+    if (dot) { dot.classList.remove('active'); dot.style.display = 'none'; }
+}
+
+// ─── User Dropdown ───
+function toggleUserDropdown() {
+    const dd = document.getElementById('user-dropdown-menu');
+    if (!dd) return;
+    const isVisible = dd.style.display !== 'none';
+    dd.style.display = isVisible ? 'none' : 'block';
+    // Close notif panel
+    const np = document.getElementById('notif-panel');
+    if (np) np.style.display = 'none';
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', (e) => {
+    const dd = document.getElementById('user-dropdown-menu');
+    const ddBtn = document.querySelector('.header-avatar-btn');
+    if (dd && dd.style.display !== 'none' && !dd.contains(e.target) && !ddBtn?.contains(e.target)) {
+        dd.style.display = 'none';
+    }
+    const np = document.getElementById('notif-panel');
+    const nb = document.getElementById('notif-btn');
+    if (np && np.style.display !== 'none' && !np.contains(e.target) && !nb?.contains(e.target)) {
+        np.style.display = 'none';
+    }
+});
+
+// ─── Back to Top ───
+function scrollToTop() {
+    const mainArea = document.querySelector('.main-area');
+    if (mainArea) mainArea.scrollTo({ top: 0, behavior: 'smooth' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Show/hide back-to-top based on scroll
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('back-to-top');
+    const mainArea = document.querySelector('.main-area');
+    if (btn && mainArea) {
+        mainArea.addEventListener('scroll', () => {
+            btn.classList.toggle('visible', mainArea.scrollTop > 400);
+        });
+    }
+});
+
+// ─── Update community post count on dashboard ───
+function updateCommunityCount() {
+    const el = document.getElementById('stat-community');
+    if (!el) return;
+    const posts = document.querySelectorAll('#community-feed .community-post');
+    el.textContent = posts.length || '0';
 }
