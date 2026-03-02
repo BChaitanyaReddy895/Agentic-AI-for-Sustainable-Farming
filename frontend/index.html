@@ -119,6 +119,13 @@
             <a class="sidebar-link" data-page="weather" onclick="navigate('weather')"><i class="fas fa-cloud-sun"></i><span data-i18n="nav.weather">Weather</span></a>
             <a class="sidebar-link" data-page="soil-analysis" onclick="navigate('soil-analysis')"><i class="fas fa-microscope"></i><span data-i18n="nav.soilAnalysis">Soil Analysis</span></a>
             <a class="sidebar-link" data-page="pest-prediction" onclick="navigate('pest-prediction')"><i class="fas fa-bug"></i><span data-i18n="nav.pestPrediction">Pest Prediction</span></a>
+            <div class="sidebar-divider"></div>
+            <span class="sidebar-section-label">New Features</span>
+            <a class="sidebar-link" data-page="crop-diagnosis" onclick="navigate('crop-diagnosis')"><i class="fas fa-camera"></i><span data-i18n="nav.cropDiagnosis">Crop Diagnosis</span><span class="sidebar-badge new-badge">NEW</span></a>
+            <a class="sidebar-link" data-page="govt-schemes" onclick="navigate('govt-schemes')"><i class="fas fa-landmark"></i><span data-i18n="nav.govtSchemes">Govt Schemes</span><span class="sidebar-badge new-badge">NEW</span></a>
+            <a class="sidebar-link" data-page="mandi-prices" onclick="navigate('mandi-prices')"><i class="fas fa-store"></i><span data-i18n="nav.mandiPrices">Mandi Prices</span><span class="sidebar-badge new-badge">NEW</span></a>
+            <a class="sidebar-link" data-page="voice-notes" onclick="navigate('voice-notes')"><i class="fas fa-microphone-alt"></i><span data-i18n="nav.voiceNotes">Voice Notes</span><span class="sidebar-badge new-badge">NEW</span></a>
+            <a class="sidebar-link" data-page="expense-tracker" onclick="navigate('expense-tracker')"><i class="fas fa-wallet"></i><span data-i18n="nav.expenseTracker">Expense Tracker</span><span class="sidebar-badge new-badge">NEW</span></a>
         </nav>
         <div class="sidebar-footer">
             <a class="sidebar-link" data-page="history" onclick="navigate('history')"><i class="fas fa-history"></i><span data-i18n="nav.history">My History</span></a>
@@ -172,6 +179,18 @@
                 <button class="pic-nav-btn" onclick="navigate('soil-analysis')" data-page="soil-analysis">
                     <div class="pic-nav-icon" style="background:linear-gradient(135deg,#92400e,#d97706)">🔬</div>
                     <span data-i18n="nav.soilAnalysis">Soil Check</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('crop-diagnosis')" data-page="crop-diagnosis">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">📸</div>
+                    <span data-i18n="nav.cropDiagnosis">Crop Photo</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('mandi-prices')" data-page="mandi-prices">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#f97316,#fb923c)">💰</div>
+                    <span data-i18n="nav.mandiPrices">Mandi Price</span>
+                </button>
+                <button class="pic-nav-btn" onclick="navigate('expense-tracker')" data-page="expense-tracker">
+                    <div class="pic-nav-icon" style="background:linear-gradient(135deg,#14b8a6,#2dd4bf)">📊</div>
+                    <span data-i18n="nav.expenseTracker">Money</span>
                 </button>
             </div>
         </div>
@@ -1067,6 +1086,307 @@
             </div>
         </section>
 
+        <!-- ═══════════════ CROP PHOTO DIAGNOSIS PAGE ═══════════════ -->
+        <section id="crop-diagnosis-page" class="page">
+            <div class="page-pad">
+                <div class="page-title-row">
+                    <div class="page-icon bg-emerald"><i class="fas fa-camera"></i></div>
+                    <div><h1 data-i18n="diag.title">Crop Photo Diagnosis</h1><p class="page-desc" data-i18n="diag.desc">Snap a photo or describe symptoms — AI identifies diseases instantly</p></div>
+                </div>
+
+                <div class="card diagnosis-hero-card">
+                    <div class="diag-camera-zone" id="diag-camera-zone">
+                        <div class="diag-camera-placeholder" id="diag-placeholder">
+                            <div class="diag-cam-icon"><i class="fas fa-camera-retro"></i></div>
+                            <p>Take a photo of your crop</p>
+                            <div class="diag-cam-actions">
+                                <button class="btn btn-primary btn-lg" onclick="openCropCamera()"><i class="fas fa-camera"></i> Open Camera</button>
+                                <button class="btn btn-outline" onclick="document.getElementById('diag-file-input').click()"><i class="fas fa-image"></i> Upload Photo</button>
+                            </div>
+                            <input type="file" id="diag-file-input" accept="image/*" capture="environment" style="display:none" onchange="handleCropPhoto(event)">
+                        </div>
+                        <div class="diag-preview" id="diag-preview" style="display:none">
+                            <img id="diag-preview-img" src="" alt="Crop photo">
+                            <button class="diag-retake-btn" onclick="retakeCropPhoto()"><i class="fas fa-redo"></i> Retake</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-stethoscope"></i> Describe Symptoms</h3>
+                    <div class="input-grid-2">
+                        <div class="form-group">
+                            <label>Crop Type</label>
+                            <select id="diag-crop-type">
+                                <option value="">Select crop</option>
+                                <option>Rice</option><option>Wheat</option><option>Maize</option><option>Cotton</option>
+                                <option>Tomato</option><option>Potato</option><option>Onion</option><option>Soybean</option>
+                                <option>Sugarcane</option><option>Chili</option><option>Brinjal</option><option>Groundnut</option>
+                                <option>Mustard</option><option>Banana</option><option>Mango</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Affected Part</label>
+                            <select id="diag-affected-part">
+                                <option value="">Select part</option>
+                                <option>Leaves</option><option>Stem</option><option>Roots</option><option>Fruit</option><option>Flowers</option><option>Whole Plant</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Symptom Description</label>
+                        <textarea id="diag-symptoms" rows="3" placeholder="e.g. Yellow spots on leaves, wilting, brown patches..."></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="runCropDiagnosis()"><i class="fas fa-search-plus"></i> Diagnose Now</button>
+                </div>
+
+                <div id="diag-result" class="mt-4" style="display:none"></div>
+
+                <!-- Diagnosis History -->
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-history"></i> Recent Diagnoses</h3>
+                    <div id="diag-history-list"><p class="muted-text">No diagnoses yet. Take a photo to get started!</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ GOVERNMENT SCHEME MATCHER PAGE ═══════════════ -->
+        <section id="govt-schemes-page" class="page">
+            <div class="page-pad">
+                <div class="page-title-row">
+                    <div class="page-icon bg-indigo"><i class="fas fa-landmark"></i></div>
+                    <div><h1 data-i18n="scheme.title">Government Scheme Matcher</h1><p class="page-desc" data-i18n="scheme.desc">Find eligible government subsidies, loans & insurance schemes for your farm</p></div>
+                </div>
+
+                <div class="scheme-search-card card">
+                    <h3 class="card-title"><i class="fas fa-search"></i> Find Your Schemes</h3>
+                    <div class="input-grid-2">
+                        <div class="form-group">
+                            <label><i class="fas fa-map-marker-alt"></i> State / Location</label>
+                            <select id="scheme-state">
+                                <option value="">Select state</option>
+                                <option>Andhra Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option>
+                                <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option>
+                                <option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option>
+                                <option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Tamil Nadu</option>
+                                <option>Telangana</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-seedling"></i> Primary Crop</label>
+                            <input type="text" id="scheme-crop" placeholder="e.g. Rice, Wheat, Cotton">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-ruler-combined"></i> Land Size (acres)</label>
+                            <input type="number" id="scheme-land-size" placeholder="e.g. 5" min="0" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user-tag"></i> Farmer Category</label>
+                            <select id="scheme-category">
+                                <option value="small">Small Farmer (< 2 ha)</option>
+                                <option value="marginal">Marginal Farmer (< 1 ha)</option>
+                                <option value="medium">Medium Farmer (2-10 ha)</option>
+                                <option value="large">Large Farmer (> 10 ha)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="findGovtSchemes()"><i class="fas fa-search"></i> Find Matching Schemes</button>
+                </div>
+
+                <div id="scheme-results" class="mt-4" style="display:none"></div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ MANDI PRICE ALERT PAGE ═══════════════ -->
+        <section id="mandi-prices-page" class="page">
+            <div class="page-pad">
+                <div class="page-title-row">
+                    <div class="page-icon bg-orange"><i class="fas fa-store"></i></div>
+                    <div><h1 data-i18n="mandi.title">Mandi Price Alerts</h1><p class="page-desc" data-i18n="mandi.desc">Real-time mandi prices with AI-powered sell/hold recommendations</p></div>
+                </div>
+
+                <div class="card mandi-search-card">
+                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Check Crop Prices</h3>
+                    <div class="mandi-quick-crops">
+                        <button class="mandi-crop-chip active" onclick="selectMandiCrop(this,'Rice')">🌾 Rice</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Wheat')">🌾 Wheat</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Cotton')">🏵️ Cotton</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Soybean')">🫘 Soybean</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Onion')">🧅 Onion</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Tomato')">🍅 Tomato</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Potato')">🥔 Potato</button>
+                        <button class="mandi-crop-chip" onclick="selectMandiCrop(this,'Maize')">🌽 Maize</button>
+                    </div>
+                    <div class="input-grid-2 mt-3">
+                        <div class="form-group">
+                            <label>Or enter crop name</label>
+                            <input type="text" id="mandi-crop-input" placeholder="e.g. Mustard, Groundnut" value="Rice">
+                        </div>
+                        <div class="form-group">
+                            <label>State (Optional)</label>
+                            <select id="mandi-state">
+                                <option value="">All India</option>
+                                <option>Maharashtra</option><option>Uttar Pradesh</option><option>Madhya Pradesh</option>
+                                <option>Rajasthan</option><option>Karnataka</option><option>Gujarat</option><option>Punjab</option>
+                                <option>Haryana</option><option>Tamil Nadu</option><option>Andhra Pradesh</option><option>Telangana</option>
+                                <option>West Bengal</option><option>Bihar</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="checkMandiPrices()"><i class="fas fa-search-dollar"></i> Get Prices & Advice</button>
+                </div>
+
+                <div id="mandi-results" class="mt-4" style="display:none"></div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ VOICE NOTES PAGE ═══════════════ -->
+        <section id="voice-notes-page" class="page">
+            <div class="page-pad">
+                <div class="page-title-row">
+                    <div class="page-icon bg-purple"><i class="fas fa-microphone-alt"></i></div>
+                    <div><h1 data-i18n="vnotes.title">Farmer Voice Notes</h1><p class="page-desc" data-i18n="vnotes.desc">Share farming tips with your voice — help fellow farmers!</p></div>
+                </div>
+
+                <div class="card vnote-record-card">
+                    <h3 class="card-title"><i class="fas fa-plus-circle"></i> Share a Voice Tip</h3>
+                    <div class="vnote-recorder">
+                        <button class="vnote-mic-btn" id="vnote-mic-btn" onclick="toggleVoiceNoteRecording()">
+                            <i class="fas fa-microphone" id="vnote-mic-icon"></i>
+                        </button>
+                        <p class="vnote-mic-label" id="vnote-mic-label">Tap to record your farming tip</p>
+                        <div class="vnote-wave" id="vnote-wave" style="display:none">
+                            <span></span><span></span><span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <div class="vnote-transcript" id="vnote-transcript" style="display:none">
+                        <label>Your message:</label>
+                        <textarea id="vnote-text" rows="3" placeholder="Your voice note text will appear here..."></textarea>
+                    </div>
+                    <div class="input-grid-2 mt-3">
+                        <div class="form-group">
+                            <label>Related Crop (Optional)</label>
+                            <input type="text" id="vnote-crop" placeholder="e.g. Rice, Wheat">
+                        </div>
+                        <div class="form-group">
+                            <label>Language</label>
+                            <select id="vnote-lang">
+                                <option value="en">English</option><option value="hi">Hindi</option><option value="kn">Kannada</option>
+                                <option value="te">Telugu</option><option value="ta">Tamil</option><option value="ml">Malayalam</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="shareVoiceNote()"><i class="fas fa-share"></i> Share with Community</button>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="vnote-filter-row">
+                        <h3 class="card-title"><i class="fas fa-headphones"></i> Community Tips</h3>
+                        <input type="text" class="vnote-filter" id="vnote-filter" placeholder="Filter by crop..." oninput="loadVoiceNotes(this.value)">
+                    </div>
+                    <div id="vnote-feed"><p class="muted-text">Loading community voice notes...</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ EXPENSE & PROFIT TRACKER PAGE ═══════════════ -->
+        <section id="expense-tracker-page" class="page">
+            <div class="page-pad">
+                <div class="page-title-row">
+                    <div class="page-icon bg-teal"><i class="fas fa-wallet"></i></div>
+                    <div><h1 data-i18n="expense.title">Expense & Profit Tracker</h1><p class="page-desc" data-i18n="expense.desc">Track farm expenses, record sales, and monitor profitability</p></div>
+                </div>
+
+                <!-- Profit Summary Cards -->
+                <div class="expense-summary-grid" id="expense-summary">
+                    <div class="exp-sum-card income-card">
+                        <div class="exp-sum-icon"><i class="fas fa-arrow-down"></i></div>
+                        <div class="exp-sum-label">Total Income</div>
+                        <div class="exp-sum-value" id="exp-income">₹0</div>
+                    </div>
+                    <div class="exp-sum-card expense-card-sum">
+                        <div class="exp-sum-icon"><i class="fas fa-arrow-up"></i></div>
+                        <div class="exp-sum-label">Total Expenses</div>
+                        <div class="exp-sum-value" id="exp-expense">₹0</div>
+                    </div>
+                    <div class="exp-sum-card profit-card">
+                        <div class="exp-sum-icon"><i class="fas fa-chart-pie"></i></div>
+                        <div class="exp-sum-label">Net Profit</div>
+                        <div class="exp-sum-value" id="exp-profit">₹0</div>
+                    </div>
+                </div>
+
+                <!-- Add Entry -->
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-plus-circle"></i> Add Entry</h3>
+                    <div class="exp-type-toggle">
+                        <button class="exp-type-btn active" id="exp-type-expense" onclick="setExpenseType('expense')"><i class="fas fa-minus-circle"></i> Expense</button>
+                        <button class="exp-type-btn" id="exp-type-income" onclick="setExpenseType('income')"><i class="fas fa-plus-circle"></i> Income / Sale</button>
+                    </div>
+                    <div class="input-grid-2 mt-3">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="exp-category">
+                                <option value="seeds">🌱 Seeds</option>
+                                <option value="fertilizer">💊 Fertilizer</option>
+                                <option value="pesticide">🧪 Pesticide</option>
+                                <option value="labor">👷 Labor</option>
+                                <option value="irrigation">💧 Irrigation</option>
+                                <option value="equipment">🔧 Equipment</option>
+                                <option value="transport">🚛 Transport</option>
+                                <option value="rent">🏡 Land Rent</option>
+                                <option value="sale">💰 Crop Sale</option>
+                                <option value="subsidy">🏛️ Govt Subsidy</option>
+                                <option value="other">📦 Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="exp-amount" placeholder="e.g. 5000" min="0">
+                        </div>
+                    </div>
+                    <div class="input-grid-2">
+                        <div class="form-group">
+                            <label>Description (Optional)</label>
+                            <input type="text" id="exp-description" placeholder="e.g. DAP fertilizer 50kg">
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="exp-date">
+                        </div>
+                    </div>
+                    <div class="exp-voice-hint">
+                        <i class="fas fa-microphone"></i> Say "add expense 5000 for fertilizer" using voice assistant!
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="addExpenseEntry()"><i class="fas fa-save"></i> Save Entry</button>
+                </div>
+
+                <!-- Charts -->
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-chart-bar"></i> Spending Analysis</h3>
+                    <div id="expense-chart" class="chart-container"></div>
+                </div>
+
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Monthly Income vs Expense</h3>
+                    <div id="expense-monthly-chart" class="chart-container"></div>
+                </div>
+
+                <!-- AI Insights -->
+                <div class="card mt-4 ai-insight-card">
+                    <h3 class="card-title"><i class="fas fa-robot"></i> AI Financial Insights</h3>
+                    <button class="btn btn-outline btn-sm mb-3" onclick="getExpenseInsights()"><i class="fas fa-magic"></i> Get AI Analysis</button>
+                    <div id="expense-ai-insights"><p class="muted-text">Add some expenses first, then get AI-powered financial advice!</p></div>
+                </div>
+
+                <!-- Recent Entries -->
+                <div class="card mt-4">
+                    <h3 class="card-title"><i class="fas fa-list"></i> Recent Entries</h3>
+                    <div id="expense-entries-list"><p class="muted-text">No entries yet. Start tracking your farm finances!</p></div>
+                </div>
+            </div>
+        </section>
+
     </div><!-- /main-area -->
 
     <!-- ──── MOBILE BOTTOM NAV ──── -->
@@ -1171,6 +1491,9 @@
                 <button class="vp-chip" onclick="voiceQuickCommand('pest problem')">🐛 Pest Help</button>
                 <button class="vp-chip" onclick="voiceQuickCommand('fertilizer')">💊 Fertilizer</button>
                 <button class="vp-chip" onclick="voiceQuickCommand('market price')">📈 Prices</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('crop diagnosis')">📸 Diagnose</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('government scheme')">🏛️ Schemes</button>
+                <button class="vp-chip" onclick="voiceQuickCommand('expense')">💰 Expense</button>
                 <button class="vp-chip" onclick="voiceQuickCommand('help')">❓ Help</button>
             </div>
         </div>

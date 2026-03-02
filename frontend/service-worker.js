@@ -1,7 +1,7 @@
 // AgriSmart AI - Service Worker for Offline Support
-// Version: 6.2.0 - Full Voice Conversation Engine + Draggable SOS
+// Version: 7.0.0 - 5 New Features: Crop Diagnosis, Govt Schemes, Mandi Prices, Voice Notes, Expense Tracker
 
-const CACHE_NAME = 'agrismart-v6.2.0';
+const CACHE_NAME = 'agrismart-v7.0.0';
 const OFFLINE_URL = './index.html';
 
 // Files to cache for offline use

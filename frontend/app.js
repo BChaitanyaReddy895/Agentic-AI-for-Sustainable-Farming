@@ -1084,6 +1084,11 @@ function navigate(pageId) {
     if (pageId === 'offline') updateOfflinePage();
     if (pageId === 'community') loadCommunityInsights();
     if (pageId === 'sustainability') loadSustainabilityChart();
+    if (pageId === 'crop-diagnosis') loadDiagnosisHistory();
+    if (pageId === 'voice-notes') loadVoiceNotes();
+    if (pageId === 'expense-tracker') loadExpenseData();
+    if (pageId === 'mandi-prices') { /* auto-search on first visit */ }
+    if (pageId === 'govt-schemes') { /* prefill from farm data if available */ prefillSchemeData(); }
     // Auto-fill pest prediction with farm setup data
     if (pageId === 'pest-prediction' && state.farmSetup) {
         const pt = document.getElementById('pest-temp');
@@ -3188,6 +3193,33 @@ function processVoiceMasterCommand(text) {
         return true;
     }
 
+    // ── New Feature Navigation ──
+    if (['crop diagnosis', 'diagnose crop', 'take photo', 'crop photo', 'crop disease', 'photo diagnosis', 'camera', 'फसल रोग', 'फोटो जांच', 'ಬೆಳೆ ರೋಗ', 'ఫోటో పరీక్ష', 'பயிர் நோய்'].some(w => t.includes(w))) {
+        navigate('crop-diagnosis');
+        vcSpeak({ en: 'Crop diagnosis page. Take a photo or describe symptoms to get instant AI diagnosis.', hi: 'फसल निदान पेज। फोटो लें या लक्षण बताएं।', kn: 'ಬೆಳೆ ರೋಗ ನಿರ್ಣಯ ಪುಟ.', te: 'పంట రోగ నిర్ధారణ పేజీ.', ta: 'பயிர் நோய் கண்டறிதல் பக்கம்.' });
+        return true;
+    }
+    if (['government scheme', 'govt scheme', 'sarkari yojana', 'subsidy', 'सरकारी योजना', 'सब्सिडी', 'ಸರ್ಕಾರಿ ಯೋಜನೆ', 'ప్రభుత్వ పథకం', 'அரசு திட்டம்'].some(w => t.includes(w))) {
+        navigate('govt-schemes');
+        vcSpeak({ en: 'Government schemes page. Find subsidies and loans you are eligible for.', hi: 'सरकारी योजना पेज। आपके लिए उपलब्ध सब्सिडी और लोन खोजें।', kn: 'ಸರ್ಕಾರಿ ಯೋಜನೆ ಪುಟ.', te: 'ప్రభుత్వ పథకాల పేజీ.', ta: 'அரசு திட்டங்கள் பக்கம்.' });
+        return true;
+    }
+    if (['mandi price', 'market price', 'crop price', 'what is the price', 'मंडी भाव', 'भाव बताओ', 'बाजार भाव', 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ', 'ధర చెప్పు', 'மண்டி விலை', 'விலை'].some(w => t.includes(w))) {
+        navigate('mandi-prices');
+        vcSpeak({ en: 'Mandi prices page. Check latest crop prices and get sell or hold advice.', hi: 'मंडी भाव पेज। फसल के दाम और बेचें या रुकें सलाह पाएं।', kn: 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ ಪುಟ.', te: 'మండి ధరల పేజీ.', ta: 'மண்டி விலை பக்கம்.' });
+        return true;
+    }
+    if (['voice note', 'record tip', 'share tip', 'farmer tip', 'वॉइस नोट', 'टिप शेयर करो', 'ಧ್ವನಿ ಟಿಪ್ಪಣಿ', 'వాయిస్ నోట్', 'குரல் குறிப்பு'].some(w => t.includes(w))) {
+        navigate('voice-notes');
+        vcSpeak({ en: 'Voice notes page. Record and share farming tips with fellow farmers.', hi: 'वॉइस नोट पेज। खेती की टिप्स रिकॉर्ड करें और शेयर करें।', kn: 'ಧ್ವನಿ ಟಿಪ್ಪಣಿ ಪುಟ.', te: 'వాయిస్ నోట్ పేజీ.', ta: 'குரல் குறிப்பு பக்கம்.' });
+        return true;
+    }
+    if (['expense', 'add expense', 'track expense', 'profit', 'income', 'खर्चा', 'खर्च जोड़ो', 'मुनाफा', 'आमदनी', 'ಖರ್ಚು', 'ಲಾಭ', 'ఖర్చు', 'లాభం', 'செலவு', 'லாபம்'].some(w => t.includes(w))) {
+        navigate('expense-tracker');
+        vcSpeak({ en: 'Expense tracker page. Track your farm spending and profits.', hi: 'खर्चा ट्रैकर पेज। खेती का खर्च और मुनाफा ट्रैक करें।', kn: 'ಖರ್ಚು ಟ್ರ್ಯಾಕರ್ ಪುಟ.', te: 'ఖర్చు ట్రాకర్ పేజీ.', ta: 'செலவு கண்காணிப்பான் பக்கம்.' });
+        return true;
+    }
+
     // ── What can I do? (help) ──
     if (['what can i do', 'what can you do', 'help me', 'help', 'क्या कर सकते हो', 'मदद', 'सहायता', 'ಏನು ಮಾಡಬಹುದು', 'ಸಹಾಯ', 'ఏం చేయవచ్చు', 'సహాయం', 'என்ன செய்யலாம்', 'உதவி'].some(w => t.includes(w))) {
         vcSpeak({ en: 'You can say: Login me, Sign me up, Set up my farm, Get crop recommendation, Check weather, Check pest, Analyze soil, Go to community, Go to settings, Detect location, Simple mode, or Logout. Ask any farming question and I will answer!', hi: 'आप बोल सकते हैं: लॉगिन करो, साइन अप करो, खेत सेट करो, फसल सलाह दो, मौसम बताओ, कीड़ा जांचो, मिट्टी जांचो, समुदाय, सेटिंग्स, लोकेशन ढूंढो, सरल मोड, या लॉगआउट। कोई भी खेती का सवाल पूछें!' });
@@ -3276,6 +3308,658 @@ function initDraggableSOS() {
 
     // Prevent default click since we handle it in onEnd
     btn.onclick = (e) => { if (hasMoved) { e.preventDefault(); e.stopPropagation(); } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FEATURE 1: CROP PHOTO DIAGNOSIS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let diagImageBase64 = null;
+
+function openCropCamera() {
+    document.getElementById('diag-file-input').click();
+}
+
+function handleCropPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        diagImageBase64 = e.target.result.split(',')[1];
+        document.getElementById('diag-preview-img').src = e.target.result;
+        document.getElementById('diag-placeholder').style.display = 'none';
+        document.getElementById('diag-preview').style.display = '';
+    };
+    reader.readAsDataURL(file);
+}
+
+function retakeCropPhoto() {
+    diagImageBase64 = null;
+    document.getElementById('diag-placeholder').style.display = '';
+    document.getElementById('diag-preview').style.display = 'none';
+    document.getElementById('diag-file-input').value = '';
+}
+
+async function runCropDiagnosis() {
+    const cropType = document.getElementById('diag-crop-type').value;
+    const affected = document.getElementById('diag-affected-part').value;
+    const symptoms = document.getElementById('diag-symptoms').value;
+    
+    if (!symptoms && !diagImageBase64) {
+        toast('Please describe symptoms or take a photo', 'error');
+        return;
+    }
+    
+    let description = symptoms;
+    if (affected) description = `Affected part: ${affected}. ${description}`;
+    
+    showLoading('AI is diagnosing your crop...');
+    try {
+        const res = await fetchAPI('/crop_diagnosis', {
+            description: description,
+            crop_type: cropType,
+            username: state.user?.username || 'anonymous',
+            image_base64: diagImageBase64
+        });
+        hideLoading();
+        
+        if (res.diagnosis) {
+            renderDiagnosisResult(res.diagnosis);
+            loadDiagnosisHistory();
+        }
+    } catch(e) {
+        hideLoading();
+        toast('Diagnosis failed: ' + e.message, 'error');
+    }
+}
+
+function renderDiagnosisResult(d) {
+    const container = document.getElementById('diag-result');
+    container.style.display = '';
+    
+    const severityColors = { mild: '#22c55e', moderate: '#f59e0b', severe: '#ef4444', critical: '#dc2626' };
+    const sevColor = severityColors[d.severity] || '#6b7280';
+    const confPct = Math.round((d.confidence || 0.5) * 100);
+    
+    container.innerHTML = `
+        <div class="card diag-result-card animate-fade-in">
+            <div class="diag-result-header">
+                <div class="diag-disease-badge" style="background:${sevColor}20;color:${sevColor};border:2px solid ${sevColor}">
+                    <i class="fas fa-virus"></i> ${d.disease_name || 'Unknown'}
+                </div>
+                <div class="diag-confidence-ring">
+                    <svg viewBox="0 0 36 36" class="diag-ring-svg">
+                        <path class="diag-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e5e7eb" stroke-width="3"/>
+                        <path class="diag-ring-fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${sevColor}" stroke-width="3" stroke-dasharray="${confPct}, 100"/>
+                    </svg>
+                    <span class="diag-ring-text">${confPct}%</span>
+                </div>
+            </div>
+            
+            <div class="diag-severity-bar">
+                <span>Severity:</span>
+                <div class="diag-sev-level" style="background:${sevColor}">${(d.severity || 'unknown').toUpperCase()}</div>
+                <span>Spread Risk:</span>
+                <div class="diag-sev-level" style="background:${d.spread_risk === 'high' ? '#ef4444' : d.spread_risk === 'medium' ? '#f59e0b' : '#22c55e'}">${(d.spread_risk || 'low').toUpperCase()}</div>
+            </div>
+            
+            <div class="diag-cause"><i class="fas fa-microscope"></i> <strong>Cause:</strong> ${d.cause || 'Under analysis'}</div>
+            ${d.recovery_time ? `<div class="diag-recovery"><i class="fas fa-clock"></i> <strong>Recovery:</strong> ${d.recovery_time}</div>` : ''}
+            
+            <div class="diag-treatment-grid">
+                <div class="diag-treat-card immediate">
+                    <h4><i class="fas fa-bolt"></i> Immediate Action</h4>
+                    <ul>${(d.treatment?.immediate || []).map(t => `<li>${t}</li>`).join('')}</ul>
+                </div>
+                <div class="diag-treat-card organic">
+                    <h4><i class="fas fa-leaf"></i> Organic Remedies</h4>
+                    <ul>${(d.treatment?.organic || []).map(t => `<li>${t}</li>`).join('')}</ul>
+                </div>
+                <div class="diag-treat-card chemical">
+                    <h4><i class="fas fa-flask"></i> Chemical Treatment</h4>
+                    <ul>${(d.treatment?.chemical || []).map(t => `<li>${t}</li>`).join('')}</ul>
+                </div>
+                <div class="diag-treat-card prevention">
+                    <h4><i class="fas fa-shield-alt"></i> Prevention</h4>
+                    <ul>${(d.treatment?.prevention || []).map(t => `<li>${t}</li>`).join('')}</ul>
+                </div>
+            </div>
+            
+            ${d.expert_tip ? `<div class="diag-expert-tip"><i class="fas fa-lightbulb"></i> <strong>Expert Tip:</strong> ${d.expert_tip}</div>` : ''}
+        </div>`;
+}
+
+async function loadDiagnosisHistory() {
+    try {
+        const res = await fetchAPI(`/crop_diagnosis/history/${state.user?.username || 'anonymous'}`, null, 'GET');
+        const list = document.getElementById('diag-history-list');
+        if (!res.history || res.history.length === 0) {
+            list.innerHTML = '<p class="muted-text">No diagnoses yet. Take a photo to get started!</p>';
+            return;
+        }
+        list.innerHTML = res.history.map(h => `
+            <div class="diag-history-item">
+                <div class="diag-hist-icon"><i class="fas fa-virus"></i></div>
+                <div class="diag-hist-info">
+                    <strong>${h.diagnosis?.disease_name || 'Analysis'}</strong>
+                    <span class="diag-hist-crop">${h.crop_type || 'Unknown crop'}</span>
+                    <span class="diag-hist-date">${h.created_at || ''}</span>
+                </div>
+                <div class="diag-hist-conf">${Math.round((h.confidence || 0) * 100)}%</div>
+            </div>`).join('');
+    } catch(e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FEATURE 2: GOVERNMENT SCHEME MATCHER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function prefillSchemeData() {
+    if (state.farmSetup) {
+        const landEl = document.getElementById('scheme-land-size');
+        if (landEl && state.farmSetup.land_size) landEl.value = state.farmSetup.land_size;
+    }
+    if (state.user?.location) {
+        const stateEl = document.getElementById('scheme-state');
+        // try to match state
+    }
+}
+
+async function findGovtSchemes() {
+    const location = document.getElementById('scheme-state').value;
+    const crop = document.getElementById('scheme-crop').value;
+    const landSize = parseFloat(document.getElementById('scheme-land-size').value) || 2;
+    const category = document.getElementById('scheme-category').value;
+    
+    showLoading('Finding eligible government schemes...');
+    try {
+        const res = await fetchAPI('/govt_schemes', {
+            username: state.user?.username || 'anonymous',
+            location: location,
+            land_size: landSize,
+            crop: crop,
+            income_category: category
+        });
+        hideLoading();
+        
+        if (res.data) {
+            renderSchemeResults(res.data);
+        }
+    } catch(e) {
+        hideLoading();
+        toast('Scheme search failed: ' + e.message, 'error');
+    }
+}
+
+function renderSchemeResults(data) {
+    const container = document.getElementById('scheme-results');
+    container.style.display = '';
+    
+    const schemes = data.schemes || [];
+    
+    container.innerHTML = `
+        <div class="scheme-highlight-card card animate-fade-in">
+            <div class="scheme-highlight-row">
+                <div class="scheme-hl-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Top Pick</span>
+                    <strong>${data.top_recommendation || 'PM-KISAN'}</strong>
+                </div>
+                <div class="scheme-hl-item">
+                    <i class="fas fa-coins"></i>
+                    <span>Potential Benefit</span>
+                    <strong>${data.total_potential_benefit || 'Multiple schemes'}</strong>
+                </div>
+                <div class="scheme-hl-item">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Schemes Found</span>
+                    <strong>${schemes.length}</strong>
+                </div>
+            </div>
+            ${data.farmer_tip ? `<div class="scheme-tip"><i class="fas fa-lightbulb"></i> ${data.farmer_tip}</div>` : ''}
+        </div>
+        
+        <div class="scheme-list">
+            ${schemes.map((s, i) => `
+                <div class="scheme-card card animate-fade-in" style="animation-delay:${i * 0.1}s">
+                    <div class="scheme-card-header">
+                        <div class="scheme-name-row">
+                            <span class="scheme-badge scheme-badge-${s.benefit_type || 'grant'}">${(s.benefit_type || 'benefit').toUpperCase()}</span>
+                            <h3>${s.name || 'Scheme'}</h3>
+                        </div>
+                        <div class="scheme-match-score">
+                            <div class="scheme-score-ring" style="--score:${Math.round((s.match_score || 0.5) * 100)}">
+                                ${Math.round((s.match_score || 0.5) * 100)}%
+                            </div>
+                            <span>Match</span>
+                        </div>
+                    </div>
+                    <div class="scheme-ministry"><i class="fas fa-building"></i> ${s.ministry || ''}</div>
+                    <div class="scheme-benefit"><i class="fas fa-gift"></i> <strong>Benefit:</strong> ${s.benefit_amount || 'Varies'}</div>
+                    
+                    <details class="scheme-details">
+                        <summary><i class="fas fa-chevron-down"></i> How to Apply & Details</summary>
+                        <div class="scheme-details-content">
+                            ${s.eligibility ? `<div class="scheme-section"><h4><i class="fas fa-check-circle"></i> Eligibility</h4><ul>${s.eligibility.map(e => `<li>${e}</li>`).join('')}</ul></div>` : ''}
+                            ${s.how_to_apply ? `<div class="scheme-section"><h4><i class="fas fa-clipboard-list"></i> How to Apply</h4><ol>${s.how_to_apply.map(e => `<li>${e}</li>`).join('')}</ol></div>` : ''}
+                            ${s.documents_needed ? `<div class="scheme-section"><h4><i class="fas fa-file-alt"></i> Documents Needed</h4><ul>${s.documents_needed.map(e => `<li>${e}</li>`).join('')}</ul></div>` : ''}
+                            ${s.website ? `<div class="scheme-link"><a href="${s.website}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Official Website</a></div>` : ''}
+                            ${s.helpline ? `<div class="scheme-helpline"><i class="fas fa-phone"></i> Helpline: <a href="tel:${s.helpline}">${s.helpline}</a></div>` : ''}
+                        </div>
+                    </details>
+                </div>
+            `).join('')}
+        </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FEATURE 3: MANDI PRICE ALERT SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function selectMandiCrop(btn, crop) {
+    document.querySelectorAll('.mandi-crop-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('mandi-crop-input').value = crop;
+}
+
+async function checkMandiPrices() {
+    const crop = document.getElementById('mandi-crop-input').value.trim();
+    const stateVal = document.getElementById('mandi-state').value;
+    
+    if (!crop) { toast('Please select or enter a crop', 'error'); return; }
+    
+    showLoading('Fetching mandi prices...');
+    try {
+        const res = await fetchAPI('/mandi_prices', { crop, state: stateVal });
+        hideLoading();
+        if (res.data) renderMandiResults(res.data);
+    } catch(e) {
+        hideLoading();
+        toast('Price check failed: ' + e.message, 'error');
+    }
+}
+
+function renderMandiResults(data) {
+    const container = document.getElementById('mandi-results');
+    container.style.display = '';
+    
+    const recColor = data.recommendation === 'SELL' ? '#22c55e' : data.recommendation === 'HOLD' ? '#f59e0b' : '#3b82f6';
+    const recIcon = data.recommendation === 'SELL' ? 'fa-check-circle' : data.recommendation === 'HOLD' ? 'fa-pause-circle' : 'fa-clock';
+    
+    const cp = data.current_price || {};
+    const trendIcon = data.price_trend === 'rising' ? 'fa-arrow-up' : data.price_trend === 'falling' ? 'fa-arrow-down' : 'fa-minus';
+    const trendColor = data.price_trend === 'rising' ? '#22c55e' : data.price_trend === 'falling' ? '#ef4444' : '#f59e0b';
+    
+    container.innerHTML = `
+        <div class="mandi-recommendation-banner animate-fade-in" style="background:${recColor}15;border-left:4px solid ${recColor}">
+            <div class="mandi-rec-icon" style="color:${recColor}"><i class="fas ${recIcon}"></i></div>
+            <div class="mandi-rec-content">
+                <h3 style="color:${recColor}">${data.recommendation || 'ANALYZING'}</h3>
+                <p>${data.recommendation_reason || ''}</p>
+                <span class="mandi-best-time"><i class="fas fa-calendar"></i> ${data.best_time_to_sell || ''}</span>
+            </div>
+        </div>
+        
+        <div class="mandi-price-cards animate-fade-in">
+            <div class="mandi-price-card">
+                <div class="mandi-pc-label">Min Price</div>
+                <div class="mandi-pc-value">₹${cp.min || 0}</div>
+                <div class="mandi-pc-unit">${cp.unit || '/quintal'}</div>
+            </div>
+            <div class="mandi-price-card highlight">
+                <div class="mandi-pc-label">Modal Price</div>
+                <div class="mandi-pc-value">₹${cp.modal || 0}</div>
+                <div class="mandi-pc-trend" style="color:${trendColor}"><i class="fas ${trendIcon}"></i> ${data.price_trend || 'stable'}</div>
+            </div>
+            <div class="mandi-price-card">
+                <div class="mandi-pc-label">Max Price</div>
+                <div class="mandi-pc-value">₹${cp.max || 0}</div>
+                <div class="mandi-pc-unit">${cp.unit || '/quintal'}</div>
+            </div>
+            <div class="mandi-price-card msp-card">
+                <div class="mandi-pc-label">MSP ${data.msp?.year || ''}</div>
+                <div class="mandi-pc-value">₹${data.msp?.price || 0}</div>
+                <div class="mandi-pc-unit">Govt. Support Price</div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 animate-fade-in">
+            <h3 class="card-title"><i class="fas fa-chart-area"></i> Price History (6 months)</h3>
+            <div id="mandi-price-chart" class="chart-container"></div>
+        </div>
+        
+        <div class="card mt-4 animate-fade-in">
+            <h3 class="card-title"><i class="fas fa-store-alt"></i> Top Mandis</h3>
+            <div class="mandi-table-wrap">
+                <table class="mandi-table">
+                    <thead><tr><th>Mandi</th><th>State</th><th>Price (₹/q)</th><th>Arrivals</th></tr></thead>
+                    <tbody>
+                        ${(data.top_mandis || []).map(m => `
+                            <tr>
+                                <td><strong>${m.name}</strong></td>
+                                <td>${m.state || ''}</td>
+                                <td class="mandi-price-cell">₹${m.price || 0}</td>
+                                <td>${m.arrival_tons ? m.arrival_tons + ' tons' : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        ${data.storage_advice ? `<div class="card mt-4 mandi-storage-card animate-fade-in"><h3 class="card-title"><i class="fas fa-warehouse"></i> Storage Advice</h3><p>${data.storage_advice}</p></div>` : ''}
+        
+        ${data.market_insights ? `<div class="card mt-4 animate-fade-in"><h3 class="card-title"><i class="fas fa-brain"></i> Market Insights</h3><ul class="mandi-insights-list">${data.market_insights.map(i => `<li><i class="fas fa-lightbulb"></i> ${i}</li>`).join('')}</ul></div>` : ''}
+    `;
+    
+    // Render price history chart
+    if (data.price_history && data.price_history.length > 0) {
+        const months = data.price_history.map(p => p.month);
+        const prices = data.price_history.map(p => p.price);
+        const mspLine = Array(months.length).fill(data.msp?.price || 0);
+        
+        Plotly.newPlot('mandi-price-chart', [
+            { x: months, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Market Price', line: { color: '#16a34a', width: 3 }, marker: { size: 8 }, fill: 'tozeroy', fillcolor: 'rgba(22,163,74,0.1)' },
+            { x: months, y: mspLine, type: 'scatter', mode: 'lines', name: 'MSP', line: { color: '#ef4444', width: 2, dash: 'dash' } }
+        ], {
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            xaxis: { title: '' },
+            yaxis: { title: '₹ / quintal' },
+            legend: { orientation: 'h', y: -0.2 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { family: 'Inter' }
+        }, { responsive: true, displayModeBar: false });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FEATURE 4: FARMER-TO-FARMER VOICE NOTES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let vnoteRecording = false;
+let vnoteRecognition = null;
+
+function toggleVoiceNoteRecording() {
+    if (vnoteRecording) {
+        stopVoiceNoteRecording();
+    } else {
+        startVoiceNoteRecording();
+    }
+}
+
+function startVoiceNoteRecording() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        toast('Voice recording not supported in this browser', 'error');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    vnoteRecognition = new SpeechRecognition();
+    vnoteRecognition.continuous = true;
+    vnoteRecognition.interimResults = true;
+    vnoteRecognition.lang = document.getElementById('vnote-lang').value === 'hi' ? 'hi-IN' : 'en-IN';
+    
+    let finalText = '';
+    
+    vnoteRecognition.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                finalText += event.results[i][0].transcript + ' ';
+            } else {
+                interim += event.results[i][0].transcript;
+            }
+        }
+        document.getElementById('vnote-text').value = finalText + interim;
+        document.getElementById('vnote-transcript').style.display = '';
+    };
+    
+    vnoteRecognition.onerror = () => { stopVoiceNoteRecording(); };
+    vnoteRecognition.onend = () => { if (vnoteRecording) stopVoiceNoteRecording(); };
+    
+    vnoteRecognition.start();
+    vnoteRecording = true;
+    document.getElementById('vnote-mic-btn').classList.add('recording');
+    document.getElementById('vnote-mic-icon').className = 'fas fa-stop';
+    document.getElementById('vnote-mic-label').textContent = 'Recording... Tap to stop';
+    document.getElementById('vnote-wave').style.display = '';
+}
+
+function stopVoiceNoteRecording() {
+    if (vnoteRecognition) vnoteRecognition.stop();
+    vnoteRecording = false;
+    document.getElementById('vnote-mic-btn').classList.remove('recording');
+    document.getElementById('vnote-mic-icon').className = 'fas fa-microphone';
+    document.getElementById('vnote-mic-label').textContent = 'Tap to record your farming tip';
+    document.getElementById('vnote-wave').style.display = 'none';
+}
+
+async function shareVoiceNote() {
+    const text = document.getElementById('vnote-text').value.trim();
+    if (!text) { toast('Please record or type a message first', 'error'); return; }
+    
+    const crop = document.getElementById('vnote-crop').value.trim();
+    const lang = document.getElementById('vnote-lang').value;
+    
+    try {
+        await fetchAPI('/voice_notes', {
+            username: state.user?.username || 'anonymous',
+            audio_text: text,
+            crop: crop,
+            language: lang
+        });
+        toast('Voice note shared with community! 🎉', 'success');
+        document.getElementById('vnote-text').value = '';
+        document.getElementById('vnote-transcript').style.display = 'none';
+        loadVoiceNotes();
+    } catch(e) {
+        toast('Failed to share: ' + e.message, 'error');
+    }
+}
+
+async function loadVoiceNotes(filter = '') {
+    try {
+        const url = filter ? `/voice_notes?crop=${encodeURIComponent(filter)}` : '/voice_notes';
+        const res = await fetchAPI(url, null, 'GET');
+        const feed = document.getElementById('vnote-feed');
+        
+        if (!res.notes || res.notes.length === 0) {
+            feed.innerHTML = '<p class="muted-text">No voice notes yet. Be the first to share!</p>';
+            return;
+        }
+        
+        feed.innerHTML = res.notes.map(n => `
+            <div class="vnote-item animate-fade-in">
+                <div class="vnote-avatar">${(n.username || 'F')[0].toUpperCase()}</div>
+                <div class="vnote-content">
+                    <div class="vnote-header">
+                        <strong>${escapeHtml(n.username || 'Farmer')}</strong>
+                        ${n.crop ? `<span class="vnote-crop-tag">${escapeHtml(n.crop)}</span>` : ''}
+                        <span class="vnote-time">${n.created_at || ''}</span>
+                    </div>
+                    <p class="vnote-text-display">${escapeHtml(n.audio_text)}</p>
+                    <div class="vnote-actions">
+                        <button class="vnote-action-btn" onclick="speakText('${escapeHtml(n.audio_text).replace(/'/g, "\\'")}')"><i class="fas fa-volume-up"></i> Listen</button>
+                        <button class="vnote-action-btn" onclick="likeVoiceNote(${n.id}, this)"><i class="fas fa-heart"></i> <span>${n.likes || 0}</span></button>
+                    </div>
+                </div>
+            </div>`).join('');
+    } catch(e) { /* silent */ }
+}
+
+function speakText(text) {
+    if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = state.language === 'hi' ? 'hi-IN' : 'en-IN';
+        utter.rate = 0.9;
+        speechSynthesis.speak(utter);
+    }
+}
+
+async function likeVoiceNote(id, btn) {
+    try {
+        await fetchAPI(`/voice_notes/${id}/like`, {});
+        const span = btn.querySelector('span');
+        span.textContent = parseInt(span.textContent) + 1;
+        btn.classList.add('liked');
+    } catch(e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FEATURE 5: EXPENSE & PROFIT TRACKER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let currentExpenseType = 'expense';
+
+function setExpenseType(type) {
+    currentExpenseType = type;
+    document.getElementById('exp-type-expense').classList.toggle('active', type === 'expense');
+    document.getElementById('exp-type-income').classList.toggle('active', type === 'income');
+    
+    const catEl = document.getElementById('exp-category');
+    if (type === 'income') {
+        catEl.innerHTML = '<option value="sale">💰 Crop Sale</option><option value="subsidy">🏛️ Govt Subsidy</option><option value="income">💵 Other Income</option><option value="grant">🎁 Grant/Aid</option>';
+    } else {
+        catEl.innerHTML = '<option value="seeds">🌱 Seeds</option><option value="fertilizer">💊 Fertilizer</option><option value="pesticide">🧪 Pesticide</option><option value="labor">👷 Labor</option><option value="irrigation">💧 Irrigation</option><option value="equipment">🔧 Equipment</option><option value="transport">🚛 Transport</option><option value="rent">🏡 Land Rent</option><option value="other">📦 Other</option>';
+    }
+}
+
+async function addExpenseEntry() {
+    const category = document.getElementById('exp-category').value;
+    const amount = parseFloat(document.getElementById('exp-amount').value);
+    const description = document.getElementById('exp-description').value.trim();
+    const date = document.getElementById('exp-date').value || new Date().toISOString().split('T')[0];
+    
+    if (!amount || amount <= 0) { toast('Please enter a valid amount', 'error'); return; }
+    
+    try {
+        const res = await fetchAPI('/expenses', {
+            username: state.user?.username || 'anonymous',
+            category: category,
+            amount: amount,
+            description: description,
+            date: date
+        });
+        toast(res.message || 'Entry saved!', 'success');
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-description').value = '';
+        loadExpenseData();
+    } catch(e) {
+        toast('Failed to save: ' + e.message, 'error');
+    }
+}
+
+async function loadExpenseData() {
+    try {
+        const res = await fetchAPI(`/expenses/${state.user?.username || 'anonymous'}`, null, 'GET');
+        
+        // Update summary cards
+        const s = res.summary || {};
+        document.getElementById('exp-income').textContent = `₹${(s.total_income || 0).toLocaleString('en-IN')}`;
+        document.getElementById('exp-expense').textContent = `₹${(s.total_expense || 0).toLocaleString('en-IN')}`;
+        const profitEl = document.getElementById('exp-profit');
+        const profit = s.profit || 0;
+        profitEl.textContent = `₹${Math.abs(profit).toLocaleString('en-IN')}`;
+        profitEl.style.color = profit >= 0 ? '#22c55e' : '#ef4444';
+        profitEl.textContent = (profit >= 0 ? '+' : '-') + profitEl.textContent;
+        
+        // Render entries list
+        const listEl = document.getElementById('expense-entries-list');
+        if (!res.entries || res.entries.length === 0) {
+            listEl.innerHTML = '<p class="muted-text">No entries yet. Start tracking your farm finances!</p>';
+        } else {
+            listEl.innerHTML = res.entries.slice(0, 20).map(e => `
+                <div class="exp-entry-item ${e.entry_type}">
+                    <div class="exp-entry-icon ${e.entry_type}">${e.entry_type === 'income' ? '↓' : '↑'}</div>
+                    <div class="exp-entry-info">
+                        <strong>${e.category}</strong>
+                        ${e.description ? `<span class="exp-entry-desc">${escapeHtml(e.description)}</span>` : ''}
+                        <span class="exp-entry-date">${e.date || ''}</span>
+                    </div>
+                    <div class="exp-entry-amount ${e.entry_type}">${e.entry_type === 'income' ? '+' : '-'}₹${(e.amount || 0).toLocaleString('en-IN')}</div>
+                    <button class="exp-delete-btn" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                </div>`).join('');
+        }
+        
+        // Render charts
+        renderExpenseCharts(s);
+    } catch(e) { /* silent */ }
+}
+
+function renderExpenseCharts(summary) {
+    // Category breakdown pie chart
+    const cats = summary.category_breakdown || {};
+    const catLabels = Object.keys(cats);
+    const catValues = Object.values(cats);
+    
+    if (catLabels.length > 0) {
+        Plotly.newPlot('expense-chart', [{
+            labels: catLabels,
+            values: catValues,
+            type: 'pie',
+            hole: 0.45,
+            marker: { colors: ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6366f1'] },
+            textinfo: 'label+percent',
+            textposition: 'outside'
+        }], {
+            margin: { t: 20, r: 20, b: 20, l: 20 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { family: 'Inter' },
+            showlegend: false
+        }, { responsive: true, displayModeBar: false });
+    }
+    
+    // Monthly income vs expense bar chart
+    const monthly = summary.monthly_data || {};
+    const monthKeys = Object.keys(monthly).sort();
+    
+    if (monthKeys.length > 0) {
+        Plotly.newPlot('expense-monthly-chart', [
+            { x: monthKeys, y: monthKeys.map(k => monthly[k]?.income || 0), type: 'bar', name: 'Income', marker: { color: '#22c55e' } },
+            { x: monthKeys, y: monthKeys.map(k => monthly[k]?.expense || 0), type: 'bar', name: 'Expense', marker: { color: '#ef4444' } }
+        ], {
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            barmode: 'group',
+            xaxis: { title: '' },
+            yaxis: { title: '₹' },
+            legend: { orientation: 'h', y: -0.2 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { family: 'Inter' }
+        }, { responsive: true, displayModeBar: false });
+    }
+}
+
+async function deleteExpense(id) {
+    try {
+        await fetchAPI(`/expenses/${id}`, null, 'DELETE');
+        toast('Entry deleted', 'info');
+        loadExpenseData();
+    } catch(e) { toast('Delete failed', 'error'); }
+}
+
+async function getExpenseInsights() {
+    showLoading('AI is analyzing your finances...');
+    try {
+        const res = await fetchAPI(`/expenses/${state.user?.username || 'anonymous'}/ai-insights`, null, 'GET');
+        hideLoading();
+        const insEl = document.getElementById('expense-ai-insights');
+        const ins = res.insights || {};
+        
+        insEl.innerHTML = `
+            <div class="ai-insight-content animate-fade-in">
+                ${ins.summary ? `<div class="ai-insight-summary"><i class="fas fa-chart-pie"></i> ${ins.summary}</div>` : ''}
+                ${ins.profit_status ? `<div class="ai-insight-status ${ins.profit_status}"><i class="fas fa-${ins.profit_status === 'profitable' ? 'smile' : ins.profit_status === 'loss' ? 'frown' : 'meh'}"></i> Status: ${ins.profit_status.toUpperCase()}</div>` : ''}
+                ${ins.savings_tips ? `<div class="ai-insight-section"><h4><i class="fas fa-piggy-bank"></i> Money Saving Tips</h4><ul>${ins.savings_tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
+                ${ins.income_tips ? `<div class="ai-insight-section"><h4><i class="fas fa-hand-holding-usd"></i> Increase Income</h4><ul>${ins.income_tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
+                ${ins.risk_alert ? `<div class="ai-insight-alert"><i class="fas fa-exclamation-triangle"></i> ${ins.risk_alert}</div>` : ''}
+            </div>`;
+    } catch(e) {
+        hideLoading();
+        toast('Could not get insights', 'error');
+    }
 }
 
 async function fetchAPI(endpoint, body, method = 'POST') {
