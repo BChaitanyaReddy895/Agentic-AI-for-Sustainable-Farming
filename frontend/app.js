@@ -285,42 +285,91 @@ async function oneTapAdvice() {
         };
         localStorage.setItem('agri_farm_setup', JSON.stringify(state.farmSetup));
         
-        const data = await fetchAPI('/multi_agent_recommendation', {
-            username: state.user?.username || 'anonymous',
-            land_size: state.farmSetup.land_size,
-            soil_type: soilType, crop_preference: cropPref,
-            nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
-            potassium: state.farmSetup.potassium,
-            temperature: temp, humidity: hum, ph: 6.5, rainfall: rain
-        });
+        const isSimple = document.body.classList.contains('simple-mode');
+        let data = null;
+        let quickData = null;
+        
+        // In Simple Mode: use instant custom engine FIRST, then optionally enhance with LLM
+        if (isSimple) {
+            try {
+                quickData = await fetchAPI('/api/quick_recommend', {
+                    temperature: temp, humidity: hum, rainfall: rain, ph: 6.5,
+                    nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
+                    potassium: state.farmSetup.potassium,
+                    soil_type: soilType, land_size: state.farmSetup.land_size
+                });
+            } catch(e) { console.warn('Quick recommend failed, falling back to full pipeline:', e); }
+        }
+        
+        // If quick engine worked, show instant result; otherwise use full pipeline
+        if (!quickData?.success) {
+            data = await fetchAPI('/multi_agent_recommendation', {
+                username: state.user?.username || 'anonymous',
+                land_size: state.farmSetup.land_size,
+                soil_type: soilType, crop_preference: cropPref,
+                nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
+                potassium: state.farmSetup.potassium,
+                temperature: temp, humidity: hum, ph: 6.5, rainfall: rain
+            });
+        }
         
         setOTPStep(3, 'done');
         
         // Step 4: Show & Speak Result
         setOTPStep(4, 'active');
         
-        const topCrop = data.central_coordinator?.final_crop || 'Unknown crop';
-        const score = data.central_coordinator?.overall_score || 0;
-        const confidence = data.central_coordinator?.confidence_level || 'Medium';
-        const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
-        const trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+        let topCrop, score, scoreColor, trafficEmoji, cropIcon, resultHTML, speechText;
+        let alternatives = [];
+        let scoreExplanation = [];
+        let estimatedYield = null;
+        let confidence = 'Medium';
         
-        // Build simple visual result
-        let resultHTML = `
-            <div class="one-tap-result-card" style="border-color:${scoreColor}">
-                <div class="otr-traffic">${trafficEmoji}</div>
-                <div class="otr-crop-name">${topCrop}</div>
-                <div class="otr-score" style="color:${scoreColor}">${score}/10</div>
-                <div class="otr-location">📍 ${placeName} | 🌡️ ${temp}° | 💧 ${hum}%</div>
-            </div>`;
-        
-        // Add simple advice cards
-        const agents = data.agents || {};
-        if (agents.farmer_advisor?.advice) {
-            resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🚜</span><p>${agents.farmer_advisor.advice}</p></div>`;
-        }
-        if (agents.weather_analyst?.advice) {
-            resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🌤️</span><p>${agents.weather_analyst.advice}</p></div>`;
+        if (quickData?.success) {
+            // ── Custom Engine Result (instant, no LLM) ──
+            const eng = quickData.recommendation;
+            topCrop = eng.recommended_crop || 'Unknown crop';
+            cropIcon = eng.crop_icon || '🌾';
+            score = Math.round((eng.final_score || 0) * 10);
+            confidence = eng.confidence || 'Medium';
+            alternatives = (eng.alternatives || []).slice(0, 3);
+            scoreExplanation = eng.score_explanation || [];
+            estimatedYield = eng.estimated_yield;
+            scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
+            trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+            
+            resultHTML = buildVisualResultCard({
+                topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
+                alternatives, scoreExplanation, estimatedYield, confidence,
+                engineLabel: 'AgriSmart AI Engine ⚡',
+                layerScores: eng.layer_scores
+            });
+        } else {
+            // ── Full LLM pipeline result ──
+            topCrop = data.central_coordinator?.final_crop || 'Unknown crop';
+            score = data.central_coordinator?.overall_score || 0;
+            confidence = data.central_coordinator?.confidence_level || 'Medium';
+            scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
+            trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+            cropIcon = data.custom_engine?.crop_icon || '🌾';
+            alternatives = (data.custom_engine?.custom_alternatives || []).slice(0, 3);
+            scoreExplanation = data.custom_engine?.score_explanation || [];
+            estimatedYield = data.custom_engine?.estimated_yield;
+            
+            resultHTML = buildVisualResultCard({
+                topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
+                alternatives, scoreExplanation, estimatedYield, confidence,
+                engineLabel: '6 AI Agents + Custom Engine',
+                layerScores: data.custom_engine?.layer_scores
+            });
+            
+            // Add agent advice cards (only in full pipeline)
+            const agents = data.agents || {};
+            if (agents.farmer_advisor?.advice) {
+                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🚜</span><p>${agents.farmer_advisor.advice}</p></div>`;
+            }
+            if (agents.weather_analyst?.advice) {
+                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🌤️</span><p>${agents.weather_analyst.advice}</p></div>`;
+            }
         }
         
         if (resultEl) {
@@ -329,21 +378,48 @@ async function oneTapAdvice() {
         }
         
         // Build speech text
-        let speechText = `Great news! Based on your location in ${placeName}, with temperature ${temp} degrees and ${hum} percent humidity, our AI recommends growing ${topCrop}. `;
-        speechText += `The confidence score is ${score} out of 10. `;
-        if (agents.farmer_advisor?.advice) speechText += agents.farmer_advisor.advice + '. ';
-        if (agents.weather_analyst?.advice) speechText += agents.weather_analyst.advice + '. ';
+        speechText = `Great news! Based on your location in ${placeName}, with temperature ${temp} degrees and ${hum} percent humidity, `;
+        speechText += `our AI recommends growing ${topCrop}. The confidence score is ${score} out of 10. `;
+        if (alternatives.length) {
+            speechText += `You can also consider ${alternatives.map(a => a.crop || a.name).join(' or ')}. `;
+        }
+        if (estimatedYield) speechText += `Expected yield is about ${estimatedYield}. `;
         
         speakText(speechText);
         
         setOTPStep(4, 'done');
         celebrateSuccess();
         
-        // Save recommendation
-        const rec = { ...data, timestamp: new Date().toISOString() };
-        state.recommendations.unshift(rec);
-        if (state.recommendations.length > 20) state.recommendations.pop();
-        localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        // In simple mode, optionally fetch full LLM result in background to enhance
+        if (quickData?.success && isSimple) {
+            fetchAPI('/multi_agent_recommendation', {
+                username: state.user?.username || 'anonymous',
+                land_size: state.farmSetup.land_size,
+                soil_type: soilType, crop_preference: cropPref,
+                nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
+                potassium: state.farmSetup.potassium,
+                temperature: temp, humidity: hum, ph: 6.5, rainfall: rain
+            }).then(fullData => {
+                // Store for later but don't interrupt current display
+                const rec = { ...fullData, timestamp: new Date().toISOString() };
+                state.recommendations.unshift(rec);
+                if (state.recommendations.length > 20) state.recommendations.pop();
+                localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+            }).catch(() => {});
+        }
+        
+        // Save recommendation (if not already saved by background fetch)
+        if (data) {
+            const rec = { ...data, timestamp: new Date().toISOString() };
+            state.recommendations.unshift(rec);
+            if (state.recommendations.length > 20) state.recommendations.pop();
+            localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        } else if (quickData?.success) {
+            const rec = { quick_engine: quickData.recommendation, timestamp: new Date().toISOString() };
+            state.recommendations.unshift(rec);
+            if (state.recommendations.length > 20) state.recommendations.pop();
+            localStorage.setItem('agri_recommendations', JSON.stringify(state.recommendations));
+        }
         
     } catch (err) {
         const failStep = document.querySelector('.otp-step.active');
@@ -359,6 +435,97 @@ async function oneTapAdvice() {
     } finally {
         if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-magic"></i> Tap Here!'; }
     }
+}
+
+// ═══════════════════════════════════════
+//  VISUAL RESULT CARD BUILDER
+// ═══════════════════════════════════════
+
+function getCurrentSeason() {
+    const m = new Date().getMonth();
+    if (m >= 5 && m <= 9) return 'Kharif';
+    if (m >= 10 || m <= 1) return 'Rabi';
+    return 'Zaid';
+}
+
+function buildVisualResultCard(opts) {
+    const { topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
+            alternatives, scoreExplanation, estimatedYield, confidence,
+            engineLabel, layerScores } = opts;
+    
+    const confidenceColor = confidence === 'High' ? '#16a34a' : confidence === 'Medium' ? '#eab308' : '#ef4444';
+    const confidenceIcon = confidence === 'High' ? '💪' : confidence === 'Medium' ? '👍' : '🤔';
+    
+    let html = `
+        <div class="one-tap-result-card" style="border-color:${scoreColor}">
+            <div class="otr-traffic">${trafficEmoji}</div>
+            <div class="otr-crop-icon">${cropIcon}</div>
+            <div class="otr-crop-name">${topCrop}</div>
+            <div class="otr-score" style="color:${scoreColor}">${score}/10</div>
+            <div class="otr-confidence" style="color:${confidenceColor}">${confidenceIcon} ${confidence} Confidence</div>
+            <div class="otr-location">📍 ${placeName} | 🌡️ ${temp}° | 💧 ${hum}%</div>`;
+    
+    if (estimatedYield) {
+        html += `<div class="otr-yield">🌾 Expected: ~${typeof estimatedYield === 'number' ? estimatedYield.toFixed(0) + ' kg/hectare' : estimatedYield}</div>`;
+    }
+    
+    html += `<div class="otr-engine-badge">${engineLabel}</div>
+        </div>`;
+    
+    // Score explanation with ✅/⚠️/❌ icons (visual for illiterate farmers)
+    if (scoreExplanation?.length) {
+        html += '<div class="score-explain-cards">';
+        for (const line of scoreExplanation.slice(0, 5)) {
+            const icon = line.includes('✅') ? '✅' : line.includes('⚠️') ? '⚠️' : line.includes('❌') ? '❌' : 'ℹ️';
+            const cleanText = line.replace(/[✅⚠️❌]/g, '').trim();
+            const bgClass = icon === '✅' ? 'explain-good' : icon === '⚠️' ? 'explain-warn' : icon === '❌' ? 'explain-bad' : 'explain-info';
+            html += `<div class="score-explain-card ${bgClass}"><span class="sec-icon">${icon}</span><span>${cleanText}</span></div>`;
+        }
+        html += '</div>';
+    }
+    
+    // Visual layer score bars (show how engine evaluated)
+    if (layerScores) {
+        html += '<div class="layer-score-bars">';
+        const layerLabels = {
+            agronomic: { icon: '🌱', label: 'Soil & Climate Match' },
+            npk: { icon: '🧪', label: 'Fertilizer Match' },
+            season: { icon: '📅', label: 'Season Match' },
+            ml_model: { icon: '🤖', label: 'AI Model Score' },
+            knowledge_base: { icon: '📚', label: 'Historical Data' }
+        };
+        for (const [key, val] of Object.entries(layerScores)) {
+            const info = layerLabels[key] || { icon: '📊', label: key };
+            const pct = Math.round((val || 0) * 100);
+            const barColor = pct >= 70 ? '#16a34a' : pct >= 40 ? '#eab308' : '#ef4444';
+            html += `<div class="layer-bar-row">
+                <span class="lbr-icon">${info.icon}</span>
+                <span class="lbr-label">${info.label}</span>
+                <div class="lbr-track"><div class="lbr-fill" style="width:${pct}%;background:${barColor}"></div></div>
+                <span class="lbr-pct">${pct}%</span>
+            </div>`;
+        }
+        html += '</div>';
+    }
+    
+    // Alternative crops as visual emoji cards
+    if (alternatives?.length) {
+        html += '<div class="alt-crops-section"><div class="alt-crops-title">🔄 Other Good Crops</div><div class="alt-crops-grid">';
+        for (const alt of alternatives) {
+            const altName = alt.crop || alt.name || 'Unknown';
+            const altIcon = alt.icon || '🌾';
+            const altScore = Math.round((alt.score || alt.final_score || 0) * 100);
+            const altColor = altScore >= 70 ? '#16a34a' : altScore >= 40 ? '#eab308' : '#ef4444';
+            html += `<div class="alt-crop-card">
+                <div class="alt-crop-icon">${altIcon}</div>
+                <div class="alt-crop-name">${altName}</div>
+                <div class="alt-crop-score" style="color:${altColor}">${altScore}%</div>
+            </div>`;
+        }
+        html += '</div></div>';
+    }
+    
+    return html;
 }
 
 // ═══════════════════════════════════════
@@ -1539,7 +1706,82 @@ function renderRecommendation(data, container) {
         </div>
     </div>`;
 
-    // ── 2. Visual Score Bars (understandable without reading) ──
+    // ── 2. Custom Engine Insights (unique algorithm data) ──
+    const ce = data.custom_engine || {};
+    if (ce.enabled !== false && ce.custom_score) {
+        const ceConfidence = ce.custom_confidence || 'Medium';
+        const ceConfColor = ceConfidence === 'High' ? '#16a34a' : ceConfidence === 'Medium' ? '#eab308' : '#ef4444';
+        
+        html += `<div class="card mb-4" style="margin-bottom:1.5rem;border:2px solid #8b5cf620">
+            <h3 class="card-title"><i class="fas fa-microchip" style="color:#8b5cf6"></i> AgriSmart Custom Engine Analysis</h3>
+            <div class="otr-engine-badge" style="margin-bottom:1rem">Engine v${ce.engine_version || '1.0'} • ${ce.layers_used || '?'} Layers • ${ce.data_points_analysed || '?'} Data Points</div>`;
+        
+        // Layer score bars
+        if (ce.layer_scores) {
+            html += '<div class="layer-score-bars" style="margin-bottom:1rem">';
+            const layerLabels = {
+                agronomic: { icon: '🌱', label: 'Soil & Climate Match' },
+                npk: { icon: '🧪', label: 'NPK Fertilizer Match' },
+                season: { icon: '📅', label: 'Season Suitability' },
+                ml_model: { icon: '🤖', label: 'ML Model Prediction' },
+                knowledge_base: { icon: '📚', label: 'Historical Data Match' }
+            };
+            for (const [key, val] of Object.entries(ce.layer_scores)) {
+                const info = layerLabels[key] || { icon: '📊', label: key };
+                const pct = Math.round((val || 0) * 100);
+                const barColor = pct >= 70 ? '#16a34a' : pct >= 40 ? '#eab308' : '#ef4444';
+                html += `<div class="layer-bar-row">
+                    <span class="lbr-icon">${info.icon}</span>
+                    <span class="lbr-label">${info.label}</span>
+                    <div class="lbr-track"><div class="lbr-fill" style="width:${pct}%;background:${barColor}"></div></div>
+                    <span class="lbr-pct">${pct}%</span>
+                </div>`;
+            }
+            html += '</div>';
+        }
+        
+        // Score explanation
+        if (ce.score_explanation?.length) {
+            html += '<div class="score-explain-cards" style="margin-bottom:1rem">';
+            for (const line of ce.score_explanation) {
+                const icon = line.includes('✅') ? '✅' : line.includes('⚠️') ? '⚠️' : line.includes('❌') ? '❌' : 'ℹ️';
+                const cleanText = line.replace(/[✅⚠️❌]/g, '').trim();
+                const bgClass = icon === '✅' ? 'explain-good' : icon === '⚠️' ? 'explain-warn' : icon === '❌' ? 'explain-bad' : 'explain-info';
+                html += `<div class="score-explain-card ${bgClass}"><span class="sec-icon">${icon}</span><span>${cleanText}</span></div>`;
+            }
+            html += '</div>';
+        }
+        
+        // Alternative crops
+        if (ce.custom_alternatives?.length) {
+            html += '<div class="alt-crops-section"><div class="alt-crops-title">🔄 Alternative Crops</div><div class="alt-crops-grid">';
+            for (const alt of ce.custom_alternatives.slice(0, 6)) {
+                const altName = alt.crop || alt.name || 'Unknown';
+                const altIcon = alt.icon || '🌾';
+                const altScore = Math.round((alt.score || alt.final_score || 0) * 100);
+                const altColor = altScore >= 70 ? '#16a34a' : altScore >= 40 ? '#eab308' : '#ef4444';
+                html += `<div class="alt-crop-card">
+                    <div class="alt-crop-icon">${altIcon}</div>
+                    <div class="alt-crop-name">${altName}</div>
+                    <div class="alt-crop-score" style="color:${altColor}">${altScore}%</div>
+                </div>`;
+            }
+            html += '</div></div>';
+        }
+        
+        // Historical evidence
+        if (ce.historical_evidence?.length) {
+            html += '<div style="margin-top:1rem"><strong style="font-size:0.9rem;color:#1e293b">📜 Historical Evidence:</strong><ul style="padding-left:1.25rem;margin:0.5rem 0 0">';
+            for (const ev of ce.historical_evidence.slice(0, 3)) {
+                html += `<li style="font-size:0.85rem;color:#475569;margin-bottom:4px">${typeof ev === 'string' ? ev : JSON.stringify(ev)}</li>`;
+            }
+            html += '</ul></div>';
+        }
+        
+        html += '</div>';
+    }
+
+    // ── 3. Agent Visual Score Bars ──
     const scoreData = [];
     if (agents.farmer_advisor?.confidence) scoreData.push({ emoji: '🚜', label: 'Crop Match', val: agents.farmer_advisor.confidence, max: 100 });
     if (agents.market_researcher?.market_score) scoreData.push({ emoji: '💰', label: 'Market', val: agents.market_researcher.market_score * 10, max: 100 });
@@ -1564,7 +1806,7 @@ function renderRecommendation(data, container) {
         html += '</div></div>';
     }
 
-    // ── 3. Charts row: Radar + Bar ──
+    // ── 4. Charts row: Radar + Bar ──
     html += `<div class="rec-charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem">`;
     if (data.chart_data?.length) {
         html += `<div class="card"><h3 class="card-title"><i class="fas fa-chart-pie"></i> Score Analysis</h3><div id="rec-radar-chart" class="chart-container" style="min-height:300px"></div></div>`;
@@ -1572,7 +1814,7 @@ function renderRecommendation(data, container) {
     }
     html += '</div>';
 
-    // ── 4. Agent Discussion Panel — shows a natural "conversation" ──
+    // ── 5. Agent Discussion Panel — shows a natural "conversation" ──
     html += `<div class="card mb-4" style="margin-bottom:1.5rem">
         <h3 class="card-title"><i class="fas fa-comments"></i> Agent Discussion</h3>
         <p style="font-size:0.85rem;color:#64748b;margin-bottom:1rem">5 AI experts analysed your farm data and discussed to reach this recommendation:</p>
@@ -1630,7 +1872,7 @@ function renderRecommendation(data, container) {
 
     html += '</div></div>';
 
-    // ── 5. Action Plan (visual steps) ──
+    // ── 6. Action Plan (visual steps) ──
     if (coord.action_plan) {
         html += `<div class="card mb-4" style="margin-bottom:1.5rem">
             <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Action Plan</h3>
@@ -1638,7 +1880,7 @@ function renderRecommendation(data, container) {
         </div>`;
     }
 
-    // ── 6. Key Factors & Warnings ──
+    // ── 7. Key Factors & Warnings ──
     if (coord.key_factors?.length || coord.action_items?.length) {
         html += '<div class="rec-info-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem">';
         if (coord.key_factors?.length) {
@@ -1654,7 +1896,7 @@ function renderRecommendation(data, container) {
         html += '</div>';
     }
 
-    // ── 7. Agent detail cards (expandable) ──
+    // ── 8. Agent detail cards (expandable) ──
     html += '<div class="agent-results-grid">';
     for (const [key, agent] of Object.entries(agents)) {
         const meta = agentMeta[key] || { icon: '🤖', color: '#16a34a', label: key, bg: '#f0fdf4' };

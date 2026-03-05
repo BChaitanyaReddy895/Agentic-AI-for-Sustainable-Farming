@@ -1,20 +1,16 @@
 """
-CentralCoordinator — LLM-Powered Multi-Agent Orchestrator
-==========================================================
-The brain of the agentic AI system. Coordinates all 5 expert agents:
+CentralCoordinator — Hybrid Multi-Agent + Custom Engine Orchestrator
+=====================================================================
+The brain of the agentic AI system. Now uses a HYBRID architecture:
 
-  1. FarmerAdvisor  → crop recommendation (runs first)
-  2. MarketResearcher → market analysis  ┐
-  3. WeatherAnalyst   → weather impact   │  (run in PARALLEL)
-  4. SustainabilityExpert → env. impact  │
-  5. PestDiseasePredictor → pest risk    ┘
-  6. Gemini Synthesis → final unified recommendation
+  Layer A — AgriSmart Custom Engine (ML models + RAG KB + custom algorithm)
+  Layer B — Multi-Agent LLM Reasoning (5 specialist agents via Groq)
 
-Architecture:
-  • Step 1: FarmerAdvisor recommends the best crop via Gemini
-  • Step 2: 4 specialist agents analyse that crop simultaneously (parallel LLM calls)
-  • Step 3: All agent outputs are fed to Gemini for a unified synthesis
-  • This is GENUINE multi-agent orchestration with LLM reasoning at every step
+Flow:
+  1. Custom Engine generates data-driven recommendation (instant, offline-capable)
+  2. FarmerAdvisor validates/enriches via LLM
+  3. 4 specialist agents analyse in parallel
+  4. LLM Synthesis merges custom engine + agent insights
 
 Return dict preserves exact keys expected by backend/main.py.
 """
@@ -29,6 +25,14 @@ from models.weather_Analyst import WeatherAnalyst
 from models.sustainability_Expert import SustainabilityExpert
 from models.pest_disease_predictor import PestDiseasePredictor
 from models.llm_config import call_gemini
+
+# Import custom engine (the novel component)
+try:
+    from models.custom_engine import AgriSmartEngine
+    HAS_CUSTOM_ENGINE = True
+except Exception as _e:
+    print(f"⚠️ Custom engine unavailable: {_e}")
+    HAS_CUSTOM_ENGINE = False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -84,7 +88,15 @@ class CentralCoordinator:
         self.sustainability_expert = SustainabilityExpert(self.db_path)
         self.pest_predictor = PestDiseasePredictor()
 
-        print("🎯 CentralCoordinator initialised — 5 AI agents ready for multi-agent reasoning")
+        # Initialise custom engine (novel hybrid layer)
+        self.custom_engine = None
+        if HAS_CUSTOM_ENGINE:
+            try:
+                self.custom_engine = AgriSmartEngine()
+            except Exception as e:
+                print(f"⚠️ Custom engine init failed: {e}")
+
+        print("🎯 CentralCoordinator initialised — 5 AI agents + custom engine ready")
 
     # ──────────────────────────────────────────────────────────────────
     # Primary API
@@ -105,6 +117,24 @@ class CentralCoordinator:
         """
 
         warnings: List[str] = []
+
+        # ── Step 0: Custom Engine — instant data-driven analysis ─────
+        custom_result = None
+        if self.custom_engine:
+            print("\n🧠 Step 0: AgriSmart Custom Engine (ML + RAG + Algorithm)...")
+            try:
+                custom_result = self.custom_engine.recommend(
+                    ph=soil_ph, temperature=temperature, rainfall=rainfall,
+                    nitrogen=fertilizer, phosphorus=30, potassium=30,
+                    humidity=soil_moisture, land_size=land_size,
+                    use_llm=False,  # LLM used separately by agents
+                )
+                print(f"   → Custom Engine: {custom_result['recommended_crop']} "
+                      f"(score: {custom_result['final_score']}, "
+                      f"confidence: {custom_result['confidence']}%, "
+                      f"data points: {custom_result['data_points_analysed']:,})")
+            except Exception as e:
+                print(f"   ⚠️ Custom engine error: {e}")
 
         # ── Step 1: Farmer Advisor — crop recommendation ─────────────
         print("\n📡 Step 1: FarmerAdvisor reasoning about crop selection...")
@@ -324,6 +354,23 @@ class CentralCoordinator:
             "AI Key Factors": synthesis.get("key_factors", []) if synthesis else [],
             "AI Risk Summary": synthesis.get("risk_summary", "") if synthesis else "",
             "AI Conflicts Resolved": synthesis.get("conflicts_resolved", "None") if synthesis else "None",
+
+            # Custom Engine data (the novel differentiator)
+            "Custom Engine": {
+                "enabled": custom_result is not None,
+                "engine_version": custom_result.get("engine", "N/A") if custom_result else "N/A",
+                "custom_score": custom_result.get("final_score", 0) if custom_result else 0,
+                "custom_confidence": custom_result.get("confidence", 0) if custom_result else 0,
+                "layer_scores": custom_result.get("layer_scores", {}) if custom_result else {},
+                "score_explanation": custom_result.get("score_explanation", []) if custom_result else [],
+                "layers_used": custom_result.get("layers_used", []) if custom_result else [],
+                "data_points_analysed": custom_result.get("data_points_analysed", 0) if custom_result else 0,
+                "historical_evidence": custom_result.get("historical_evidence", {}) if custom_result else {},
+                "estimated_yield": custom_result.get("estimated_yield", 0) if custom_result else 0,
+                "estimated_price": custom_result.get("estimated_price", 0) if custom_result else 0,
+                "custom_alternatives": custom_result.get("alternatives", []) if custom_result else [],
+                "crop_icon": custom_result.get("crop_icon", "🌱") if custom_result else "🌱",
+            },
         }
 
     # ──────────────────────────────────────────────────────────────────

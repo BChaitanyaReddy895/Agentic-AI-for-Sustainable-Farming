@@ -3032,6 +3032,133 @@ html {
 .traffic-light.yellow { background: #eab308; box-shadow: 0 0 8px #eab308; }
 .traffic-light.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
+/* ─── Enhanced Result Card Elements (Custom Engine) ─── */
+.otr-crop-icon { font-size: 3.5rem; margin-bottom: 0.25rem; line-height: 1; }
+.otr-confidence {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+.otr-yield {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #166534;
+    background: #f0fdf4;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-top: 0.5rem;
+    display: inline-block;
+}
+.otr-engine-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #8b5cf6;
+    background: #f5f3ff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 0.75rem;
+    display: inline-block;
+    letter-spacing: 0.02em;
+}
+
+/* Score explanation cards - visual ✅/⚠️/❌ indicators */
+.score-explain-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 1rem;
+}
+.score-explain-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #334155;
+    transition: transform 0.2s ease;
+}
+.score-explain-card:active { transform: scale(0.98); }
+.sec-icon { font-size: 1.4rem; flex-shrink: 0; }
+.explain-good { background: #f0fdf4; border-left: 4px solid #16a34a; }
+.explain-warn { background: #fffbeb; border-left: 4px solid #eab308; }
+.explain-bad { background: #fef2f2; border-left: 4px solid #ef4444; }
+.explain-info { background: #f0f9ff; border-left: 4px solid #0ea5e9; }
+
+/* Layer score bars - visual evaluation breakdown */
+.layer-score-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+}
+.layer-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+}
+.lbr-icon { font-size: 1.2rem; flex-shrink: 0; }
+.lbr-label { min-width: 90px; font-weight: 600; color: #475569; white-space: nowrap; }
+.lbr-track {
+    flex: 1;
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.lbr-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 1s ease-out;
+}
+.lbr-pct { min-width: 36px; text-align: right; font-weight: 700; color: #1e293b; }
+
+/* Alternative crops visual grid */
+.alt-crops-section { margin-top: 1rem; }
+.alt-crops-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+.alt-crops-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.alt-crop-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 8px;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    transition: all 0.2s ease;
+}
+.alt-crop-card:active { transform: scale(0.95); }
+.alt-crop-icon { font-size: 2rem; }
+.alt-crop-name { font-size: 0.78rem; font-weight: 700; color: #334155; text-align: center; }
+.alt-crop-score { font-size: 0.85rem; font-weight: 800; }
+
+/* Mobile responsive for new elements */
+@media (max-width: 480px) {
+    .lbr-label { min-width: 70px; font-size: 0.72rem; }
+    .score-explain-card { padding: 8px 10px; font-size: 0.8rem; }
+    .alt-crops-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .alt-crop-card { padding: 10px 4px; }
+    .alt-crop-icon { font-size: 1.6rem; }
+    .otr-crop-icon { font-size: 2.8rem; }
+}
+
 /* ─── Visual Crop Picker ─── */
 .visual-picker-title {
     font-size: 1.15rem;

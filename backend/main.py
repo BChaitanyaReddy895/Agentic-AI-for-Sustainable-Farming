@@ -707,6 +707,27 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
             ]
         }]
 
+        # Custom Engine Data (novel hybrid engine)
+        custom_engine_data = result.get("Custom Engine", {})
+        if custom_engine_data.get("enabled"):
+            response["custom_engine"] = {
+                "enabled": True,
+                "engine_version": custom_engine_data.get("engine_version", "N/A"),
+                "custom_score": custom_engine_data.get("custom_score", 0),
+                "custom_confidence": custom_engine_data.get("custom_confidence", 0),
+                "layer_scores": custom_engine_data.get("layer_scores", {}),
+                "score_explanation": custom_engine_data.get("score_explanation", []),
+                "layers_used": custom_engine_data.get("layers_used", []),
+                "data_points_analysed": custom_engine_data.get("data_points_analysed", 0),
+                "historical_evidence": custom_engine_data.get("historical_evidence", {}),
+                "estimated_yield": custom_engine_data.get("estimated_yield", 0),
+                "estimated_price": custom_engine_data.get("estimated_price", 0),
+                "custom_alternatives": custom_engine_data.get("custom_alternatives", []),
+                "crop_icon": custom_engine_data.get("crop_icon", "🌱"),
+            }
+        else:
+            response["custom_engine"] = {"enabled": False}
+
     except Exception as e:
         print(f"Error in multi_agent_recommendation: {e}")
         response["success"] = False
@@ -714,158 +735,29 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
     
     return response
 
-    """
-    DELETE_ME:
-            market_result = market_researcher.forecast_market_trends(
-                crop=response["agents"]["farmer_advisor"]["recommended_crop"],
-                area=req.land_size,
-                production=req.land_size * 3,  # Estimated production
-                year=2024
-            )
-            
-            response["agents"]["market_researcher"] = {
-                "name": "💰 Market Researcher",
-                "market_score": market_result.get("market_score", 6.5),
-                "price_trend": market_result.get("price_trend", "Stable"),
-                "demand_forecast": market_result.get("demand_forecast", "Moderate"),
-                "predicted_price": market_result.get("predicted_price", 2000),
-                "advice": f"The market for {response['agents']['farmer_advisor']['recommended_crop']} shows "
-                         f"{market_result.get('price_trend', 'stable').lower()} prices with "
-                         f"{market_result.get('demand_forecast', 'moderate').lower()} demand.",
-                "model_version": market_result.get("model_version", "v1")
-            }
-        except Exception as e:
-            response["agents"]["market_researcher"] = {
-                "name": "💰 Market Researcher",
-                "market_score": 6.5,
-                "price_trend": "Stable",
-                "demand_forecast": "Moderate",
-                "advice": "Market conditions appear stable for the recommended crop.",
-                "error": str(e)
-            }
-        
-        # ================== WEATHER ANALYST AGENT ==================
-        try:
-            weather_analyst = WeatherAnalyst()
-            
-            # Get weather impact analysis
-            weather_result = weather_analyst.analyze_weather_impact(
-                temperature=req.temperature,
-                rainfall=req.rainfall,
-                humidity=req.humidity
-            )
-            
-            response["agents"]["weather_analyst"] = {
-                "name": "🌤️ Weather Analyst",
-                "weather_score": weather_result.get("weather_score", 7.0),
-                "forecast": weather_result.get("forecast", "Suitable conditions"),
-                "risk_level": weather_result.get("risk_level", "Low"),
-                "predicted_yield_impact": weather_result.get("predicted_yield_impact", 5.0),
-                "advice": f"Current weather conditions: {req.temperature}°C temperature, "
-                         f"{req.rainfall}mm rainfall, {req.humidity}% humidity. "
-                         f"Risk level: {weather_result.get('risk_level', 'Low')}.",
-                "model_version": weather_result.get("model_version", "v1")
-            }
-        except Exception as e:
-            response["agents"]["weather_analyst"] = {
-                "name": "🌤️ Weather Analyst",
-                "weather_score": 7.0,
-                "forecast": "Weather conditions appear suitable for farming.",
-                "risk_level": "Low",
-                "error": str(e)
-            }
-        
-        # ================== SUSTAINABILITY EXPERT AGENT ==================
-        try:
-            sustainability_expert = SustainabilityExpert()
-            
-            # Get sustainability assessment
-            sustainability_result = sustainability_expert.assess_sustainability(
-                fertilizer_usage=req.nitrogen,
-                organic_matter=3.0,
-                ph=req.ph,
-                nitrogen=req.nitrogen,
-                phosphorus=req.phosphorus
-            )
-            
-            response["agents"]["sustainability_expert"] = {
-                "name": "🌱 Sustainability Expert",
-                "sustainability_score": sustainability_result.get("sustainability_score", 7.0),
-                "environmental_impact": sustainability_result.get("environmental_impact", "Low"),
-                "carbon_footprint": sustainability_result.get("carbon_footprint", "Moderate"),
-                "recommendations": sustainability_result.get("recommendations", "Good practices"),
-                "advice": f"With current fertilizer usage of {req.nitrogen}kg/ha, your farming "
-                         f"sustainability score is {sustainability_result.get('sustainability_score', 7.0):.1f}/10. "
-                         f"{sustainability_result.get('recommendations', 'Continue current practices.')}",
-                "model_version": sustainability_result.get("model_version", "v1")
-            }
-        except Exception as e:
-            response["agents"]["sustainability_expert"] = {
-                "name": "🌱 Sustainability Expert",
-                "sustainability_score": 7.0,
-                "environmental_impact": "Moderate",
-                "recommendations": "Consider organic farming practices.",
-                "error": str(e)
-            }
-        
-        # ================== CENTRAL COORDINATOR - FINAL RECOMMENDATION ==================
-        # Calculate weighted overall score
-        weights = {
-            "farmer": 0.30,
-            "market": 0.25,
-            "weather": 0.25,
-            "sustainability": 0.20
-        }
-        
-        farmer_score = response["agents"]["farmer_advisor"].get("confidence", 75) / 10
-        market_score = response["agents"]["market_researcher"].get("market_score", 6.5)
-        weather_score = response["agents"]["weather_analyst"].get("weather_score", 7.0)
-        sustainability_score = response["agents"]["sustainability_expert"].get("sustainability_score", 7.0)
-        
-        overall_score = (
-            weights["farmer"] * farmer_score +
-            weights["market"] * market_score +
-            weights["weather"] * weather_score +
-            weights["sustainability"] * sustainability_score
-        )
-        
-        # Generate final recommendation
-        recommended_crop = response["agents"]["farmer_advisor"]["recommended_crop"]
-        
-        response["central_coordinator"] = {
-            "final_crop": recommended_crop,
-            "overall_score": round(overall_score, 1),
-            "confidence_level": "High" if overall_score >= 7.5 else "Medium" if overall_score >= 5.5 else "Low",
-            "reasoning": f"After analyzing all factors from our 4 AI agents, {recommended_crop} is the best choice "
-                        f"for your {req.land_size} hectare {req.soil_type.lower()} soil farm. "
-                        f"Overall recommendation score: {overall_score:.1f}/10.",
-            "action_items": [
-                f"Prepare {req.soil_type.lower()} soil with proper drainage",
-                f"Maintain soil pH around {req.ph} for optimal growth",
-                f"Plan irrigation based on {req.rainfall}mm expected rainfall",
-                f"Apply {req.nitrogen}kg/ha nitrogen fertilizer as planned"
-            ]
-        }
-        
-        # Generate chart data for visualization
-        response["chart_data"] = [{
-            "crop": recommended_crop,
-            "labels": ["Farmer Score", "Market Score", "Weather Score", "Sustainability Score", "Overall"],
-            "values": [
-                farmer_score * 10,
-                market_score * 10,
-                weather_score * 10,
-                sustainability_score * 10,
-                overall_score * 10
-            ]
-        }]
-        
-        # Database save removed
 
-        
+@app.post("/api/quick_recommend")
+def quick_recommend(req: MultiAgentRecommendationRequest):
+    """
+    Quick recommendation using the AgriSmart Custom Engine ONLY.
+    Instant response — no LLM API calls needed.
+    Uses: ML models + Knowledge Base RAG + Custom Algorithm.
+    Perfect for low-bandwidth / offline-first scenarios.
+    """
+    try:
+        from models.custom_engine import AgriSmartEngine
+        engine = AgriSmartEngine()
+        result = engine.recommend(
+            ph=req.ph, temperature=req.temperature, rainfall=req.rainfall,
+            nitrogen=req.nitrogen, phosphorus=req.phosphorus,
+            potassium=req.potassium, humidity=req.humidity,
+            soil_type=req.soil_type, land_size=req.land_size, use_llm=False,
+        )
+        return {"success": True, "recommendation": result}
     except Exception as e:
-        pass
-    """ # End of DELETED_ZONE
+        print(f"Error in quick_recommend: {e}")
+        return {"success": False, "error": str(e)}
+
 
 @app.post("/recommendation")
 def get_recommendation(req: RecommendationRequest):
