@@ -3159,6 +3159,124 @@ html {
     .otr-crop-icon { font-size: 2.8rem; }
 }
 
+/* ─── Comparative Scoring Section ─── */
+.comparative-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+.comp-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.comp-icon { font-size: 1.2rem; }
+.comp-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--fg);
+}
+.comp-subtitle {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+.comp-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.comp-row, .comp-row-mini {
+    display: grid;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    transition: all 0.2s;
+}
+.comp-row {
+    grid-template-columns: 28px 1fr 120px 40px;
+    grid-template-rows: auto auto;
+}
+.comp-row-mini {
+    grid-template-columns: 28px 28px 1fr auto 100px 36px;
+}
+.comp-row-top {
+    background: hsl(142 76% 36% / 0.06);
+    border: 1.5px solid hsl(142 76% 36% / 0.2);
+    box-shadow: 0 2px 8px hsl(142 76% 36% / 0.08);
+}
+.comp-crop-icon { font-size: 1.3rem; text-align: center; }
+.comp-crop-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.comp-rank {
+    font-size: 0.85rem;
+    text-align: center;
+    font-weight: 700;
+}
+.comp-cat-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: hsl(195 85% 50% / 0.1);
+    color: hsl(195 85% 50%);
+    white-space: nowrap;
+}
+.comp-bar-track {
+    height: 8px;
+    background: hsl(0 0% 0% / 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.comp-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.comp-score {
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-align: right;
+    color: var(--fg);
+}
+.comp-breakdown {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 12px;
+    padding-top: 4px;
+    font-size: 0.7rem;
+    color: var(--muted);
+}
+.comp-breakdown span {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+@media (max-width: 480px) {
+    .comp-row {
+        grid-template-columns: 24px 1fr 80px 32px;
+    }
+    .comp-row-mini {
+        grid-template-columns: 24px 24px 1fr 60px 32px;
+    }
+    .comp-row-mini .comp-cat-badge { display: none; }
+    .comp-breakdown { gap: 8px; font-size: 0.65rem; }
+    .comparative-section { padding: 12px; }
+}
+
 /* ─── Visual Crop Picker ─── */
 .visual-picker-title {
     font-size: 1.15rem;

@@ -107,7 +107,7 @@ class CentralCoordinator:
             temperature: float = 25, rainfall: float = 100,
             fertilizer: float = 80, pesticide: float = 2.0,
             crop_yield: float = 3.0, land_size: float = 1.0,
-            city_name: str = None) -> Dict:
+            city_name: str = None, crop_preference: str = None) -> Dict:
         """Generate a comprehensive multi-agent recommendation.
 
         Flow:
@@ -128,6 +128,7 @@ class CentralCoordinator:
                     nitrogen=fertilizer, phosphorus=30, potassium=30,
                     humidity=soil_moisture, land_size=land_size,
                     use_llm=False,  # LLM used separately by agents
+                    crop_preference=crop_preference,
                 )
                 print(f"   → Custom Engine: {custom_result['recommended_crop']} "
                       f"(score: {custom_result['final_score']}, "
@@ -370,6 +371,7 @@ class CentralCoordinator:
                 "estimated_price": custom_result.get("estimated_price", 0) if custom_result else 0,
                 "custom_alternatives": custom_result.get("alternatives", []) if custom_result else [],
                 "crop_icon": custom_result.get("crop_icon", "🌱") if custom_result else "🌱",
+                "comparative": custom_result.get("comparative", {}) if custom_result else {},
             },
         }
 

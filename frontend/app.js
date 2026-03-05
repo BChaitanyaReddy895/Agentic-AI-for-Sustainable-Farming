@@ -296,7 +296,8 @@ async function oneTapAdvice() {
                     temperature: temp, humidity: hum, rainfall: rain, ph: 6.5,
                     nitrogen: state.farmSetup.nitrogen, phosphorus: state.farmSetup.phosphorus,
                     potassium: state.farmSetup.potassium,
-                    soil_type: soilType, land_size: state.farmSetup.land_size
+                    soil_type: soilType, land_size: state.farmSetup.land_size,
+                    crop_preference: cropPref
                 });
             } catch(e) { console.warn('Quick recommend failed, falling back to full pipeline:', e); }
         }
@@ -341,7 +342,8 @@ async function oneTapAdvice() {
                 topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
                 alternatives, scoreExplanation, estimatedYield, confidence,
                 engineLabel: 'AgriSmart AI Engine ⚡',
-                layerScores: eng.layer_scores
+                layerScores: eng.layer_scores,
+                comparative: eng.comparative
             });
         } else {
             // ── Full LLM pipeline result ──
@@ -359,7 +361,8 @@ async function oneTapAdvice() {
                 topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
                 alternatives, scoreExplanation, estimatedYield, confidence,
                 engineLabel: '6 AI Agents + Custom Engine',
-                layerScores: data.custom_engine?.layer_scores
+                layerScores: data.custom_engine?.layer_scores,
+                comparative: data.custom_engine?.comparative
             });
             
             // Add agent advice cards (only in full pipeline)
@@ -451,7 +454,7 @@ function getCurrentSeason() {
 function buildVisualResultCard(opts) {
     const { topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
             alternatives, scoreExplanation, estimatedYield, confidence,
-            engineLabel, layerScores } = opts;
+            engineLabel, layerScores, comparative } = opts;
     
     const confidenceColor = confidence === 'High' ? '#16a34a' : confidence === 'Medium' ? '#eab308' : '#ef4444';
     const confidenceIcon = confidence === 'High' ? '💪' : confidence === 'Medium' ? '👍' : '🤔';
@@ -520,6 +523,85 @@ function buildVisualResultCard(opts) {
                 <div class="alt-crop-icon">${altIcon}</div>
                 <div class="alt-crop-name">${altName}</div>
                 <div class="alt-crop-score" style="color:${altColor}">${altScore}%</div>
+            </div>`;
+        }
+        html += '</div></div>';
+    }
+    
+    // ── Comparative Scoring Table — "Why this crop?" ──
+    if (comparative) {
+        html += buildComparativeSection(comparative, topCrop);
+    }
+    
+    return html;
+}
+
+/**
+ * Build the comparative scoring section showing all crops in the user's
+ * preferred category + top overall, with visual bar charts.
+ */
+function buildComparativeSection(comparative, topCrop) {
+    let html = '';
+    
+    // 1. Preferred category comparison
+    const prefList = comparative.preferred_category || [];
+    const prefName = comparative.preferred_category_name || '';
+    if (prefList.length > 1) {
+        html += `<div class="comparative-section">
+            <div class="comp-header">
+                <span class="comp-icon">📊</span>
+                <span class="comp-title">Comparative Scores — ${prefName}</span>
+            </div>
+            <p class="comp-subtitle">Why <strong>${topCrop}</strong> ranks highest in your preferred category:</p>
+            <div class="comp-table">`;
+        
+        for (const crop of prefList) {
+            const isTop = crop.crop.toLowerCase() === topCrop.toLowerCase();
+            const pct = Math.round(crop.score * 10);
+            const barColor = isTop ? 'var(--gradient-primary)' : (pct >= 50 ? '#94a3b8' : '#e2e8f0');
+            const textColor = isTop ? '#16a34a' : '#64748b';
+            html += `<div class="comp-row ${isTop ? 'comp-row-top' : ''}">
+                <span class="comp-crop-icon">${crop.icon}</span>
+                <span class="comp-crop-name">${crop.crop}</span>
+                <div class="comp-bar-track">
+                    <div class="comp-bar-fill" style="width:${pct}%;background:${isTop ? 'linear-gradient(90deg,#16a34a,#0ea5e9)' : barColor}"></div>
+                </div>
+                <span class="comp-score" style="color:${textColor}">${crop.score.toFixed(1)}</span>
+                <div class="comp-breakdown">
+                    <span title="Soil & Climate">🌱${crop.agronomic.toFixed(1)}</span>
+                    <span title="Season">📅${crop.season.toFixed(0)}</span>
+                    <span title="AI Model">🤖${crop.ml.toFixed(1)}</span>
+                    <span title="Historical Data">📚${crop.kb.toFixed(1)}</span>
+                </div>
+            </div>`;
+        }
+        html += '</div></div>';
+    }
+    
+    // 2. Top overall comparison (across all categories)
+    const topAll = comparative.top_overall || [];
+    if (topAll.length > 1) {
+        html += `<div class="comparative-section">
+            <div class="comp-header">
+                <span class="comp-icon">🏆</span>
+                <span class="comp-title">Top Crops — All Categories</span>
+            </div>
+            <div class="comp-table comp-table-overall">`;
+        
+        for (let i = 0; i < topAll.length; i++) {
+            const crop = topAll[i];
+            const isTop = crop.crop.toLowerCase() === topCrop.toLowerCase();
+            const pct = Math.round(crop.score * 10);
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+            html += `<div class="comp-row-mini ${isTop ? 'comp-row-top' : ''}">
+                <span class="comp-rank">${medal}</span>
+                <span class="comp-crop-icon">${crop.icon}</span>
+                <span class="comp-crop-name">${crop.crop}</span>
+                <span class="comp-cat-badge">${crop.category}</span>
+                <div class="comp-bar-track">
+                    <div class="comp-bar-fill" style="width:${pct}%;background:${isTop ? 'linear-gradient(90deg,#16a34a,#0ea5e9)' : '#cbd5e1'}"></div>
+                </div>
+                <span class="comp-score">${crop.score.toFixed(1)}</span>
             </div>`;
         }
         html += '</div></div>';

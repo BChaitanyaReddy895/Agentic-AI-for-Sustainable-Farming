@@ -623,7 +623,8 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
             pesticide=estimated_pesticide,
             crop_yield=estimated_yield,
             land_size=req.land_size,
-            city_name=None # We rely on user input coordinates/data in this request object
+            city_name=None,
+            crop_preference=req.crop_preference,
         )
         
         # Map CentralCoordinator result to API response structure
@@ -724,6 +725,7 @@ def get_multi_agent_recommendation(req: MultiAgentRecommendationRequest):
                 "estimated_price": custom_engine_data.get("estimated_price", 0),
                 "custom_alternatives": custom_engine_data.get("custom_alternatives", []),
                 "crop_icon": custom_engine_data.get("crop_icon", "🌱"),
+                "comparative": custom_engine_data.get("comparative", {}),
             }
         else:
             response["custom_engine"] = {"enabled": False}
@@ -752,6 +754,7 @@ def quick_recommend(req: MultiAgentRecommendationRequest):
             nitrogen=req.nitrogen, phosphorus=req.phosphorus,
             potassium=req.potassium, humidity=req.humidity,
             soil_type=req.soil_type, land_size=req.land_size, use_llm=False,
+            crop_preference=req.crop_preference,
         )
         return {"success": True, "recommendation": result}
     except Exception as e:

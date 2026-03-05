@@ -97,6 +97,29 @@ CROP_OPTIMAL_CONDITIONS = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Crop ↔ Category Mapping (user picks a category, engine boosts matching crops)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CROP_CATEGORIES = {
+    "Grains":     ["rice", "wheat", "corn", "maize", "millet", "barley", "oats", "sorghum"],
+    "Vegetables": ["tomato", "potato", "onion"],
+    "Fruits":     ["banana"],
+    "Pulses":     ["soybean", "chickpea", "lentil", "pigeon pea", "groundnut"],
+    "Cash Crops": ["cotton", "sugarcane", "jute", "tea", "coffee"],
+    "Oilseeds":   ["mustard", "sunflower", "sesame", "groundnut"],
+    "Spices":     ["turmeric"],
+}
+
+def _category_of(crop_name: str) -> str:
+    """Return the category name a crop belongs to (or 'Other')."""
+    lc = crop_name.lower()
+    for cat, members in CROP_CATEGORIES.items():
+        if lc in members:
+            return cat
+    return "Other"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # The Custom Engine
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -194,6 +217,7 @@ class AgriSmartEngine:
         humidity: float = 60,
         land_size: float = 1.0,
         use_llm: bool = True,
+        crop_preference: str = None,
     ) -> Dict:
         """
         Generate a hybrid recommendation using all 4 layers.
@@ -229,12 +253,17 @@ class AgriSmartEngine:
         crop_scores = self._layer3_agronomic_score(
             ph, temperature, rainfall, nitrogen, phosphorus, potassium,
             humidity, current_season, soil_type, ml_predictions, kb_results,
+            crop_preference,
         )
 
         # Sort by final fused score
         crop_scores.sort(key=lambda x: x["final_score"], reverse=True)
         top_crop = crop_scores[0] if crop_scores else None
         alternatives = crop_scores[1:5] if len(crop_scores) > 1 else []
+
+        # ── Build comparative data for ALL crops ─────────────────────
+        # Group by category so UI can show "why X over Y"
+        comparative = self._build_comparative(crop_scores, crop_preference)
 
         # ── Layer 4: LLM Enhancement (optional) ─────────────────────
         llm_advice = ""
@@ -314,6 +343,9 @@ class AgriSmartEngine:
             "sustainability_score": round(
                 top_crop.get("sustainability", 5.0), 1
             ),
+
+            # Comparative scoring (why this crop, not others?)
+            "comparative": comparative,
         }
 
     # ─────────────────────────────────────────────────────────────────
@@ -413,7 +445,7 @@ class AgriSmartEngine:
     def _layer3_agronomic_score(
         self, ph, temperature, rainfall, nitrogen, phosphorus, potassium,
         humidity, current_season, soil_type,
-        ml_predictions, kb_results,
+        ml_predictions, kb_results, crop_preference=None,
     ) -> List[Dict]:
         """
         Novel multi-criteria scoring algorithm.
@@ -423,10 +455,14 @@ class AgriSmartEngine:
           S_ml    = ML model confidence boost (0-2)
           S_kb    = knowledge base evidence boost (0-2)
           S_season = season match bonus (0-1)
-          Final   = S_agro + S_ml + S_kb + S_season (normalized 0-10)
+          S_pref  = crop preference match boost (0-1.5)
+          Final   = S_agro + S_ml + S_kb + S_season + S_pref (normalized 0-10)
 
         Each score component has a human-readable explanation.
         """
+
+        # Detect unknown NPK (all zero means user didn't enter values)
+        npk_unknown = (nitrogen == 0 and phosphorus == 0 and potassium == 0)
 
         # Build ML lookup
         ml_lookup = {}
@@ -489,24 +525,30 @@ class AgriSmartEngine:
             score_components["agronomic_score"] = agronomic_score
 
             # ─── 3b. NPK Balance Score (0-10) ───────────────────────
-            n_score = self._range_score(
-                nitrogen, conditions["n"][0], conditions["n"][1], margin=20
-            )
-            p_score = self._range_score(
-                phosphorus, conditions["p"][0], conditions["p"][1], margin=15
-            )
-            k_score = self._range_score(
-                potassium, conditions["k"][0], conditions["k"][1], margin=15
-            )
-            npk_score = (n_score + p_score + k_score) / 3 * 10
-            score_components["npk_score"] = npk_score
-
-            if npk_score > 7:
-                explanation.append(f"✅ NPK levels well-balanced for {crop_name}")
-            elif npk_score > 4:
-                explanation.append(f"⚠️ Some NPK adjustment needed for {crop_name}")
+            if npk_unknown:
+                # User didn't enter NPK → treat as neutral (5/10)
+                npk_score = 5.0
+                n_score = p_score = k_score = 0.5
+                explanation.append("ℹ️ NPK not provided — using neutral score")
             else:
-                explanation.append(f"❌ NPK levels need significant correction for {crop_name}")
+                n_score = self._range_score(
+                    nitrogen, conditions["n"][0], conditions["n"][1], margin=20
+                )
+                p_score = self._range_score(
+                    phosphorus, conditions["p"][0], conditions["p"][1], margin=15
+                )
+                k_score = self._range_score(
+                    potassium, conditions["k"][0], conditions["k"][1], margin=15
+                )
+                npk_score = (n_score + p_score + k_score) / 3 * 10
+
+                if npk_score > 7:
+                    explanation.append(f"✅ NPK levels well-balanced for {crop_name}")
+                elif npk_score > 4:
+                    explanation.append(f"⚠️ Some NPK adjustment needed for {crop_name}")
+                else:
+                    explanation.append(f"❌ NPK levels need significant correction for {crop_name}")
+            score_components["npk_score"] = npk_score
 
             # ─── 3c. Season Match (0 or 1) ──────────────────────────
             season_bonus = 0.0
@@ -537,15 +579,27 @@ class AgriSmartEngine:
                     f"({kb_freq} similar records, avg yield: {kb_data.get('avg_yield', 0):.1f} t/ha)"
                 )
 
-            # ─── 3f. Combine — Weighted Fusion ──────────────────────
-            # Max possible: agronomic(10) + npk(10)*0.3 + season(1) + ml(2) + kb(2) = 18
-            # Normalize to 0-10
+            # ─── 3f. Crop Preference Boost (0-1.5) ────────────────────
+            pref_score = 0.0
+            crop_category = _category_of(crop_name)
+            if crop_preference and crop_preference.strip():
+                pref_key = crop_preference.strip()
+                if pref_key in CROP_CATEGORIES and crop_name in CROP_CATEGORIES[pref_key]:
+                    pref_score = 1.5
+                    explanation.append(f"⭐ Matches your preference ({pref_key})")
+                else:
+                    explanation.append(f"↘️ Not in your preferred category ({pref_key})")
+            score_components["pref_score"] = pref_score
+
+            # ─── 3g. Combine — Weighted Fusion ──────────────────────
+            # Max possible: agronomic(10)*0.35 + npk(10)*0.12 + season(1) + ml(2) + kb(2)*0.75 + pref(1.5) ≈ 10
             raw_total = (
-                agronomic_score * 0.40     # 40% weight: soil-climate match
-                + npk_score * 0.15         # 15% weight: nutrient balance
-                + season_bonus * 1.0       # 10% effective weight (1 out of ~10)
-                + ml_score * 1.0           # ~20% weight
-                + kb_score * 0.75          # ~15% weight
+                agronomic_score * 0.35     # 35% weight: soil-climate match
+                + npk_score * 0.12         # 12% weight: nutrient balance
+                + season_bonus * 1.0       # season match
+                + ml_score * 0.8           # ML evidence
+                + kb_score * 0.6           # Knowledge base evidence
+                + pref_score * 1.0         # User preference alignment
             )
             final_score = min(10.0, raw_total)
 
@@ -568,6 +622,8 @@ class AgriSmartEngine:
                 "season_bonus": season_bonus,
                 "ml_score": ml_score,
                 "kb_score": kb_score,
+                "pref_score": pref_score,
+                "category": crop_category,
                 "explanation": explanation,
                 "predicted_yield": predicted_yield,
                 "predicted_price": predicted_price,
@@ -619,6 +675,72 @@ Keep it short, practical, and in simple language."""
             print(f"   ⚠️ LLM enhancement skipped: {e}")
 
         return "", ""
+
+    # ─────────────────────────────────────────────────────────────────
+    # COMPARATIVE SCORING — Show why one crop beats another
+    # ─────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _build_comparative(crop_scores: List[Dict], crop_preference: str = None) -> Dict:
+        """
+        Build a comparative analysis for the frontend.
+        Groups crops by category and shows relative strengths.
+        """
+        if not crop_scores:
+            return {"preferred_category": [], "all_categories": {}}
+
+        # Group by category
+        by_category = {}
+        for c in crop_scores:
+            cat = c.get("category", "Other")
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append({
+                "crop": c["crop"],
+                "score": round(c["final_score"], 2),
+                "agronomic": round(c.get("agronomic_score", 0), 2),
+                "npk": round(c.get("npk_score", 0), 2),
+                "season": round(c.get("season_bonus", 0), 2),
+                "ml": round(c.get("ml_score", 0), 2),
+                "kb": round(c.get("kb_score", 0), 2),
+                "icon": CROP_OPTIMAL_CONDITIONS.get(c["crop"].lower(), {}).get("icon", "🌱"),
+                "confidence": round(c.get("confidence", 0), 1),
+            })
+
+        # Sort each category by score
+        for cat in by_category:
+            by_category[cat].sort(key=lambda x: x["score"], reverse=True)
+
+        # Build the preferred category comparison
+        preferred_list = []
+        if crop_preference and crop_preference in by_category:
+            preferred_list = by_category[crop_preference]
+        elif crop_preference:
+            # Try matching category names loosely
+            for cat, items in by_category.items():
+                if crop_preference.lower() in cat.lower():
+                    preferred_list = items
+                    break
+
+        # Top 8 overall for comparison (always include)
+        top_overall = []
+        for c in crop_scores[:8]:
+            top_overall.append({
+                "crop": c["crop"],
+                "score": round(c["final_score"], 2),
+                "category": c.get("category", "Other"),
+                "icon": CROP_OPTIMAL_CONDITIONS.get(c["crop"].lower(), {}).get("icon", "🌱"),
+                "confidence": round(c.get("confidence", 0), 1),
+                "agronomic": round(c.get("agronomic_score", 0), 2),
+                "season": round(c.get("season_bonus", 0), 2),
+            })
+
+        return {
+            "preferred_category": preferred_list,
+            "preferred_category_name": crop_preference or "",
+            "all_categories": by_category,
+            "top_overall": top_overall,
+        }
 
     # ─────────────────────────────────────────────────────────────────
     # SCORING HELPERS
