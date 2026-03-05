@@ -1,18 +1,19 @@
 """
 CentralCoordinator — Hybrid Multi-Agent + Custom Engine Orchestrator
 =====================================================================
-The brain of the agentic AI system. Now uses a HYBRID architecture:
+The brain of the agentic AI system. Uses a HYBRID architecture:
 
-  Layer A — AgriSmart Custom Engine (ML models + RAG KB + custom algorithm)
-  Layer B — Multi-Agent LLM Reasoning (5 specialist agents via Groq)
+  Layer A — AgriSmart Custom Engine (ML models + RAG KB + custom algorithm) → PRIMARY
+  Layer B — Multi-Agent LLM Reasoning (5 specialist agents via Groq) → VALIDATION & ENRICHMENT
 
 Flow:
-  1. Custom Engine generates data-driven recommendation (instant, offline-capable)
-  2. FarmerAdvisor validates/enriches via LLM
-  3. 4 specialist agents analyse in parallel
-  4. LLM Synthesis merges custom engine + agent insights
+  1. Custom Engine generates data-driven recommendation (instant, offline-capable) — THIS PICKS THE CROP
+  2. FarmerAdvisor validates/enriches via LLM (does NOT override engine)
+  3. 4 specialist agents analyse the engine's crop in parallel (market, weather, sustainability, pest)
+  4. LLM Synthesis merges custom engine + agent insights for final report
 
-Return dict preserves exact keys expected by backend/main.py.
+The custom engine is ALWAYS the primary recommendation source.
+Groq API agents validate, enrich, and provide detailed analysis — they do NOT pick the crop.
 """
 
 import os
@@ -119,9 +120,12 @@ class CentralCoordinator:
         warnings: List[str] = []
 
         # ── Step 0: Custom Engine — instant data-driven analysis ─────
+        # The custom engine is the PRIMARY recommendation source.
+        # It uses ML models + Knowledge Base RAG + agronomic algorithm.
         custom_result = None
+        engine_crop = None
         if self.custom_engine:
-            print("\n🧠 Step 0: AgriSmart Custom Engine (ML + RAG + Algorithm)...")
+            print("\n🧠 Step 0: AgriSmart Custom Engine (ML + RAG + Algorithm) — PRIMARY...")
             try:
                 custom_result = self.custom_engine.recommend(
                     ph=soil_ph, temperature=temperature, rainfall=rainfall,
@@ -130,38 +134,60 @@ class CentralCoordinator:
                     use_llm=False,  # LLM used separately by agents
                     crop_preference=crop_preference,
                 )
-                print(f"   → Custom Engine: {custom_result['recommended_crop']} "
+                engine_crop = custom_result['recommended_crop']
+                print(f"   → Custom Engine PRIMARY: {engine_crop} "
                       f"(score: {custom_result['final_score']}, "
                       f"confidence: {custom_result['confidence']}%, "
                       f"data points: {custom_result['data_points_analysed']:,})")
             except Exception as e:
                 print(f"   ⚠️ Custom engine error: {e}")
 
-        # ── Step 1: Farmer Advisor — crop recommendation ─────────────
-        print("\n📡 Step 1: FarmerAdvisor reasoning about crop selection...")
+        # ── Step 1: Farmer Advisor — validate / enrich the engine's pick ──
+        # Groq LLM validates the custom engine's recommendation and provides
+        # reasoning, advice, and alternatives. It does NOT override the engine.
+        print("\n📡 Step 1: FarmerAdvisor validating engine recommendation...")
         try:
             farmer_result = self.farmer_advisor.recommend_detailed(
                 ph=soil_ph, temperature=temperature,
                 rainfall=rainfall, humidity=soil_moisture,
                 nitrogen=fertilizer, phosphorus=30, potassium=30,
             )
-            recommended_crop = farmer_result["crop"]
+            farmer_llm_crop = farmer_result["crop"]
             farmer_score = farmer_result["score"]
             farmer_confidence = farmer_result["confidence"]
             farmer_advice = farmer_result.get("advice", "")
             farmer_reasoning = farmer_result.get("reasoning", "")
         except Exception as e:
             warnings.append(f"FarmerAdvisor error: {e}")
-            recommended_crop = "Wheat"
+            farmer_llm_crop = None
             farmer_score = 5.0
             farmer_confidence = 50.0
             farmer_advice = "Default recommendation due to error."
             farmer_reasoning = str(e)
             farmer_result = {"alternatives": []}
 
-        print(f"   → Recommended: {recommended_crop} (score: {farmer_score}, confidence: {farmer_confidence}%)")
+        # PRIMARY CROP = custom engine's pick (or fallback to Farmer Advisor)
+        if engine_crop:
+            recommended_crop = engine_crop
+            # If Farmer Advisor disagrees, note the conflict for synthesis
+            if farmer_llm_crop and farmer_llm_crop.lower() != engine_crop.lower():
+                warnings.append(
+                    f"Agent disagreement: Custom Engine → {engine_crop}, "
+                    f"FarmerAdvisor → {farmer_llm_crop} (engine takes priority)"
+                )
+                print(f"   ⚡ Conflict: Engine={engine_crop}, Farmer={farmer_llm_crop} → using engine")
+            else:
+                print(f"   ✅ Agreement: both recommend {engine_crop}")
+        else:
+            # Fallback: engine failed, use Farmer Advisor's pick
+            recommended_crop = farmer_llm_crop or "Wheat"
+            print(f"   ⚠️ Fallback to FarmerAdvisor: {recommended_crop}")
+
+        print(f"   → FINAL PRIMARY CROP: {recommended_crop} (source: {'Custom Engine' if engine_crop else 'Farmer Advisor'})")
 
         # ── Step 2: Run 4 specialist agents IN PARALLEL ──────────────
+        # Agents ANALYZE the engine's recommended crop (market, weather, etc.)
+        # They don't pick the crop — they validate and enrich.
         print(f"\n📡 Step 2: Running 4 specialist agents in parallel for '{recommended_crop}'...")
 
         market_result = {}

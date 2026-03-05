@@ -619,11 +619,15 @@ function selectVisualCrop(crop, btn) {
     document.querySelectorAll('.visual-crop-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     
-    // Map visual crop to form value
+    // Map visual crop to form value (category)
     const cropMapping = {
-        'Rice': 'Grains', 'Wheat': 'Grains', 'Corn': 'Grains',
-        'Tomato': 'Vegetables', 'Potato': 'Vegetables', 'Vegetables': 'Vegetables',
-        'Cotton': 'Grains', 'Soybean': 'Grains', 'Fruits': 'Fruits'
+        'Rice': 'Grains', 'Wheat': 'Grains', 'Corn': 'Grains', 'Millet': 'Grains', 'Barley': 'Grains',
+        'Tomato': 'Vegetables', 'Potato': 'Vegetables', 'Onion': 'Vegetables', 'Vegetables': 'Vegetables',
+        'Cotton': 'Cash Crops', 'Sugarcane': 'Cash Crops', 'Jute': 'Cash Crops', 'Tea': 'Cash Crops', 'Coffee': 'Cash Crops',
+        'Soybean': 'Pulses', 'Chickpea': 'Pulses', 'Lentil': 'Pulses',
+        'Sunflower': 'Oilseeds', 'Mustard': 'Oilseeds', 'Sesame': 'Oilseeds', 'Groundnut': 'Oilseeds',
+        'Turmeric': 'Spices',
+        'Banana': 'Fruits', 'Fruits': 'Fruits'
     };
     const selectVal = cropMapping[crop] || 'Grains';
     document.getElementById('crop-preference').value = selectVal;
@@ -1715,10 +1719,49 @@ function addActivity(text, color = 'green') {
 
 async function getRecommendation() {
     if (!state.farmSetup) { toast('Please set up farm details first', 'info'); navigate('farm-setup'); return; }
-    showLoading('4 AI agents are analyzing your farm data...');
+    showLoading('Custom Engine + AI agents analyzing your farm...');
     showSkeleton('recommendation-results', 5);
     const container = document.getElementById('recommendation-results');
     try {
+        // Phase 1: Instant custom engine result (no Groq needed)
+        let quickData = null;
+        try {
+            quickData = await fetchAPI('/api/quick_recommend', {
+                temperature: state.farmSetup.temperature,
+                humidity: state.farmSetup.humidity,
+                rainfall: state.farmSetup.rainfall,
+                ph: state.farmSetup.ph,
+                nitrogen: state.farmSetup.nitrogen,
+                phosphorus: state.farmSetup.phosphorus,
+                potassium: state.farmSetup.potassium,
+                soil_type: state.farmSetup.soil_type,
+                land_size: state.farmSetup.land_size,
+                crop_preference: state.farmSetup.crop_preference
+            });
+        } catch(e) { console.warn('Quick engine failed:', e); }
+
+        // Show instant engine result while full pipeline runs
+        if (quickData?.success) {
+            const eng = quickData.recommendation;
+            const topCrop = eng.recommended_crop || 'Unknown';
+            const score = Math.round((eng.final_score || 0) * 10);
+            const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
+            const trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+            container.innerHTML = buildVisualResultCard({
+                topCrop, cropIcon: eng.crop_icon || '🌾', score, scoreColor, trafficEmoji,
+                placeName: state.farmSetup.city || 'Your Farm',
+                temp: state.farmSetup.temperature, hum: state.farmSetup.humidity,
+                alternatives: (eng.alternatives || []).slice(0, 3),
+                scoreExplanation: eng.score_explanation || [],
+                estimatedYield: eng.estimated_yield,
+                confidence: eng.confidence || 'Medium',
+                engineLabel: 'AgriSmart Custom Engine ⚡ (loading agents...)',
+                layerScores: eng.layer_scores,
+                comparative: eng.comparative
+            });
+        }
+
+        // Phase 2: Full multi-agent pipeline (Groq agents validate + enrich the engine's crop)
         const data = await fetchAPI('/multi_agent_recommendation', {
             username: state.user?.username || 'anonymous',
             land_size: state.farmSetup.land_size,
@@ -1732,6 +1775,7 @@ async function getRecommendation() {
             ph: state.farmSetup.ph,
             rainfall: state.farmSetup.rainfall
         });
+        // Replace with full enriched result
         renderRecommendation(data, container);
         celebrateSuccess();
         // Auto-speak result for illiterate farmers
@@ -1776,14 +1820,16 @@ function renderRecommendation(data, container) {
 
     // ── 1. Visual Score Hero (icon-heavy for illiterate farmers) ──
     const scoreColor = finalScore >= 7 ? '#16a34a' : finalScore >= 5 ? '#eab308' : '#dc2626';
+    const cropIcon = ce?.crop_icon || data.custom_engine?.crop_icon || '🌾';
     html += `<div class="rec-hero animate-scale-in" style="background:linear-gradient(135deg,${scoreColor}15,${scoreColor}05);border:2px solid ${scoreColor}30;border-radius:20px;padding:1.5rem;margin-bottom:1.5rem">
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
             <div style="width:80px;height:80px;border-radius:50%;background:${scoreColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;flex-shrink:0">${finalScore}</div>
             <div style="flex:1;min-width:150px">
-                <div style="font-size:1.5rem;font-weight:800;color:#1e293b">🌾 ${topCrop}</div>
+                <div style="font-size:1.5rem;font-weight:800;color:#1e293b">${cropIcon} ${topCrop}</div>
                 <div style="font-size:0.95rem;color:#64748b;margin-top:4px">
                     ${confidence === 'High' ? '✅' : confidence === 'Medium' ? '⚠️' : '❌'} ${confidence} Confidence
                 </div>
+                <div style="font-size:0.78rem;color:#8b5cf6;margin-top:2px">⚡ Custom Engine (primary) + 5 AI Agents (validation)</div>
             </div>
         </div>
     </div>`;
@@ -1861,6 +1907,11 @@ function renderRecommendation(data, container) {
         }
         
         html += '</div>';
+    }
+
+    // ── 2b. Comparative Scoring (custom engine's crop comparison) ──
+    if (ce.comparative) {
+        html += buildComparativeSection(ce.comparative, topCrop);
     }
 
     // ── 3. Agent Visual Score Bars ──
