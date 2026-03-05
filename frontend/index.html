@@ -441,6 +441,10 @@
                             <div class="weather-chip"><i class="fas fa-tint"></i> <span id="dash-humidity">65%</span></div>
                             <div class="weather-chip"><i class="fas fa-wind"></i> <span id="dash-wind">12 km/h</span></div>
                         </div>
+                        <div class="dash-hero-badge">
+                            <span class="dhb-dot"></span>
+                            Powered by 4-Layer AgriSmart AI Engine &middot; 296K data points
+                        </div>
                     </div>
                 </div>
 
@@ -486,7 +490,7 @@
                         <h3 class="card-title"><i class="fas fa-heartbeat"></i> Farm Health</h3>
                         <div class="health-ring-wrap">
                             <div class="health-ring" id="dash-health-ring">
-                                <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/><circle cx="60" cy="60" r="52" fill="none" stroke="#16a34a" stroke-width="10" stroke-dasharray="327" stroke-dashoffset="65" stroke-linecap="round" transform="rotate(-90 60 60)" id="health-arc"/></svg>
+                                <svg viewBox="0 0 120 120"><defs><linearGradient id="healthGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#0ea5e9"/></linearGradient></defs><circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/><circle cx="60" cy="60" r="52" fill="none" stroke="url(#healthGrad)" stroke-width="10" stroke-dasharray="327" stroke-dashoffset="65" stroke-linecap="round" transform="rotate(-90 60 60)" id="health-arc"/></svg>
                                 <span class="health-ring-val" id="dash-health-score">80%</span>
                             </div>
                             <div class="health-labels">

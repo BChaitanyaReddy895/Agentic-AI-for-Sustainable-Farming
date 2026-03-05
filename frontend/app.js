@@ -4493,3 +4493,173 @@ function updateCommunityCount() {
     const posts = document.querySelectorAll('#community-feed .community-post');
     el.textContent = posts.length || '0';
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  VISUAL POLISH — Scroll Reveal, Animated Counters, Tilt cards
+//  ═══════════════════════════════════════════════════════════════
+
+// ── Scroll Reveal: fade-in cards/sections as they enter viewport ──
+(function initScrollReveal() {
+    function tagElements() {
+        const selectors = [
+            '.stat-card', '.feature-card', '.explore-card', '.step-card',
+            '.card', '.agent-card', '.pest-card', '.weather-day-card',
+            '.npk-card', '.exp-sum-card', '.one-tap-card'
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                if (!el.classList.contains('scroll-reveal')) {
+                    el.classList.add('scroll-reveal');
+                }
+            });
+        });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    function observe() {
+        document.querySelectorAll('.scroll-reveal:not(.revealed)').forEach(el => observer.observe(el));
+    }
+
+    // Run after DOM ready and each navigation
+    const _origNavigate = window.navigate;
+    if (typeof _origNavigate === 'function') {
+        window.navigate = function() {
+            _origNavigate.apply(this, arguments);
+            setTimeout(() => { tagElements(); observe(); }, 100);
+        };
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => { tagElements(); observe(); }, 200);
+    });
+    // Also run on main-area scroll for dynamically added content
+    setTimeout(() => {
+        const mainArea = document.querySelector('.main-area');
+        if (mainArea) {
+            mainArea.addEventListener('scroll', () => {
+                observe();
+            }, { passive: true });
+        }
+    }, 500);
+})();
+
+// ── Animated Number Counter — animates stat values on dashboard ──
+function animateCounter(el, targetVal, duration = 800) {
+    if (!el || isNaN(targetVal)) return;
+    const start = 0;
+    const startTime = performance.now();
+    const isFloat = String(targetVal).includes('.');
+    function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = start + (targetVal - start) * eased;
+        el.textContent = isFloat ? current.toFixed(1) : Math.round(current);
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+// Hook into stat updates to animate them
+(function hookStatAnimations() {
+    const statIds = ['stat-recs', 'stat-community'];
+    const origSet = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'textContent').set;
+    // MutationObserver approach: whenever stat text changes, animate
+    statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const obs = new MutationObserver(() => {
+            const val = parseFloat(el.textContent);
+            if (!isNaN(val) && val > 0) {
+                obs.disconnect();
+                el.textContent = '0';
+                animateCounter(el, val, 900);
+                setTimeout(() => obs.observe(el, { childList: true, characterData: true, subtree: true }), 1000);
+            }
+        });
+        obs.observe(el, { childList: true, characterData: true, subtree: true });
+    });
+})();
+
+// ── Tilt hover effect — subtle 3D parallax on cards ──
+(function initTiltCards() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.dash-hero, .one-tap-card');
+        cards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width - 0.5;
+                const y = (e.clientY - rect.top) / rect.height - 0.5;
+                card.style.transform = `perspective(800px) rotateX(${y * -3}deg) rotateY(${x * 3}deg)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+                card.style.transition = 'transform 0.4s ease';
+                setTimeout(() => card.style.transition = '', 400);
+            });
+        });
+    });
+})();
+
+// ── Parallax floating elements in hero ──
+(function initHeroParallax() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const hero = document.querySelector('.dash-hero');
+        if (!hero) return;
+        // Create floating decorative elements
+        const emojis = ['🌱', '🌿', '☀️', '💧', '🦋'];
+        emojis.forEach((emoji, i) => {
+            const el = document.createElement('span');
+            el.className = 'hero-float-el';
+            el.textContent = emoji;
+            el.style.cssText = `
+                position:absolute; font-size:${1 + Math.random()}rem;
+                top:${10 + Math.random() * 70}%; left:${5 + Math.random() * 85}%;
+                opacity:0.12; z-index:1; pointer-events:none;
+                animation: float ${3 + i}s ease-in-out infinite;
+                animation-delay: ${i * 0.5}s;
+            `;
+            hero.appendChild(el);
+        });
+    });
+})();
+
+// ── Smooth page transition pulse on navigate ──
+(function enhancePageTransitions() {
+    const origNav = window.navigate;
+    if (typeof origNav !== 'function') return;
+    window.navigate = function(page) {
+        const pages = document.querySelectorAll('.page');
+        pages.forEach(p => {
+            if (p.classList.contains('active')) {
+                p.style.opacity = '0';
+                p.style.transform = 'translateY(10px)';
+            }
+        });
+        setTimeout(() => {
+            origNav(page);
+            const active = document.querySelector('.page.active');
+            if (active) {
+                active.style.opacity = '0';
+                active.style.transform = 'translateY(10px)';
+                requestAnimationFrame(() => {
+                    active.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    active.style.opacity = '1';
+                    active.style.transform = 'translateY(0)';
+                    setTimeout(() => {
+                        active.style.transition = '';
+                        active.style.transform = '';
+                    }, 400);
+                });
+            }
+        }, 150);
+    };
+})();
