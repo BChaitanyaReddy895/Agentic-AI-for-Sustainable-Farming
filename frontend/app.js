@@ -3840,9 +3840,14 @@ function matchCropFromText(text) {
 }
 
 function matchSoilFromText(text) {
-    const soilMap = { 'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red', '????': 'Loamy', '??????': 'Sandy', '?????': 'Clay', '????': 'Black', '???': 'Red', '????': 'Sandy', '?????': 'Black', '?????': 'Red' };
+    const soilMap = { 
+        'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red',
+        'domat': 'Loamy', 'balu': 'Sandy', 'chiknee': 'Clay', 'kali': 'Black', 'lal': 'Red',
+        'mitti': 'Loamy', 'ret': 'Sandy', 'kaali': 'Black', 'retili': 'Sandy'
+    };
+    const lowerText = text.toLowerCase();
     for (const [kw, soil] of Object.entries(soilMap)) {
-        if (text.includes(kw)) return soil;
+        if (lowerText.includes(kw)) return soil;
     }
     return null;
 }
@@ -3850,18 +3855,18 @@ function matchSoilFromText(text) {
 // -- Smart field extraction from natural speech --
 function extractName(text) {
     const t = text.trim();
-    // Patterns: "my name is X", "I am X", "name is X", "it's X", "call me X", "???? ??? X ??", "?? ???? X", "??? ????? X", "???? ????? X"
+    // Patterns for name extraction (English + Romanized Hindi/Indian languages)
     const patterns = [
         /(?:my name is|i am|i'm|name is|it's|call me|this is)\s+(.+)/i,
-        /(?:???? ???|??|???)\s+(.+?)(?:\s+??|\s*$)/i,
-        /(?:?? ????|????)\s+(.+)/i,
-        /(?:??? ?????|????)\s+(.+)/i,
-        /(?:???? ?????|????)\s+(.+)/i,
-        /(?:???? ???|???)\s+(.+)/i,
-        /(?:???? ???|??)\s+(.+)/i,
-        /(?:????? ???|???)\s+(.+)/i,
-        /(?:?? ???|???)\s+(.+)/i,
-        /(?:???? ???|???)\s+(.+)/i,
+        /(?:mera naam|mera name|naam|mai|main)\s+(.+?)(?:\s+hai|\s+hu|\s*$)/i,
+        /(?:na peru|nenu|peru)\s+(.+)/i,
+        /(?:nan hesaru|nanna|hesaru)\s+(.+)/i,
+        /(?:en peyar|naan|peyar)\s+(.+)/i,
+        /(?:amar naam|ami|naam)\s+(.+)/i,
+        /(?:majhe naav|mi|naav)\s+(.+)/i,
+        /(?:maru naam|hu|naam)\s+(.+)/i,
+        /(?:mera naa|mai|naa)\s+(.+)/i,
+        /(?:mo naama|mu|naama)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3870,21 +3875,21 @@ function extractName(text) {
     // If single/two words, likely just the name
     const words = t.split(/\s+/).filter(w => w.length > 0);
     if (words.length <= 3) return t;
-    // Fallback: take last meaningful word(s) � skip filler
-    const fillers = ['is', 'am', 'my', 'name', 'i', 'me', 'the', 'a', 'it', 'yeah', 'yes', 'ok', 'so', 'well', 'please', 'sir'];
+    // Fallback: take last meaningful word(s) - skip filler
+    const fillers = ['is', 'am', 'my', 'name', 'i', 'me', 'the', 'a', 'it', 'yeah', 'yes', 'ok', 'so', 'well', 'please', 'sir', 'hai', 'hu', 'hoon', 'mera', 'naam'];
     const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
     return meaningful.length > 0 ? meaningful.join(' ') : t;
 }
 
 function extractFarmName(text) {
     const t = text.trim();
-    // Patterns: "my farm is X", "farm name is X", "it is X", "called X", "???? ??? ?? ??? X", "?? ???? X", "??? ????? X"
+    // Patterns for farm name extraction (English + Romanized Hindi/Indian languages)
     const patterns = [
         /(?:my farm is|farm name is|farm is called|it is|it's|called)\s+(.+)/i,
-        /(?:???? ??? ?? ???|??? ?? ???|???? ???)\s+(.+?)(?:\s+??|\s*$)/i,
-        /(?:?? ???? ????|???? ????|?? ????)\s+(.+)/i,
-        /(?:??? ????? ?????|????? ?????|??? ?????)\s+(.+)/i,
-        /(?:???? ?????? ?????|?????)\s+(.+)/i,
+        /(?:mere khet ka naam|khet ka naam|khet naam)\s+(.+?)(?:\s+hai|\s*$)/i,
+        /(?:na polam peru|polam peru|na polam)\s+(.+)/i,
+        /(?:nan tota hesaru|tota hesaru|nan tota)\s+(.+)/i,
+        /(?:mara khettar naam|khettar)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3892,7 +3897,7 @@ function extractFarmName(text) {
     }
     const words = t.split(/\s+/).filter(w => w.length > 0);
     if (words.length <= 3) return t;
-    const fillers = ['is', 'my', 'farm', 'name', 'the', 'a', 'it', 'called', 'yes', 'ok', 'so', 'well', 'please'];
+    const fillers = ['is', 'my', 'farm', 'name', 'the', 'a', 'it', 'called', 'yes', 'ok', 'so', 'well', 'please', 'hai', 'khet', 'ka', 'naam', 'mere'];
     const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
     return meaningful.length > 0 ? meaningful.join(' ') : t;
 }
@@ -3901,10 +3906,10 @@ function extractLocation(text) {
     const t = text.trim();
     const patterns = [
         /(?:i am from|i live in|from|located in|located at|my farm is in|my village is|village is|city is|in)\s+(.+)/i,
-        /(?:???|???? ????|????|???)\s+(.+?)(?:\s+??|\s+???|\s+??|\s*$)/i,
-        /(?:????|?? ???|???)\s+(.+)/i,
-        /(?:????|??? ???????|???????)\s+(.+)/i,
-        /(?:????|???? ???|???)\s+(.+)/i,
+        /(?:mai|mera gaon|gaon|jagah)\s+(.+?)(?:\s+se|\s+mein|\s+ka|\s*$)/i,
+        /(?:nenu|na ooru|ooru)\s+(.+)/i,
+        /(?:naanu|nan uru|uru|oorininda)\s+(.+)/i,
+        /(?:naan|en oor|oor)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3912,7 +3917,7 @@ function extractLocation(text) {
     }
     const words = t.split(/\s+/).filter(w => w.length > 0);
     if (words.length <= 3) return t;
-    const fillers = ['i', 'am', 'from', 'my', 'is', 'in', 'at', 'the', 'a', 'it', 'live', 'located', 'village', 'city', 'farm', 'yes', 'ok'];
+    const fillers = ['i', 'am', 'from', 'my', 'is', 'in', 'at', 'the', 'a', 'it', 'live', 'located', 'village', 'city', 'farm', 'yes', 'ok', 'mai', 'mera', 'gaon', 'se'];
     const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
     return meaningful.length > 0 ? meaningful.join(' ') : t;
 }
