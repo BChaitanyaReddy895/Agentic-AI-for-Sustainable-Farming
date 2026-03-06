@@ -17,6 +17,13 @@ import random
 import requests
 from PIL import Image
 
+# Deep Translator for dynamic multilingual translation
+try:
+    from deep_translator import GoogleTranslator
+    HAS_TRANSLATOR = True
+except ImportError:
+    HAS_TRANSLATOR = False
+
 # Try to import pandas/numpy - if not available, use fallbacks
 try:
     import numpy as np
@@ -520,6 +527,46 @@ def login(user: UserLogin):
         if not row:
             raise HTTPException(status_code=404, detail="User not found.")
         return {"username": row[0], "farm_name": row[1], "profile_picture": row[2]}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  DYNAMIC TRANSLATION — deep-translator (Google backend, free)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_translation_cache: Dict[str, str] = {}
+
+LANG_CODE_MAP = {
+    'en': 'en', 'hi': 'hi', 'kn': 'kn', 'te': 'te', 'ta': 'ta',
+    'ml': 'ml', 'bn': 'bn', 'gu': 'gu', 'mr': 'mr', 'pa': 'pa', 'or': 'or'
+}
+
+class TranslateRequest(BaseModel):
+    texts: List[str]
+    target: str  # e.g. 'hi', 'te', 'kn'
+    source: str = 'en'
+
+@app.post("/api/translate")
+def translate_texts(req: TranslateRequest):
+    target = LANG_CODE_MAP.get(req.target, req.target)
+    source = LANG_CODE_MAP.get(req.source, req.source)
+    if target == source:
+        return {"translations": req.texts}
+    if not HAS_TRANSLATOR:
+        return {"translations": req.texts, "error": "deep-translator not installed"}
+    results = []
+    for text in req.texts:
+        if not text or not text.strip():
+            results.append(text)
+            continue
+        cache_key = f"{source}:{target}:{text}"
+        if cache_key in _translation_cache:
+            results.append(_translation_cache[cache_key])
+            continue
+        try:
+            translated = GoogleTranslator(source=source, target=target).translate(text)
+            _translation_cache[cache_key] = translated
+            results.append(translated)
+        except Exception:
+            results.append(text)
+    return {"translations": results}
 
 @app.post("/farm_details")
 def save_farm_details(details: FarmDetails):

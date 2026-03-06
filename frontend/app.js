@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════════════════
+﻿/* ══════════════════════════════════════════════════
    AgriSmart AI — Application Logic
    Complete JS for all pages & features
    ══════════════════════════════════════════════════ */
@@ -391,7 +391,6 @@ async function oneTapAdvice() {
         speakText(speechText);
         
         setOTPStep(4, 'done');
-        celebrateSuccess();
         
         // In simple mode, optionally fetch full LLM result in background to enhance
         if (quickData?.success && isSimple) {
@@ -849,8 +848,6 @@ function closeWalkthrough() {
     const overlay = document.getElementById('walkthrough-overlay');
     if (overlay) overlay.style.display = 'none';
     localStorage.setItem('agri_walkthrough_done', '1');
-    // Celebrate completion with confetti!
-    launchConfetti();
 }
 
 // ═══════════════════════════════════════
@@ -1059,74 +1056,8 @@ function getWalkthroughSVG(type, color) {
 }
 
 // ═══════════════════════════════════════
-function launchConfetti(duration = 2500) {
-    const canvas = document.getElementById('confetti-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const colors = ['#16a34a', '#f59e0b', '#ec4899', '#8b5cf6', '#0ea5e9', '#ef4444', '#22d3ee', '#facc15'];
-    const particles = [];
-    const count = 150;
-
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height - canvas.height,
-            w: Math.random() * 10 + 5,
-            h: Math.random() * 6 + 3,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            vx: (Math.random() - 0.5) * 4,
-            vy: Math.random() * 3 + 2,
-            rot: Math.random() * 360,
-            vr: (Math.random() - 0.5) * 8,
-            opacity: 1
-        });
-    }
-
-    const startTime = Date.now();
-    function animateConfetti() {
-        const elapsed = Date.now() - startTime;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const fadeRatio = elapsed > duration * 0.7 ? 1 - (elapsed - duration * 0.7) / (duration * 0.3) : 1;
-
-        particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.05;
-            p.rot += p.vr;
-            p.opacity = Math.max(0, fadeRatio);
-
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rot * Math.PI / 180);
-            ctx.globalAlpha = p.opacity;
-            ctx.fillStyle = p.color;
-            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-            ctx.restore();
-        });
-
-        if (elapsed < duration) {
-            requestAnimationFrame(animateConfetti);
-        } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-    }
-    requestAnimationFrame(animateConfetti);
-}
-
+// (confetti removed — not appropriate for farmer-focused app)
 // ═══════════════════════════════════════
-//  SUCCESS CELEBRATION (smaller burst)
-// ═══════════════════════════════════════
-function celebrateSuccess() {
-    launchConfetti(1800);
-    // Also show a success pulse ring on the page
-    const ring = document.createElement('div');
-    ring.className = 'success-ring-burst';
-    document.body.appendChild(ring);
-    setTimeout(() => ring.remove(), 1200);
-}
 
 // ═══════════════════════════════════════
 //  ANIMATED COUNTER (count-up effect)
@@ -1226,89 +1157,285 @@ function typeText(element, text, speed = 15) {
 }
 
 // ═══════════════════════════════════════
-//  AUTH — Production-ready
+//  AUTH — Simplified for Farmers (Voice + Manual)
 // ═══════════════════════════════════════
+
+// ── Auth Language Selection (Step 1) ──
+function selectAuthLanguage(lang) {
+    state.language = lang;
+    localStorage.setItem('agri_lang', lang);
+    // Update app-wide language
+    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    const langLbl = document.getElementById('lang-label');
+    if (langLbl) langLbl.textContent = labels[lang] || lang.toUpperCase();
+    applyTranslations(lang);
+    // Hide language picker, show method picker
+    document.getElementById('auth-lang-picker').style.display = 'none';
+    document.getElementById('auth-method-picker').style.display = 'flex';
+    // Translate the method picker UI dynamically
+    translateAuthUI(lang);
+    // Voice greeting in selected language
+    const greetings = {
+        en: 'Welcome! Choose typing or speaking to continue.',
+        hi: 'स्वागत है! आगे बढ़ने के लिए टाइपिंग या बोलना चुनें।',
+        te: 'స్వాగతం! కొనసాగించడానికి టైపింగ్ లేదా మాట్లాడడం ఎంచుకోండి.',
+        kn: 'ಸ್ವಾಗತ! ಮುಂದುವರಿಸಲು ಟೈಪಿಂಗ್ ಅಥವಾ ಮಾತನಾಡುವುದನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
+        ta: 'வரவேற்கிறோம்! தொடர தட்டச்சு அல்லது பேச்சை தேர்வு செய்யவும்.',
+        ml: 'സ്വാഗതം! തുടരാൻ ടൈപ്പിംഗ് അല്ലെങ്കിൽ സംസാരിക്കുക തിരഞ്ഞെടുക്കുക.',
+        bn: 'স্বাগতম! টাইপিং বা কথা বলা চালিয়ে যান।',
+        gu: 'સ્વાગત છે! આગળ વધવા ટાઈપિંગ અથવા બોલવાનું પસંદ કરો.',
+        mr: 'स्वागत! पुढे जाण्यासाठी टायपिंग किंवा बोलणे निवडा.',
+        pa: 'ਜੀ ਆਇਆਂ ਨੂੰ! ਅੱਗੇ ਵਧਣ ਲਈ ਟਾਈਪਿੰਗ ਜਾਂ ਬੋਲਣਾ ਚੁਣੋ।',
+        or: 'ସ୍ୱାଗତ! ଆଗକୁ ବଢ଼ିବା ପାଇଁ ଟାଇପିଂ କିମ୍ବା କହିବା ବାଛନ୍ତୁ।'
+    };
+    speakText(greetings[lang] || greetings.en, lang);
+}
+
+// ── Translate auth UI elements dynamically ──
+async function translateAuthUI(lang) {
+    if (lang === 'en') return;
+    const elements = {
+        'auth-method-title': 'How would you like to continue?',
+        'auth-method-sub': 'Choose typing or speaking',
+        'auth-method-manual-label': 'Type (Manual)',
+        'auth-method-manual-desc': 'Fill form by typing',
+        'auth-method-voice-label': 'Speak (Voice)',
+        'auth-method-voice-desc': 'Just say your name',
+        'auth-simple-title': 'Welcome to AgriSmart',
+        'tab-signup-label': 'New Farmer',
+        'tab-login-label': 'Existing Farmer',
+        'signup-name-label': 'Your Name',
+        'signup-phone-label': 'Phone Number',
+        'signup-submit-label': 'Start Farming',
+        'login-name-label': 'Your Name',
+        'login-submit-label': 'Continue',
+        'voice-auth-status': 'Listening...',
+        'voice-auth-prompt': 'Please say your name clearly',
+        'voice-confirm-label': 'Yes, that is me',
+        'voice-retry-label': 'Try again'
+    };
+    const texts = Object.values(elements);
+    const ids = Object.keys(elements);
+    try {
+        const res = await fetch(`${API}/api/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts, target: lang, source: 'en' })
+        });
+        const data = await res.json();
+        if (data.translations) {
+            data.translations.forEach((t, i) => {
+                const el = document.getElementById(ids[i]);
+                if (el) el.textContent = t;
+            });
+        }
+    } catch (e) { /* fallback to English */ }
+    // Translate placeholders
+    const placeholders = [
+        { id: 'signup-name', text: 'Enter your name' },
+        { id: 'signup-phone', text: 'Phone number' },
+        { id: 'login-name', text: 'Enter your name' }
+    ];
+    try {
+        const res2 = await fetch(`${API}/api/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts: placeholders.map(p => p.text), target: lang, source: 'en' })
+        });
+        const data2 = await res2.json();
+        if (data2.translations) {
+            data2.translations.forEach((t, i) => {
+                const el = document.getElementById(placeholders[i].id);
+                if (el) el.placeholder = t;
+            });
+        }
+    } catch (e) { /* ok */ }
+}
+
+// ── Show Manual Auth ──
+function showManualAuth() {
+    document.getElementById('auth-method-picker').style.display = 'none';
+    document.getElementById('auth-simple-form').style.display = 'flex';
+    translateAuthUI(state.language);
+}
+
+function goBackToMethodPicker() {
+    document.getElementById('auth-simple-form').style.display = 'none';
+    document.getElementById('voice-auth-overlay').style.display = 'none';
+    document.getElementById('auth-method-picker').style.display = 'flex';
+}
+
+// ── Voice Auth Flow ──
+let voiceAuthName = '';
+function startVoiceAuth() {
+    document.getElementById('auth-method-picker').style.display = 'none';
+    document.getElementById('voice-auth-overlay').style.display = 'flex';
+    document.getElementById('voice-auth-result').style.display = 'none';
+    voiceAuthName = '';
+    // Speak prompt in selected language
+    const prompts = {
+        en: 'Please say your name clearly',
+        hi: 'कृपया अपना नाम स्पष्ट रूप से बोलें',
+        te: 'దయచేసి మీ పేరు స్పష్టంగా చెప్పండి',
+        kn: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಹೇಳಿ',
+        ta: 'தயவுசெய்து உங்கள் பெயரை தெளிவாக சொல்லுங்கள்',
+        ml: 'ദയവായി നിങ്ങളുടെ പേര് വ്യക്തമായി പറയുക',
+        bn: 'অনুগ্রহ করে আপনার নাম স্পষ্টভাবে বলুন',
+        gu: 'કૃપા કરીને તમારું નામ સ્પષ્ટ રીતે બોલો',
+        mr: 'कृपया तुमचे नाव स्पष्टपणे सांगा',
+        pa: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਨਾਮ ਸਾਫ਼ ਬੋਲੋ',
+        or: 'ଦୟାକରି ଆପଣଙ୍କ ନାମ ସ୍ପଷ୍ଟ ଭାବରେ କୁହନ୍ତୁ'
+    };
+    setTimeout(() => speakText(prompts[state.language] || prompts.en, state.language), 300);
+    // Start listening
+    setTimeout(() => listenForVoiceAuth(), 1500);
+}
+
+function listenForVoiceAuth() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        toast('Voice not supported in this browser', 'error');
+        cancelVoiceAuth();
+        return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    const langMap = { en: 'en-IN', hi: 'hi-IN', kn: 'kn-IN', te: 'te-IN', ta: 'ta-IN', ml: 'ml-IN', bn: 'bn-IN', gu: 'gu-IN', mr: 'mr-IN', pa: 'pa-IN', or: 'or-IN' };
+    recognition.lang = langMap[state.language] || 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    const statusEl = document.getElementById('voice-auth-status');
+    const animEl = document.getElementById('voice-auth-anim');
+    if (statusEl) statusEl.style.color = '#16a34a';
+    if (animEl) animEl.classList.add('listening');
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.trim();
+        voiceAuthName = transcript;
+        if (animEl) animEl.classList.remove('listening');
+        // Show result for confirmation
+        const resultDiv = document.getElementById('voice-auth-result');
+        const heardEl = document.getElementById('voice-auth-heard');
+        if (heardEl) heardEl.textContent = `"${transcript}"`;
+        if (resultDiv) resultDiv.style.display = 'block';
+        // Speak back for confirmation
+        const confirmMsg = {
+            en: `I heard ${transcript}. Is that correct?`,
+            hi: `मैंने सुना ${transcript}। क्या यह सही है?`,
+            te: `నేను ${transcript} అని విన్నాను. ఇది సరైనదా?`,
+            kn: `ನಾನು ${transcript} ಎಂದು ಕೇಳಿದೆ. ಇದು ಸರಿಯೇ?`,
+            ta: `${transcript} என்று கேட்டேன். இது சரியா?`,
+            ml: `${transcript} എന്ന് കേട്ടു. ശരിയാണോ?`,
+            bn: `${transcript} শুনেছি। এটি কি ঠিক?`,
+            gu: `${transcript} સાંભળ્યું. શું આ સાચું છે?`,
+            mr: `${transcript} ऐकले. हे बरोबर आहे का?`,
+            pa: `${transcript} ਸੁਣਿਆ। ਕੀ ਇਹ ਸਹੀ ਹੈ?`,
+            or: `${transcript} ଶୁଣିଲି। ଏହା ଠିକ୍ କି?`
+        };
+        speakText(confirmMsg[state.language] || confirmMsg.en, state.language);
+    };
+
+    recognition.onerror = () => {
+        if (animEl) animEl.classList.remove('listening');
+        const retryMsg = {
+            en: 'Could not hear clearly. Please try again.',
+            hi: 'स्पष्ट सुनाई नहीं दिया। कृपया फिर से कोशिश करें।',
+            te: 'స్పష్టంగా వినలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.',
+            kn: 'ಸ್ಪಷ್ಟವಾಗಿ ಕೇಳಲಿಲ್ಲ. ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.'
+        };
+        speakText(retryMsg[state.language] || retryMsg.en, state.language);
+    };
+
+    recognition.start();
+}
+
+function confirmVoiceAuth() {
+    if (!voiceAuthName) return;
+    // Auto-signup/login with voice name
+    doVoiceSignupLogin(voiceAuthName);
+}
+
+function retryVoiceAuth() {
+    document.getElementById('voice-auth-result').style.display = 'none';
+    voiceAuthName = '';
+    listenForVoiceAuth();
+}
+
+function cancelVoiceAuth() {
+    document.getElementById('voice-auth-overlay').style.display = 'none';
+    document.getElementById('auth-method-picker').style.display = 'flex';
+    window.speechSynthesis?.cancel();
+}
+
+async function doVoiceSignupLogin(name) {
+    showLoading();
+    try {
+        // Try login first
+        const res = await fetchAPI('/login', { username: name });
+        state.user = res;
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        const welcomeBack = {
+            en: `Welcome back, ${name}!`,
+            hi: `वापस स्वागत है, ${name}!`,
+            te: `తిరిగి స్వాగతం, ${name}!`,
+            kn: `ಮತ್ತೆ ಸ್ವಾಗತ, ${name}!`,
+            ta: `மீண்டும் வரவேற்கிறோம், ${name}!`
+        };
+        speakText(welcomeBack[state.language] || welcomeBack.en, state.language);
+        toast(`Welcome back, ${name}!`, 'success');
+        enterApp();
+    } catch {
+        // Auto-signup
+        try {
+            await fetchAPI('/signup', { username: name, farm_name: `${name}'s Farm`, profile_picture: null });
+            state.user = { username: name, farm_name: `${name}'s Farm` };
+            localStorage.setItem('agri_user', JSON.stringify(state.user));
+            const welcomeNew = {
+                en: `Welcome to AgriSmart, ${name}! Your account is ready.`,
+                hi: `AgriSmart में स्वागत है, ${name}! आपका खाता तैयार है।`,
+                te: `AgriSmart కి స్వాగతం, ${name}! మీ ఖాతా సిద్ధంగా ఉంది.`,
+                kn: `AgriSmart ಗೆ ಸ್ವಾಗತ, ${name}! ನಿಮ್ಮ ಖಾತೆ ಸಿದ್ಧವಾಗಿದೆ.`
+            };
+            speakText(welcomeNew[state.language] || welcomeNew.en, state.language);
+            toast(`Welcome, ${name}!`, 'success');
+            enterApp();
+        } catch (err) {
+            toast(err.message || 'Failed', 'error');
+        }
+    } finally {
+        hideLoading();
+    }
+}
 
 function switchAuthTab(tab) {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('active', f.id === `${tab}-form`));
-    const titleEl = document.getElementById('auth-card-title');
-    const subtitleEl = document.getElementById('auth-card-subtitle');
-    if (titleEl) titleEl.textContent = tab === 'signup' ? 'Create your account' : 'Welcome back';
-    if (subtitleEl) subtitleEl.textContent = tab === 'signup' ? 'Start your smart farming journey today' : 'Log in to continue to your farm dashboard';
 }
-
-function togglePasswordVisibility(inputId, btn) {
-    const inp = document.getElementById(inputId);
-    if (!inp) return;
-    const isPassword = inp.type === 'password';
-    inp.type = isPassword ? 'text' : 'password';
-    const icon = btn.querySelector('i');
-    if (icon) { icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye'; }
-}
-
-function checkPasswordStrength(password) {
-    const bar = document.querySelector('#signup-pwd-strength .pwd-bar');
-    if (!bar) return;
-    bar.className = 'pwd-bar';
-    if (password.length === 0) { bar.style.width = '0'; return; }
-    let score = 0;
-    if (password.length >= 6) score++;
-    if (password.length >= 10) score++;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-    if (score <= 2) bar.classList.add('weak');
-    else if (score <= 3) bar.classList.add('medium');
-    else bar.classList.add('strong');
-}
-
-// Attach password strength checker
-document.addEventListener('DOMContentLoaded', () => {
-    const pwdInput = document.getElementById('signup-password');
-    if (pwdInput) pwdInput.addEventListener('input', () => checkPasswordStrength(pwdInput.value));
-});
 
 async function handleSignup(e) {
     e.preventDefault();
-    // Clear errors
     document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
 
     const username = document.getElementById('signup-name').value.trim();
-    const farm_name = document.getElementById('signup-farm').value.trim();
-    const phone = document.getElementById('signup-phone').value.trim();
-    const location = document.getElementById('signup-location').value.trim();
-    const password = document.getElementById('signup-password').value;
-    const confirmPassword = document.getElementById('signup-confirm-password').value;
-    const termsChecked = document.getElementById('signup-terms')?.checked;
+    const phone = document.getElementById('signup-phone')?.value.trim() || '';
 
-    // Validate
-    let hasError = false;
-    function setError(id, msg) {
-        const errEl = document.getElementById(id);
-        if (errEl) { errEl.textContent = msg; errEl.closest('.form-group')?.classList.add('has-error'); }
-        hasError = true;
+    if (!username) {
+        const errEl = document.getElementById('signup-name-error');
+        if (errEl) errEl.textContent = 'Name is required';
+        return;
     }
-    if (!username) setError('signup-name-error', 'Name is required');
-    if (!farm_name) setError('signup-farm-error', 'Farm name is required');
-    if (!phone || phone.length < 10) setError('signup-phone-error', 'Valid phone number required');
-    if (!password || password.length < 6) setError('signup-password-error', 'Password must be at least 6 characters');
-    if (password !== confirmPassword) setError('signup-confirm-error', 'Passwords do not match');
-    if (!termsChecked) { toast('Please accept the Terms of Service', 'error'); hasError = true; }
-    if (hasError) return;
 
-    showLoading('Creating your account...');
+    showLoading();
     try {
-        const res = await fetchAPI('/signup', { username, farm_name, profile_picture: null });
-        state.user = { username, farm_name, phone, location };
+        const res = await fetchAPI('/signup', { username, farm_name: `${username}'s Farm`, profile_picture: null });
+        state.user = { username, farm_name: `${username}'s Farm`, phone };
         localStorage.setItem('agri_user', JSON.stringify(state.user));
+        speakText(`Welcome, ${username}!`, state.language);
         toast('Welcome to AgriSmart AI!', 'success');
         enterApp();
     } catch (err) {
         if (err.message && err.message.includes('already exists')) {
-            toast('Username exists — logging you in', 'info');
-            state.user = { username, farm_name, phone, location };
+            state.user = { username, farm_name: `${username}'s Farm`, phone };
             localStorage.setItem('agri_user', JSON.stringify(state.user));
             enterApp();
         } else {
@@ -1322,32 +1449,20 @@ async function handleSignup(e) {
 async function handleLogin(e) {
     e.preventDefault();
     document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
 
-    const phone = document.getElementById('login-phone').value.trim();
-    const password = document.getElementById('login-password').value;
-
-    let hasError = false;
-    function setError(id, msg) {
-        const errEl = document.getElementById(id);
-        if (errEl) { errEl.textContent = msg; errEl.closest('.form-group')?.classList.add('has-error'); }
-        hasError = true;
+    const username = document.getElementById('login-name').value.trim();
+    if (!username) {
+        const errEl = document.getElementById('login-name-error');
+        if (errEl) errEl.textContent = 'Name is required';
+        return;
     }
-    if (!phone) setError('login-phone-error', 'Phone number is required');
-    if (!password) setError('login-password-error', 'Password is required');
-    if (hasError) return;
 
-    showLoading('Logging in...');
+    showLoading();
     try {
-        const res = await fetchAPI('/login', { username: phone });
+        const res = await fetchAPI('/login', { username });
         state.user = res;
         localStorage.setItem('agri_user', JSON.stringify(state.user));
-        // Remember me
-        if (document.getElementById('login-remember')?.checked) {
-            localStorage.setItem('agri_remember', phone);
-        } else {
-            localStorage.removeItem('agri_remember');
-        }
+        speakText(`Welcome back, ${res.username}!`, state.language);
         toast(`Welcome back, ${res.username}!`, 'success');
         enterApp();
     } catch {
@@ -1363,14 +1478,6 @@ function restoreSession() {
         state.user = JSON.parse(saved);
         enterApp();
     }
-    // Remember me — pre-fill login phone
-    const remembered = localStorage.getItem('agri_remember');
-    if (remembered) {
-        const lp = document.getElementById('login-phone');
-        const lr = document.getElementById('login-remember');
-        if (lp) lp.value = remembered;
-        if (lr) lr.checked = true;
-    }
     const savedSetup = localStorage.getItem('agri_farm_setup');
     if (savedSetup) state.farmSetup = JSON.parse(savedSetup);
     const savedRecs = localStorage.getItem('agri_recommendations');
@@ -1385,6 +1492,161 @@ function enterApp() {
     updateDashboard();
     loadDashboardWeather();
     navigate('dashboard');
+    // Apply dynamic translation to entire app after entering
+    dynamicTranslateApp(state.language);
+}
+
+// ═══════════════════════════════════════
+//  VOICE-FILL FOR ANY INPUT FIELD
+// ═══════════════════════════════════════
+function voiceFillField(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        toast('Voice not supported', 'error');
+        return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    const langMap = { en: 'en-IN', hi: 'hi-IN', kn: 'kn-IN', te: 'te-IN', ta: 'ta-IN', ml: 'ml-IN', bn: 'bn-IN', gu: 'gu-IN', mr: 'mr-IN', pa: 'pa-IN', or: 'or-IN' };
+    recognition.lang = langMap[state.language] || 'en-IN';
+    recognition.interimResults = false;
+
+    // Visual feedback
+    const btn = field.parentElement?.querySelector('.voice-fill-btn');
+    if (btn) { btn.classList.add('recording'); btn.innerHTML = '<i class="fas fa-circle" style="color:#ef4444;animation:pulse 0.8s infinite"></i>'; }
+
+    recognition.onresult = (event) => {
+        let transcript = event.results[0][0].transcript.trim();
+        // For phone fields, extract digits
+        if (field.type === 'tel' || fieldId.includes('phone')) {
+            const digits = transcript.replace(/[^\d+]/g, '');
+            if (digits) transcript = digits;
+        }
+        field.value = transcript;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        if (btn) { btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
+        speakText(transcript, state.language);
+    };
+
+    recognition.onerror = () => {
+        if (btn) { btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
+        toast('Could not hear. Try again.', 'error');
+    };
+
+    recognition.onend = () => {
+        if (btn) { btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
+    };
+
+    recognition.start();
+}
+
+// ═══════════════════════════════════════
+//  DYNAMIC TRANSLATION — deep-translator API
+// ═══════════════════════════════════════
+let _translateCache = {};
+
+async function dynamicTranslateApp(lang) {
+    if (lang === 'en') return;
+    // Collect all visible text nodes that need translation
+    const textEls = document.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6, label, p, span, button, a, .card-title, .card-desc, .sidebar-link span, .section-title, .stat-label, .btn'
+    );
+    const textsToTranslate = [];
+    const targetEls = [];
+    textEls.forEach(el => {
+        // Skip hidden, scripts, styles, already-translated
+        if (el.offsetParent === null && el.tagName !== 'SPAN') return;
+        if (el.closest('script, style, .lang-float-menu')) return;
+        const text = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
+            ? el.textContent.trim()
+            : null;
+        if (text && text.length > 1 && text.length < 200 && /[a-zA-Z]/.test(text)) {
+            const cacheKey = `${lang}:${text}`;
+            if (_translateCache[cacheKey]) {
+                el.textContent = _translateCache[cacheKey];
+            } else {
+                textsToTranslate.push(text);
+                targetEls.push(el);
+            }
+        }
+    });
+    // Also translate placeholders
+    const inputEls = document.querySelectorAll('input[placeholder], textarea[placeholder]');
+    const placeholderTexts = [];
+    const placeholderEls = [];
+    inputEls.forEach(el => {
+        const ph = el.placeholder.trim();
+        if (ph && ph.length > 1 && /[a-zA-Z]/.test(ph)) {
+            const cacheKey = `${lang}:ph:${ph}`;
+            if (_translateCache[cacheKey]) {
+                el.placeholder = _translateCache[cacheKey];
+            } else {
+                placeholderTexts.push(ph);
+                placeholderEls.push(el);
+            }
+        }
+    });
+
+    // Batch translate text content (max 50 at a time)
+    if (textsToTranslate.length > 0) {
+        for (let i = 0; i < textsToTranslate.length; i += 50) {
+            const batch = textsToTranslate.slice(i, i + 50);
+            const batchEls = targetEls.slice(i, i + 50);
+            try {
+                const res = await fetch(`${API}/api/translate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texts: batch, target: lang, source: 'en' })
+                });
+                const data = await res.json();
+                if (data.translations) {
+                    data.translations.forEach((t, idx) => {
+                        batchEls[idx].textContent = t;
+                        _translateCache[`${lang}:${batch[idx]}`] = t;
+                    });
+                }
+            } catch (e) { /* fallback to English */ }
+        }
+    }
+
+    // Batch translate placeholders
+    if (placeholderTexts.length > 0) {
+        try {
+            const res = await fetch(`${API}/api/translate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texts: placeholderTexts, target: lang, source: 'en' })
+            });
+            const data = await res.json();
+            if (data.translations) {
+                data.translations.forEach((t, idx) => {
+                    placeholderEls[idx].placeholder = t;
+                    _translateCache[`${lang}:ph:${placeholderTexts[idx]}`] = t;
+                });
+            }
+        } catch (e) { /* ok */ }
+    }
+}
+
+// Single text translation helper
+async function translateText(text, lang) {
+    if (!text || lang === 'en') return text;
+    const cacheKey = `${lang}:${text}`;
+    if (_translateCache[cacheKey]) return _translateCache[cacheKey];
+    try {
+        const res = await fetch(`${API}/api/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts: [text], target: lang, source: 'en' })
+        });
+        const data = await res.json();
+        if (data.translations?.[0]) {
+            _translateCache[cacheKey] = data.translations[0];
+            return data.translations[0];
+        }
+    } catch (e) { /* fallback */ }
+    return text;
 }
 
 function updateHeaderProfile() {
@@ -1777,7 +2039,6 @@ async function getRecommendation() {
         });
         // Replace with full enriched result
         renderRecommendation(data, container);
-        celebrateSuccess();
         // Auto-speak result for illiterate farmers
         const topCropSpeak = data.central_coordinator?.final_crop || 'crop';
         const scoreSpeak = data.central_coordinator?.overall_score || '';
@@ -2605,7 +2866,6 @@ async function analyzeSoil() {
         }
         if (!res.ok) throw new Error(data.detail || 'Analysis failed');
         showSoilResult(data.soil_type);
-        celebrateSuccess();
         addActivity('Soil analysis completed', 'green');
     } catch (err) {
         toast(err.message || 'Soil analysis failed', 'error');
@@ -2685,7 +2945,6 @@ async function predictPests() {
             html += '</ul></div>';
         }
         container.innerHTML = html;
-        celebrateSuccess();
         toast('Pest analysis complete 🐛', 'success');
         // Auto-speak pest result for illiterate farmers
         let pestSpeech = `Pest risk for ${crop} is ${risk}. `;
@@ -2919,8 +3178,10 @@ function changeLanguage(lang) {
     if (document.getElementById('settings-language')) {
         document.getElementById('settings-language').value = lang;
     }
-    // Apply translations to entire UI
+    // Apply hardcoded translations first
     applyTranslations(lang);
+    // Then dynamically translate remaining text via deep-translator API
+    dynamicTranslateApp(lang);
     const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
     toast(`${langNames[lang] || lang.toUpperCase()} ✓`, 'info');
 }

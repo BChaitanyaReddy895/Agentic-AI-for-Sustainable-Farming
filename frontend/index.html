@@ -33,171 +33,123 @@
 </head>
 <body>
 
-<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<!-- ═══════════════ AUTH SCREEN (Simplified for Farmers) ═══════════════ -->
 <div class="auth-screen" id="auth-screen">
     <div class="auth-bg">
         <div class="auth-gradient"></div>
-        <!-- Decorative shapes -->
-        <div class="auth-shape auth-shape-1"></div>
-        <div class="auth-shape auth-shape-2"></div>
-        <div class="auth-shape auth-shape-3"></div>
     </div>
-    <div class="auth-layout">
-        <!-- Left Panel — Branding + Illustration -->
-        <div class="auth-left-panel">
-            <div class="auth-logo-wrap">
-                <div class="auth-logo-icon"><i class="fas fa-leaf"></i></div>
-                <h1 class="auth-app-name" data-i18n="auth.appName">AgriSmart AI</h1>
-                <p class="auth-tagline" data-i18n="auth.tagline">Smart Sustainable Farming</p>
-            </div>
-            <div class="auth-illustration">
-                <svg viewBox="0 0 280 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="30" y="140" width="220" height="60" rx="8" fill="#f0fdf4" opacity="0.6"/>
-                    <path d="M80 140 Q80 100, 110 80 Q120 75, 115 60 Q125 50, 140 55 Q155 50, 165 60 Q160 75, 170 80 Q200 100, 200 140" fill="#22c55e" opacity="0.3"/>
-                    <path d="M120 140 Q120 120, 140 105 Q160 120, 160 140" fill="#16a34a" opacity="0.5"/>
-                    <circle cx="140" cy="75" r="6" fill="#facc15"/>
-                    <line x1="140" y1="105" x2="140" y2="140" stroke="#15803d" stroke-width="3"/>
-                    <line x1="140" y1="115" x2="155" y2="105" stroke="#15803d" stroke-width="2"/>
-                    <line x1="140" y1="125" x2="125" y2="115" stroke="#15803d" stroke-width="2"/>
-                    <circle cx="60" cy="50" r="20" fill="#fbbf24" opacity="0.3"/>
-                    <path d="M50 160 L55 145 L60 160Z" fill="#16a34a" opacity="0.4"/>
-                    <path d="M210 155 L215 140 L220 155Z" fill="#16a34a" opacity="0.4"/>
-                    <path d="M70 155 L75 142 L80 155Z" fill="#22c55e" opacity="0.3"/>
-                    <path d="M195 158 L200 145 L205 158Z" fill="#22c55e" opacity="0.3"/>
-                </svg>
-            </div>
-            <div class="auth-features-list">
-                <div class="auth-feature"><i class="fas fa-check-circle"></i> AI-powered crop recommendations</div>
-                <div class="auth-feature"><i class="fas fa-check-circle"></i> Real-time weather & pest alerts</div>
-                <div class="auth-feature"><i class="fas fa-check-circle"></i> Market prices & profit tracking</div>
-                <div class="auth-feature"><i class="fas fa-check-circle"></i> Available in 11 Indian languages</div>
+
+    <!-- STEP 1: Language Selection (shown first) -->
+    <div class="auth-lang-picker" id="auth-lang-picker">
+        <div class="auth-lang-card">
+            <div class="auth-logo-icon"><i class="fas fa-leaf"></i></div>
+            <h1 class="auth-app-name">🌾 AgriSmart AI</h1>
+            <p class="auth-lang-prompt" id="auth-lang-prompt">Choose your language / अपनी भाषा चुनें</p>
+            <div class="auth-lang-grid">
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('en')"><span class="auth-lang-emoji">🇬🇧</span> English</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('hi')"><span class="auth-lang-emoji">🇮🇳</span> हिंदी</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('te')"><span class="auth-lang-emoji">🇮🇳</span> తెలుగు</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('kn')"><span class="auth-lang-emoji">🇮🇳</span> ಕನ್ನಡ</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('ta')"><span class="auth-lang-emoji">🇮🇳</span> தமிழ்</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('ml')"><span class="auth-lang-emoji">🇮🇳</span> മലയാളം</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('bn')"><span class="auth-lang-emoji">🇮🇳</span> বাংলা</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('gu')"><span class="auth-lang-emoji">🇮🇳</span> ગુજરાતી</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('mr')"><span class="auth-lang-emoji">🇮🇳</span> मराठी</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('pa')"><span class="auth-lang-emoji">🇮🇳</span> ਪੰਜਾਬੀ</button>
+                <button class="auth-lang-btn" onclick="selectAuthLanguage('or')"><span class="auth-lang-emoji">🇮🇳</span> ଓଡ଼ିଆ</button>
             </div>
         </div>
-        <!-- Right Panel — Auth Card -->
-        <div class="auth-right-panel">
-            <div class="auth-card">
-                <div class="auth-card-header">
-                    <h2 class="auth-card-title" id="auth-card-title">Create your account</h2>
-                    <p class="auth-card-subtitle" id="auth-card-subtitle">Start your smart farming journey today</p>
+    </div>
+
+    <!-- STEP 2: Choose Auth Method (Manual or Voice) -->
+    <div class="auth-method-picker" id="auth-method-picker" style="display:none">
+        <div class="auth-method-card">
+            <h2 class="auth-method-title" id="auth-method-title">How would you like to continue?</h2>
+            <p class="auth-method-sub" id="auth-method-sub">Choose typing or speaking</p>
+            <div class="auth-method-options">
+                <button class="auth-method-btn" id="auth-method-manual" onclick="showManualAuth()">
+                    <i class="fas fa-keyboard"></i>
+                    <span id="auth-method-manual-label">Type (Manual)</span>
+                    <small id="auth-method-manual-desc">Fill form by typing</small>
+                </button>
+                <button class="auth-method-btn voice-btn-glow" id="auth-method-voice" onclick="startVoiceAuth()">
+                    <i class="fas fa-microphone"></i>
+                    <span id="auth-method-voice-label">Speak (Voice)</span>
+                    <small id="auth-method-voice-desc">Just say your name</small>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 3: Simplified Manual Auth Form -->
+    <div class="auth-simple-form" id="auth-simple-form" style="display:none">
+        <div class="auth-simple-card">
+            <button class="auth-back-btn" onclick="goBackToMethodPicker()"><i class="fas fa-arrow-left"></i></button>
+            <div class="auth-simple-header">
+                <div class="auth-logo-icon-sm"><i class="fas fa-leaf"></i></div>
+                <h2 id="auth-simple-title">Welcome to AgriSmart</h2>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="signup" onclick="switchAuthTab('signup')"><i class="fas fa-user-plus"></i> <span id="tab-signup-label">New Farmer</span></button>
+                <button class="auth-tab" data-tab="login" onclick="switchAuthTab('login')"><i class="fas fa-sign-in-alt"></i> <span id="tab-login-label">Existing Farmer</span></button>
+            </div>
+            <!-- Simplified Signup — just name -->
+            <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)" novalidate>
+                <div class="form-group">
+                    <label for="signup-name" id="signup-name-label">👤 Your Name</label>
+                    <div class="input-wrap input-wrap-lg">
+                        <input type="text" id="signup-name" placeholder="Enter your name" class="input-lg" required>
+                        <button type="button" class="voice-fill-btn" onclick="voiceFillField('signup-name')" title="Speak your name"><i class="fas fa-microphone"></i></button>
+                    </div>
+                    <span class="field-error" id="signup-name-error"></span>
                 </div>
-                <div class="auth-tabs">
-                    <button class="auth-tab active" data-tab="signup" onclick="switchAuthTab('signup')" data-i18n="auth.createAccount">Sign Up</button>
-                    <button class="auth-tab" data-tab="login" onclick="switchAuthTab('login')" data-i18n="auth.login">Log In</button>
+                <div class="form-group">
+                    <label for="signup-phone" id="signup-phone-label">📱 Phone Number</label>
+                    <div class="input-wrap input-wrap-lg">
+                        <input type="tel" id="signup-phone" placeholder="+91 XXXXXXXXXX" class="input-lg" required>
+                        <button type="button" class="voice-fill-btn" onclick="voiceFillField('signup-phone')" title="Speak your phone number"><i class="fas fa-microphone"></i></button>
+                    </div>
+                    <span class="field-error" id="signup-phone-error"></span>
                 </div>
-                <!-- Signup -->
-                <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)" novalidate>
-                    <div class="auth-form-row">
-                        <div class="form-group">
-                            <label for="signup-name"><span data-i18n="auth.yourName">Full Name</span> <span class="required">*</span></label>
-                            <div class="input-wrap">
-                                <i class="fas fa-user input-icon"></i>
-                                <input type="text" id="signup-name" placeholder="Enter your name" data-i18n-placeholder="auth.namePlaceholder" required>
-                            </div>
-                            <span class="field-error" id="signup-name-error"></span>
-                        </div>
-                        <div class="form-group">
-                            <label for="signup-farm"><span data-i18n="auth.farmName">Farm Name</span> <span class="required">*</span></label>
-                            <div class="input-wrap">
-                                <i class="fas fa-home input-icon"></i>
-                                <input type="text" id="signup-farm" placeholder="e.g. Green Valley Farm" data-i18n-placeholder="auth.farmPlaceholder" required>
-                            </div>
-                            <span class="field-error" id="signup-farm-error"></span>
-                        </div>
+                <button type="submit" class="btn btn-primary btn-full btn-auth btn-auth-lg" id="signup-submit-btn">
+                    <i class="fas fa-arrow-right"></i> <span id="signup-submit-label">Start Farming</span>
+                </button>
+            </form>
+            <!-- Simplified Login — just name -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)" novalidate>
+                <div class="form-group">
+                    <label for="login-name" id="login-name-label">👤 Your Name</label>
+                    <div class="input-wrap input-wrap-lg">
+                        <input type="text" id="login-name" placeholder="Enter your name" class="input-lg" required>
+                        <button type="button" class="voice-fill-btn" onclick="voiceFillField('login-name')" title="Speak your name"><i class="fas fa-microphone"></i></button>
                     </div>
-                    <div class="auth-form-row">
-                        <div class="form-group">
-                            <label for="signup-phone"><span data-i18n="auth.phone">Phone Number</span> <span class="required">*</span></label>
-                            <div class="input-wrap">
-                                <i class="fas fa-phone input-icon"></i>
-                                <input type="tel" id="signup-phone" placeholder="+91 XXXXXXXXXX" data-i18n-placeholder="auth.phonePlaceholder" required>
-                            </div>
-                            <span class="field-error" id="signup-phone-error"></span>
-                        </div>
-                        <div class="form-group">
-                            <label for="signup-location"><span data-i18n="auth.location">Location</span></label>
-                            <div class="input-wrap">
-                                <i class="fas fa-map-marker-alt input-icon"></i>
-                                <input type="text" id="signup-location" placeholder="Village / City" data-i18n-placeholder="auth.locationPlaceholder">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-password"><span data-i18n="auth.password">Password</span> <span class="required">*</span></label>
-                        <div class="input-wrap">
-                            <i class="fas fa-lock input-icon"></i>
-                            <input type="password" id="signup-password" placeholder="Create a password" required minlength="6">
-                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <div class="password-strength" id="signup-pwd-strength"><div class="pwd-bar"></div></div>
-                        <span class="field-error" id="signup-password-error"></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-confirm-password"><span>Confirm Password</span> <span class="required">*</span></label>
-                        <div class="input-wrap">
-                            <i class="fas fa-lock input-icon"></i>
-                            <input type="password" id="signup-confirm-password" placeholder="Confirm your password" required>
-                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('signup-confirm-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <span class="field-error" id="signup-confirm-error"></span>
-                    </div>
-                    <div class="auth-checkbox-row">
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="signup-terms" required>
-                            <span class="checkmark"></span>
-                            <span>I agree to the <a href="#" class="auth-link" onclick="event.preventDefault()">Terms of Service</a> & <a href="#" class="auth-link" onclick="event.preventDefault()">Privacy Policy</a></span>
-                        </label>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full btn-auth">
-                        <span data-i18n="auth.getStarted">Create Account</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-                <!-- Login -->
-                <form id="login-form" class="auth-form" onsubmit="handleLogin(event)" novalidate>
-                    <div class="form-group">
-                        <label for="login-phone"><span data-i18n="auth.phoneNumber">Phone Number</span></label>
-                        <div class="input-wrap">
-                            <i class="fas fa-phone input-icon"></i>
-                            <input type="tel" id="login-phone" placeholder="+91 XXXXXXXXXX" data-i18n-placeholder="auth.loginPhonePlaceholder" required>
-                        </div>
-                        <span class="field-error" id="login-phone-error"></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password"><span data-i18n="auth.password">Password</span></label>
-                        <div class="input-wrap">
-                            <i class="fas fa-lock input-icon"></i>
-                            <input type="password" id="login-password" placeholder="Enter your password" required>
-                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <span class="field-error" id="login-password-error"></span>
-                    </div>
-                    <div class="auth-options-row">
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="login-remember">
-                            <span class="checkmark"></span>
-                            <span>Remember me</span>
-                        </label>
-                        <a href="#" class="auth-link forgot-link" onclick="event.preventDefault(); toast('Password reset link sent to your phone', 'info')">Forgot password?</a>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full btn-auth">
-                        <span data-i18n="auth.loginBtn">Log In</span>
-                        <i class="fas fa-sign-in-alt"></i>
-                    </button>
-                </form>
-                <!-- Divider -->
-                <div class="auth-divider"><span>or continue with</span></div>
-                <!-- Social Login -->
-                <div class="social-login-row">
-                    <button type="button" class="btn-social btn-google" onclick="toast('Google sign-in coming soon!', 'info')">
-                        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.56c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                        <span>Google</span>
-                    </button>
-                    <button type="button" class="btn-social btn-phone-otp" onclick="toast('OTP login coming soon!', 'info')">
-                        <i class="fas fa-sms"></i>
-                        <span>Phone OTP</span>
-                    </button>
+                    <span class="field-error" id="login-name-error"></span>
                 </div>
-                <p class="auth-footer-text">Protected by enterprise-grade encryption <i class="fas fa-shield-alt"></i></p>
+                <button type="submit" class="btn btn-primary btn-full btn-auth btn-auth-lg" id="login-submit-btn">
+                    <i class="fas fa-sign-in-alt"></i> <span id="login-submit-label">Continue</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Voice Auth Overlay -->
+    <div class="voice-auth-overlay" id="voice-auth-overlay" style="display:none">
+        <div class="voice-auth-card">
+            <button class="auth-back-btn" onclick="cancelVoiceAuth()"><i class="fas fa-times"></i></button>
+            <div class="voice-auth-animation" id="voice-auth-anim">
+                <div class="voice-ripple"></div>
+                <div class="voice-ripple delay-1"></div>
+                <div class="voice-ripple delay-2"></div>
+                <i class="fas fa-microphone voice-auth-mic"></i>
+            </div>
+            <h2 class="voice-auth-status" id="voice-auth-status">Listening...</h2>
+            <p class="voice-auth-prompt" id="voice-auth-prompt">Please say your name clearly</p>
+            <div class="voice-auth-result" id="voice-auth-result" style="display:none">
+                <p id="voice-auth-heard"></p>
+                <div class="voice-auth-actions">
+                    <button class="btn btn-primary" id="voice-auth-confirm-btn" onclick="confirmVoiceAuth()"><i class="fas fa-check"></i> <span id="voice-confirm-label">Yes, that's me</span></button>
+                    <button class="btn btn-outline" id="voice-auth-retry-btn" onclick="retryVoiceAuth()"><i class="fas fa-redo"></i> <span id="voice-retry-label">Try again</span></button>
+                </div>
             </div>
         </div>
     </div>
@@ -1055,6 +1007,7 @@
                     </div>
                     <div class="chat-input-bar">
                         <input type="text" id="chat-input" placeholder="Ask a farming question..." data-i18n-placeholder="chat.placeholder" onkeypress="if(event.key==='Enter')sendChatMessage()">
+                        <button class="voice-fill-btn" onclick="voiceFillField('chat-input')" title="Speak your question" style="position:relative;right:auto;width:38px;height:38px"><i class="fas fa-microphone"></i></button>
                         <button class="btn btn-primary btn-icon-only" onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
@@ -1339,7 +1292,10 @@
                     </div>
                     <div class="form-group">
                         <label>Symptom Description</label>
-                        <textarea id="diag-symptoms" rows="3" placeholder="e.g. Yellow spots on leaves, wilting, brown patches..."></textarea>
+                        <div class="input-wrap-lg">
+                            <textarea id="diag-symptoms" rows="3" placeholder="e.g. Yellow spots on leaves, wilting, brown patches..." style="width:100%;padding-right:3rem"></textarea>
+                            <button type="button" class="voice-fill-btn" onclick="voiceFillField('diag-symptoms')" title="Speak symptoms" style="top:12px"><i class="fas fa-microphone"></i></button>
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-full" onclick="runCropDiagnosis()"><i class="fas fa-search-plus"></i> Diagnose Now</button>
                 </div>
@@ -1378,7 +1334,10 @@
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-seedling"></i> Primary Crop</label>
-                            <input type="text" id="scheme-crop" placeholder="e.g. Rice, Wheat, Cotton">
+                            <div class="input-wrap-lg">
+                                <input type="text" id="scheme-crop" placeholder="e.g. Rice, Wheat, Cotton" class="input-lg">
+                                <button type="button" class="voice-fill-btn" onclick="voiceFillField('scheme-crop')" title="Speak crop name"><i class="fas fa-microphone"></i></button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-ruler-combined"></i> Land Size (acres)</label>
@@ -1424,7 +1383,10 @@
                     <div class="input-grid-2 mt-3">
                         <div class="form-group">
                             <label>Or enter crop name</label>
-                            <input type="text" id="mandi-crop-input" placeholder="e.g. Mustard, Groundnut" value="Rice">
+                            <div class="input-wrap-lg">
+                                <input type="text" id="mandi-crop-input" placeholder="e.g. Mustard, Groundnut" value="Rice" class="input-lg">
+                                <button type="button" class="voice-fill-btn" onclick="voiceFillField('mandi-crop-input')" title="Speak crop name"><i class="fas fa-microphone"></i></button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>State (Optional)</label>
@@ -1552,7 +1514,10 @@
                     <div class="input-grid-2">
                         <div class="form-group">
                             <label>Description (Optional)</label>
-                            <input type="text" id="exp-description" placeholder="e.g. DAP fertilizer 50kg">
+                            <div class="input-wrap-lg">
+                                <input type="text" id="exp-description" placeholder="e.g. DAP fertilizer 50kg" class="input-lg">
+                                <button type="button" class="voice-fill-btn" onclick="voiceFillField('exp-description')" title="Speak description"><i class="fas fa-microphone"></i></button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Date</label>
@@ -1770,9 +1735,6 @@
         </div>
     </div>
 </div>
-
-<!-- ═══════════════ CONFETTI CANVAS ═══════════════ -->
-<canvas id="confetti-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999"></canvas>
 
 <!-- ═══════════════ SCRIPTS ═══════════════ -->
 <script src="config.js"></script>

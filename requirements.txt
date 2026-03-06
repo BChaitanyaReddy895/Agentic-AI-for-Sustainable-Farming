@@ -8,6 +8,9 @@ requests==2.31.0
 python-dotenv==1.0.0
 Pillow==10.4.0
 
+# Dynamic Translation
+deep-translator==1.11.4
+
 # LLM-powered agents use Google Gemini via REST API (requests).
 # No additional SDK needed — all 5 agents call Gemini through models/llm_config.py.
 
