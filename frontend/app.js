@@ -5057,7 +5057,6 @@ function animateCounter(el, targetVal, duration = 800) {
 // Hook into stat updates to animate them
 (function hookStatAnimations() {
     const statIds = ['stat-recs', 'stat-community'];
-    const origSet = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'textContent').set;
     // MutationObserver approach: whenever stat text changes, animate
     statIds.forEach(id => {
         const el = document.getElementById(id);
