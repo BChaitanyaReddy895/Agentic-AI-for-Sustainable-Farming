@@ -1594,10 +1594,10 @@ async function _batchTranslate(texts, lang) {
 // Check if text is English (needs translation)
 function _isEnglishText(text) {
     if (!text || text.length < 2 || text.length > 500) return false;
-    // Skip numbers, emojis-only, special chars only
-    const cleaned = text.replace(/[\d\s.,;:!?%�?$�@#&*()\-+=/<>\[\]{}|\\'"`~^_????????????????????????????????????????????????????????????????]/g, '').trim();
+    // Strip everything except letters: digits, whitespace, punctuation, currency, emojis
+    const cleaned = text.replace(/[^a-zA-Z\u0900-\u0D7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A00-\u0A7F\u0A80-\u0AFF\u0980-\u09FF]/g, '').trim();
     if (!cleaned) return false;
-    // Has at least some Latin characters
+    // Has at least some Latin characters (English)
     return /[a-zA-Z]{2,}/.test(cleaned);
 }
 
