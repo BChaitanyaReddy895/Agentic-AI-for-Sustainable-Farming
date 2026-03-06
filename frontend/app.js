@@ -139,13 +139,25 @@ function speakText(text, lang) {
     // Clean HTML tags and markdown
     const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').substring(0, 2000);
     
+    const effectiveLang = lang || state.language;
+
+    // Auto-translate English text to the selected language before speaking
+    if (effectiveLang !== 'en' && /[a-zA-Z]{2,}/.test(cleanText)) {
+        translateText(cleanText, effectiveLang).then(translated => {
+            _doSpeak(translated, effectiveLang);
+        });
+        return;
+    }
+    return _doSpeak(cleanText, effectiveLang);
+}
+
+function _doSpeak(cleanText, effectiveLang) {
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = ttsLangMap[lang || state.language] || 'en-IN';
+    utterance.lang = ttsLangMap[effectiveLang] || 'en-IN';
     utterance.rate = 0.85;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
     
-    // Try to find a voice for the language
     const voices = window.speechSynthesis.getVoices();
     const targetLang = utterance.lang;
     const matchedVoice = voices.find(v => v.lang === targetLang) || voices.find(v => v.lang.startsWith(targetLang.split('-')[0]));
@@ -820,6 +832,15 @@ function renderWalkthroughStep() {
     }
     document.getElementById('walkthrough-title').textContent = step.title;
     document.getElementById('walkthrough-desc').textContent = step.desc;
+    // Auto-translate walkthrough text
+    if (state.language !== 'en') {
+        translateText(step.title, state.language).then(t => {
+            document.getElementById('walkthrough-title').textContent = t;
+        });
+        translateText(step.desc, state.language).then(t => {
+            document.getElementById('walkthrough-desc').textContent = t;
+        });
+    }
     const pct = ((walkthroughStep + 1) / walkthroughSteps.length) * 100;
     document.getElementById('walkthrough-progress-bar').style.width = pct + '%';
     document.getElementById('walkthrough-progress-bar').style.background = step.color;
@@ -828,7 +849,11 @@ function renderWalkthroughStep() {
         `<span class="wt-dot${i === walkthroughStep ? ' active' : ''}" style="${i === walkthroughStep ? 'background:' + step.color : ''}"></span>`
     ).join('');
     const nextBtn = document.getElementById('walkthrough-next');
-    nextBtn.textContent = walkthroughStep === walkthroughSteps.length - 1 ? "Let's Go! 🚀" : 'Next →';
+    const btnText = walkthroughStep === walkthroughSteps.length - 1 ? "Let's Go! 🚀" : 'Next →';
+    nextBtn.textContent = btnText;
+    if (state.language !== 'en') {
+        translateText(btnText, state.language).then(t => { nextBtn.textContent = t; });
+    }
     const card = document.getElementById('walkthrough-card');
     card.classList.remove('animate-scale-in');
     void card.offsetWidth;
@@ -1493,8 +1518,72 @@ function voiceFillField(fieldId) {
 let _translateCache = {};
 let _translationObserver = null;
 
+// Helper: set text on an element and auto-translate it
+function setText(el, text) {
+    if (!el) return;
+    el.textContent = text;
+    if (state.language !== 'en' && _isTranslatableText(text)) {
+        translateText(text, state.language).then(t => { if (el) el.textContent = t; });
+    }
+}
+
+// Helper: set innerHTML on an element and auto-translate all text nodes inside it
+function setHtml(el, html) {
+    if (!el) return;
+    el.innerHTML = html;
+    if (state.language !== 'en') {
+        // Small delay to let DOM settle, then translate all text inside
+        setTimeout(() => _translateAllTextIn(el, state.language), 50);
+    }
+}
+
+// Translate all text nodes within a given element
+async function _translateAllTextIn(root, lang) {
+    if (!root || lang === 'en') return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName;
+            if (['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE'].includes(tag)) return NodeFilter.FILTER_REJECT;
+            if (_isTranslatableText(node.textContent.trim())) return NodeFilter.FILTER_ACCEPT;
+            return NodeFilter.FILTER_REJECT;
+        }
+    });
+    const nodes = [], texts = [];
+    while (walker.nextNode()) {
+        const t = walker.currentNode.textContent.trim();
+        const ck = `${lang}:${t}`;
+        if (_translateCache[ck]) {
+            walker.currentNode.textContent = walker.currentNode.textContent.replace(t, _translateCache[ck]);
+        } else {
+            nodes.push(walker.currentNode);
+            texts.push(t);
+        }
+    }
+    if (texts.length === 0) return;
+    // Batch translate
+    for (let i = 0; i < texts.length; i += 50) {
+        const batch = texts.slice(i, i + 50);
+        try {
+            const res = await fetch(`${API}/api/translate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texts: batch, target: lang, source: 'en' })
+            });
+            const data = await res.json();
+            const translated = data.translations || batch;
+            for (let j = 0; j < batch.length; j++) {
+                const idx = i + j;
+                _translateCache[`${lang}:${texts[idx]}`] = translated[j];
+                if (nodes[idx]) nodes[idx].textContent = nodes[idx].textContent.replace(texts[idx], translated[j]);
+            }
+        } catch { /* fallback */ }
+    }
+}
+
 function _isTranslatableText(text) {
-    if (!text || text.length < 2 || text.length > 300) return false;
+    if (!text || text.length < 2 || text.length > 1000) return false;
     // Must contain at least one Latin letter (English)
     if (!/[a-zA-Z]/.test(text)) return false;
     // Skip pure numbers, emojis-only, or single chars
@@ -1655,9 +1744,12 @@ function startTranslationObserver() {
 
     let pending = false;
     _translationObserver = new MutationObserver((mutations) => {
-        // Check if any meaningful text was added
+        // Check if any meaningful text was added or changed
         let hasNewText = false;
         for (const m of mutations) {
+            if (m.type === 'characterData' && _isTranslatableText(m.target.textContent?.trim())) {
+                hasNewText = true; break;
+            }
             if (m.type === 'childList' && m.addedNodes.length > 0) {
                 for (const node of m.addedNodes) {
                     if (node.nodeType === Node.TEXT_NODE && _isTranslatableText(node.textContent.trim())) {
@@ -1672,15 +1764,15 @@ function startTranslationObserver() {
         }
         if (hasNewText && !pending) {
             pending = true;
-            // Debounce: wait 500ms then translate
+            // Debounce: wait 200ms then translate
             setTimeout(() => {
                 pending = false;
                 dynamicTranslateApp(lang);
-            }, 500);
+            }, 200);
         }
     });
     const target = document.getElementById('app-shell');
-    if (target) _translationObserver.observe(target, { childList: true, subtree: true });
+    if (target) _translationObserver.observe(target, { childList: true, subtree: true, characterData: true });
 }
 
 // Single text translation helper
@@ -2363,6 +2455,8 @@ function renderRecommendation(data, container) {
     html += '</div>';
 
     container.innerHTML = html;
+    // Auto-translate rendered result
+    if (state.language !== 'en') _translateAllTextIn(container, state.language);
 
     // ── Draw Charts ──
     if (data.chart_data?.length) {
@@ -2439,6 +2533,7 @@ function renderSimpleRecommendation(data, container) {
         html += '<div class="card mt-4"><h3 class="card-title"><i class="fas fa-chart-bar"></i> Crop Analysis</h3><div id="rec-simple-chart" class="chart-container"></div></div>';
     }
     container.innerHTML = html;
+    if (state.language !== 'en') _translateAllTextIn(container, state.language);
     if (data.chart_data?.length) {
         const traces = data.chart_data.map(cd => ({
             type: 'scatterpolar',
@@ -2469,6 +2564,7 @@ async function generateRotationPlan() {
         let html = `<div class="card mt-4"><h3 class="card-title"><i class="fas fa-calendar-check"></i> Rotation Plan for ${crop}</h3>`;
         html += `<div class="agent-body" style="white-space:pre-line">${data.plan}</div></div>`;
         container.innerHTML = html;
+        if (state.language !== 'en') _translateAllTextIn(container, state.language);
 
         // Store plan text for voice reading
         lastRotationPlanText = data.plan.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -2518,6 +2614,7 @@ async function calculateFertilizer() {
             <div class="npk-card p-card"><div class="npk-value">${data.phosphorus_kg}</div><div class="npk-label">Phosphorus (kg)</div></div>
             <div class="npk-card k-card"><div class="npk-value">${data.potassium_kg}</div><div class="npk-label">Potassium (kg)</div></div>
         </div>`;
+        if (state.language !== 'en') _translateAllTextIn(container, state.language);
 
         Plotly.react('fertilizer-chart', [{
             values: [data.nitrogen_kg, data.phosphorus_kg, data.potassium_kg],
@@ -2795,6 +2892,7 @@ async function generateMarketForecast() {
                 <li><strong>Recommendation:</strong> ${data.recommendation}</li>
                 <li>${data.analysis}</li>
             </ul>`;
+        if (state.language !== 'en') _translateAllTextIn(insEl, state.language);
         toast('Market forecast generated 📈', 'success');
     } catch {
         toast('Could not generate forecast', 'error');
@@ -2826,6 +2924,11 @@ async function sendChatMessage() {
         if (typing) typing.remove();
         const responseHtml = (data.response || 'Sorry, I could not process that.').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         messages.innerHTML += `<div class="chat-msg ai animate-fade-in"><div class="chat-avatar"><i class="fas fa-robot"></i></div><div class="chat-bubble">${responseHtml}</div></div>`;
+        // Auto-translate chat response
+        if (state.language !== 'en') {
+            const lastBubble = messages.querySelector('.chat-msg.ai:last-child .chat-bubble');
+            if (lastBubble) _translateAllTextIn(lastBubble, state.language);
+        }
     } catch {
         const typing = document.getElementById('typing-indicator');
         if (typing) typing.remove();
@@ -2871,6 +2974,7 @@ async function getWeatherForecast() {
             html += '</ul></div>';
         }
         container.innerHTML = html;
+        if (state.language !== 'en') _translateAllTextIn(container, state.language);
 
         // Forecast chart — simplified for farmers
         if (data.forecast?.length) {
@@ -2918,6 +3022,7 @@ async function getWeatherForecast() {
             if (summaryDiv) {
                 summaryDiv.style.display = 'block';
                 document.getElementById('weather-explain-text').innerHTML = explain;
+                if (state.language !== 'en') _translateAllTextIn(summaryDiv, state.language);
             }
         }
         toast('Weather data updated 🌤️', 'success');
@@ -2996,6 +3101,8 @@ function showSoilResult(soilType) {
             </div>
             <p class="muted-text">Tip: You can use this soil type in Farm Setup for better AI recommendations.</p>
         </div>`;
+    const soilResultEl = document.getElementById('soil-results');
+    if (state.language !== 'en') _translateAllTextIn(soilResultEl, state.language);
     autoSpeak(`Soil type is ${soilType}. ${i.desc}`);
     // Auto-set soil type in farm setup
     const sel = document.getElementById('soil-type');
@@ -3043,6 +3150,7 @@ async function predictPests() {
             html += '</ul></div>';
         }
         container.innerHTML = html;
+        if (state.language !== 'en') _translateAllTextIn(container, state.language);
         toast('Pest analysis complete 🐛', 'success');
         // Auto-speak pest result for illiterate farmers
         let pestSpeech = `Pest risk for ${crop} is ${risk}. `;
@@ -3565,12 +3673,29 @@ function vcLang() { return localStorage.getItem('agri_lang') || 'en'; }
 
 function vcSpeak(msgObj, callback) {
     const lang = vcLang();
-    const text = (typeof msgObj === 'string') ? msgObj : (msgObj[lang] || msgObj.en || msgObj);
-    showVoiceResponse(text);
-    setVoiceState('speaking');
-    if (window.voiceInterface) {
-        window.voiceInterface.speak(text);
+    let text = (typeof msgObj === 'string') ? msgObj : (msgObj[lang] || msgObj.en || msgObj);
+
+    // Auto-translate English text to selected language
+    const doSpeak = (finalText) => {
+        showVoiceResponse(finalText);
+        setVoiceState('speaking');
+        if (window.voiceInterface) {
+            window.voiceInterface.speak(finalText, ttsLangMap[lang] || null);
+        }
+        // Wait for speech to finish, then call back
+        const check = setInterval(() => {
+            if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
+                clearInterval(check);
+                if (callback) setTimeout(callback, 300);
+            }
+        }, 250);
+    };
+
+    if (lang !== 'en' && typeof text === 'string' && /[a-zA-Z]{2,}/.test(text)) {
+        translateText(text, lang).then(translated => doSpeak(translated));
+        return;
     }
+    doSpeak(text);
     // Wait for speech to finish, then call back
     const check = setInterval(() => {
         if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
@@ -4255,6 +4380,7 @@ function renderDiagnosisResult(d) {
             
             ${d.expert_tip ? `<div class="diag-expert-tip"><i class="fas fa-lightbulb"></i> <strong>Expert Tip:</strong> ${d.expert_tip}</div>` : ''}
         </div>`;
+    if (state.language !== 'en') _translateAllTextIn(container, state.language);
 }
 
 async function loadDiagnosisHistory() {
@@ -4378,6 +4504,7 @@ function renderSchemeResults(data) {
                 </div>
             `).join('')}
         </div>`;
+    if (state.language !== 'en') _translateAllTextIn(container, state.language);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -4480,6 +4607,9 @@ function renderMandiResults(data) {
         ${data.market_insights ? `<div class="card mt-4 animate-fade-in"><h3 class="card-title"><i class="fas fa-brain"></i> Market Insights</h3><ul class="mandi-insights-list">${data.market_insights.map(i => `<li><i class="fas fa-lightbulb"></i> ${i}</li>`).join('')}</ul></div>` : ''}
     `;
     
+    // Translate mandi results
+    if (state.language !== 'en') _translateAllTextIn(container, state.language);
+
     // Render price history chart
     if (data.price_history && data.price_history.length > 0) {
         const months = data.price_history.map(p => p.month);
@@ -4613,16 +4743,8 @@ async function loadVoiceNotes(filter = '') {
                     </div>
                 </div>
             </div>`).join('');
+        if (state.language !== 'en') _translateAllTextIn(feed, state.language);
     } catch(e) { /* silent */ }
-}
-
-function speakText(text) {
-    if ('speechSynthesis' in window) {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = state.language === 'hi' ? 'hi-IN' : 'en-IN';
-        utter.rate = 0.9;
-        speechSynthesis.speak(utter);
-    }
 }
 
 async function likeVoiceNote(id, btn) {
@@ -4708,6 +4830,7 @@ async function loadExpenseData() {
                     <div class="exp-entry-amount ${e.entry_type}">${e.entry_type === 'income' ? '+' : '-'}₹${(e.amount || 0).toLocaleString('en-IN')}</div>
                     <button class="exp-delete-btn" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash-alt"></i></button>
                 </div>`).join('');
+            if (state.language !== 'en') _translateAllTextIn(listEl, state.language);
         }
         
         // Render charts
@@ -4784,6 +4907,7 @@ async function getExpenseInsights() {
                 ${ins.income_tips ? `<div class="ai-insight-section"><h4><i class="fas fa-hand-holding-usd"></i> Increase Income</h4><ul>${ins.income_tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
                 ${ins.risk_alert ? `<div class="ai-insight-alert"><i class="fas fa-exclamation-triangle"></i> ${ins.risk_alert}</div>` : ''}
             </div>`;
+        if (state.language !== 'en') _translateAllTextIn(insEl, state.language);
     } catch(e) {
         hideLoading();
         toast('Could not get insights', 'error');
@@ -4801,8 +4925,15 @@ async function fetchAPI(endpoint, body, method = 'POST') {
 
 function showLoading(msg) {
     const el = document.getElementById('loading-overlay');
-    document.getElementById('loading-message').textContent = msg || 'Processing...';
+    const loadMsg = msg || 'Processing...';
+    document.getElementById('loading-message').textContent = loadMsg;
     el.style.display = '';
+    // Auto-translate loading message
+    if (state.language !== 'en') {
+        translateText(loadMsg, state.language).then(t => {
+            document.getElementById('loading-message').textContent = t;
+        });
+    }
 }
 
 function hideLoading() {
@@ -4816,6 +4947,13 @@ function toast(message, type = 'info') {
     div.className = `toast ${type}`;
     div.innerHTML = `<i class="fas ${icons[type] || icons.info} toast-icon"></i><span>${message}</span>`;
     container.appendChild(div);
+    // Auto-translate toast message to selected language
+    if (state.language !== 'en' && /[a-zA-Z]{2,}/.test(message)) {
+        translateText(message, state.language).then(translated => {
+            const span = div.querySelector('span');
+            if (span) span.textContent = translated;
+        });
+    }
     setTimeout(() => { div.style.opacity = '0'; div.style.transform = 'translateX(80px)'; setTimeout(() => div.remove(), 300); }, 4000);
 }
 
