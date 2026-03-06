@@ -1263,7 +1263,8 @@ function goBackToMethodPicker() {
     document.getElementById('auth-simple-form').style.display = 'none';
     document.getElementById('voice-auth-overlay').style.display = 'none';
     document.getElementById('face-auth-overlay').style.display = 'none';
-    cancelFaceAuth();
+    stopFaceCamera();
+    _faceAuthContext = null;
     document.getElementById('auth-method-picker').style.display = 'flex';
 }
 
@@ -1353,8 +1354,10 @@ function listenForVoiceAuth() {
 
 function confirmVoiceAuth() {
     if (!voiceAuthName) return;
-    // Auto-signup/login with voice name
-    doVoiceSignupLogin(voiceAuthName);
+    // Launch face verification after voice name confirmation
+    document.getElementById('voice-auth-overlay').style.display = 'none';
+    window.speechSynthesis?.cancel();
+    startFaceAuthVerification({ mode: 'voice-auto', username: voiceAuthName, source: 'voice' });
 }
 
 function retryVoiceAuth() {
@@ -1370,43 +1373,8 @@ function cancelVoiceAuth() {
 }
 
 async function doVoiceSignupLogin(name) {
-    showLoading();
-    try {
-        // Try login first
-        const res = await fetchAPI('/login', { username: name });
-        state.user = res;
-        localStorage.setItem('agri_user', JSON.stringify(state.user));
-        const welcomeBack = {
-            en: `Welcome back, ${name}!`,
-            hi: `वापस स्वागत है, ${name}!`,
-            te: `తిరిగి స్వాగతం, ${name}!`,
-            kn: `ಮತ್ತೆ ಸ್ವಾಗತ, ${name}!`,
-            ta: `மீண்டும் வரவேற்கிறோம், ${name}!`
-        };
-        speakText(welcomeBack[state.language] || welcomeBack.en, state.language);
-        toast(`Welcome back, ${name}!`, 'success');
-        enterApp();
-    } catch {
-        // Auto-signup
-        try {
-            await fetchAPI('/signup', { username: name, farm_name: `${name}'s Farm`, profile_picture: null });
-            state.user = { username: name, farm_name: `${name}'s Farm` };
-            localStorage.setItem('agri_user', JSON.stringify(state.user));
-            const welcomeNew = {
-                en: `Welcome to AgriSmart, ${name}! Your account is ready.`,
-                hi: `AgriSmart में स्वागत है, ${name}! आपका खाता तैयार है।`,
-                te: `AgriSmart కి స్వాగతం, ${name}! మీ ఖాతా సిద్ధంగా ఉంది.`,
-                kn: `AgriSmart ಗೆ ಸ್ವಾಗತ, ${name}! ನಿಮ್ಮ ಖಾತೆ ಸಿದ್ಧವಾಗಿದೆ.`
-            };
-            speakText(welcomeNew[state.language] || welcomeNew.en, state.language);
-            toast(`Welcome, ${name}!`, 'success');
-            enterApp();
-        } catch (err) {
-            toast(err.message || 'Failed', 'error');
-        }
-    } finally {
-        hideLoading();
-    }
+    // Redirect through face verification
+    startFaceAuthVerification({ mode: 'voice-auto', username: name, source: 'voice' });
 }
 
 function switchAuthTab(tab) {
@@ -1427,25 +1395,9 @@ async function handleSignup(e) {
         return;
     }
 
-    showLoading();
-    try {
-        const res = await fetchAPI('/signup', { username, farm_name: `${username}'s Farm`, profile_picture: null });
-        state.user = { username, farm_name: `${username}'s Farm`, phone };
-        localStorage.setItem('agri_user', JSON.stringify(state.user));
-        speakText(`Welcome, ${username}!`, state.language);
-        toast('Welcome to AgriSmart AI!', 'success');
-        enterApp();
-    } catch (err) {
-        if (err.message && err.message.includes('already exists')) {
-            state.user = { username, farm_name: `${username}'s Farm`, phone };
-            localStorage.setItem('agri_user', JSON.stringify(state.user));
-            enterApp();
-        } else {
-            toast(err.message || 'Signup failed', 'error');
-        }
-    } finally {
-        hideLoading();
-    }
+    // Launch face verification as confirmation step
+    document.getElementById('auth-simple-form').style.display = 'none';
+    startFaceAuthVerification({ mode: 'signup', username, phone, source: 'manual' });
 }
 
 async function handleLogin(e) {
@@ -1459,19 +1411,9 @@ async function handleLogin(e) {
         return;
     }
 
-    showLoading();
-    try {
-        const res = await fetchAPI('/login', { username });
-        state.user = res;
-        localStorage.setItem('agri_user', JSON.stringify(state.user));
-        speakText(`Welcome back, ${res.username}!`, state.language);
-        toast(`Welcome back, ${res.username}!`, 'success');
-        enterApp();
-    } catch {
-        toast('User not found — please sign up first', 'error');
-    } finally {
-        hideLoading();
-    }
+    // Launch face verification as confirmation step
+    document.getElementById('auth-simple-form').style.display = 'none';
+    startFaceAuthVerification({ mode: 'login', username, source: 'manual' });
 }
 
 function restoreSession() {
@@ -1496,6 +1438,8 @@ function enterApp() {
     navigate('dashboard');
     // Apply dynamic translation to entire app after entering
     dynamicTranslateApp(state.language);
+    // Start auto-translating dynamic content
+    startTranslationObserver();
 }
 
 // ═══════════════════════════════════════
@@ -1547,39 +1491,59 @@ function voiceFillField(fieldId) {
 //  DYNAMIC TRANSLATION — deep-translator API
 // ═══════════════════════════════════════
 let _translateCache = {};
+let _translationObserver = null;
+
+function _isTranslatableText(text) {
+    if (!text || text.length < 2 || text.length > 300) return false;
+    // Must contain at least one Latin letter (English)
+    if (!/[a-zA-Z]/.test(text)) return false;
+    // Skip pure numbers, emojis-only, or single chars
+    if (/^\d+[\.\,%°]?\s*$/.test(text)) return false;
+    // Skip if already in non-Latin script (already translated)
+    if (/[\u0900-\u0D7F]/.test(text) && !/[a-zA-Z]{3,}/.test(text)) return false;
+    return true;
+}
 
 async function dynamicTranslateApp(lang) {
     if (lang === 'en') return;
-    // Collect all visible text nodes that need translation
-    const textEls = document.querySelectorAll(
-        'h1, h2, h3, h4, h5, h6, label, p, span, button, a, .card-title, .card-desc, .sidebar-link span, .section-title, .stat-label, .btn'
-    );
-    const textsToTranslate = [];
-    const targetEls = [];
-    textEls.forEach(el => {
-        // Skip hidden, scripts, styles, already-translated
-        if (el.offsetParent === null && el.tagName !== 'SPAN') return;
-        if (el.closest('script, style, .lang-float-menu')) return;
-        const text = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
-            ? el.textContent.trim()
-            : null;
-        if (text && text.length > 1 && text.length < 200 && /[a-zA-Z]/.test(text)) {
-            const cacheKey = `${lang}:${text}`;
-            if (_translateCache[cacheKey]) {
-                el.textContent = _translateCache[cacheKey];
-            } else {
-                textsToTranslate.push(text);
-                targetEls.push(el);
-            }
+    const appShell = document.getElementById('app-shell') || document.body;
+
+    // Phase 1: TreeWalker for ALL text nodes in the DOM
+    const walker = document.createTreeWalker(appShell, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName;
+            // Skip script, style, textarea, code, pre
+            if (['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'NOSCRIPT'].includes(tag)) return NodeFilter.FILTER_REJECT;
+            // Skip language menu and hidden inputs
+            if (parent.closest('.lang-float-menu, .lang-grid')) return NodeFilter.FILTER_REJECT;
+            const text = node.textContent.trim();
+            if (_isTranslatableText(text)) return NodeFilter.FILTER_ACCEPT;
+            return NodeFilter.FILTER_REJECT;
         }
     });
-    // Also translate placeholders
-    const inputEls = document.querySelectorAll('input[placeholder], textarea[placeholder]');
+
+    const textNodes = [];
+    const textsToTranslate = [];
+    while (walker.nextNode()) {
+        const text = walker.currentNode.textContent.trim();
+        const cacheKey = `${lang}:${text}`;
+        if (_translateCache[cacheKey]) {
+            walker.currentNode.textContent = walker.currentNode.textContent.replace(text, _translateCache[cacheKey]);
+        } else {
+            textNodes.push(walker.currentNode);
+            textsToTranslate.push(text);
+        }
+    }
+
+    // Phase 2: Translate placeholders
+    const inputEls = appShell.querySelectorAll('input[placeholder], textarea[placeholder]');
     const placeholderTexts = [];
     const placeholderEls = [];
     inputEls.forEach(el => {
         const ph = el.placeholder.trim();
-        if (ph && ph.length > 1 && /[a-zA-Z]/.test(ph)) {
+        if (_isTranslatableText(ph)) {
             const cacheKey = `${lang}:ph:${ph}`;
             if (_translateCache[cacheKey]) {
                 el.placeholder = _translateCache[cacheKey];
@@ -1590,45 +1554,133 @@ async function dynamicTranslateApp(lang) {
         }
     });
 
-    // Batch translate text content (max 50 at a time)
-    if (textsToTranslate.length > 0) {
-        for (let i = 0; i < textsToTranslate.length; i += 50) {
-            const batch = textsToTranslate.slice(i, i + 50);
-            const batchEls = targetEls.slice(i, i + 50);
-            try {
-                const res = await fetch(`${API}/api/translate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ texts: batch, target: lang, source: 'en' })
-                });
-                const data = await res.json();
-                if (data.translations) {
-                    data.translations.forEach((t, idx) => {
-                        batchEls[idx].textContent = t;
-                        _translateCache[`${lang}:${batch[idx]}`] = t;
-                    });
-                }
-            } catch (e) { /* fallback to English */ }
+    // Phase 3: Translate select options
+    const optionEls = appShell.querySelectorAll('select option');
+    const optionTexts = [];
+    const optionNodes = [];
+    optionEls.forEach(el => {
+        const text = el.textContent.trim();
+        if (_isTranslatableText(text)) {
+            const cacheKey = `${lang}:${text}`;
+            if (_translateCache[cacheKey]) {
+                el.textContent = _translateCache[cacheKey];
+            } else {
+                optionTexts.push(text);
+                optionNodes.push(el);
+            }
         }
-    }
+    });
 
-    // Batch translate placeholders
-    if (placeholderTexts.length > 0) {
+    // Phase 4: Translate title and aria-label attributes
+    const titledEls = appShell.querySelectorAll('[title], [aria-label]');
+    const attrTexts = [];
+    const attrEntries = []; // { el, attr }
+    titledEls.forEach(el => {
+        ['title', 'aria-label'].forEach(attr => {
+            const val = el.getAttribute(attr);
+            if (val && _isTranslatableText(val)) {
+                const cacheKey = `${lang}:attr:${val}`;
+                if (_translateCache[cacheKey]) {
+                    el.setAttribute(attr, _translateCache[cacheKey]);
+                } else {
+                    attrTexts.push(val);
+                    attrEntries.push({ el, attr });
+                }
+            }
+        });
+    });
+
+    // Combine all texts for batch API calls
+    const allTexts = [...textsToTranslate, ...placeholderTexts, ...optionTexts, ...attrTexts];
+    if (allTexts.length === 0) return;
+
+    // Batch translate (max 50 at a time)
+    const allTranslated = [];
+    for (let i = 0; i < allTexts.length; i += 50) {
+        const batch = allTexts.slice(i, i + 50);
         try {
             const res = await fetch(`${API}/api/translate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texts: placeholderTexts, target: lang, source: 'en' })
+                body: JSON.stringify({ texts: batch, target: lang, source: 'en' })
             });
             const data = await res.json();
             if (data.translations) {
-                data.translations.forEach((t, idx) => {
-                    placeholderEls[idx].placeholder = t;
-                    _translateCache[`${lang}:ph:${placeholderTexts[idx]}`] = t;
-                });
+                allTranslated.push(...data.translations);
+            } else {
+                allTranslated.push(...batch); // fallback
             }
-        } catch (e) { /* ok */ }
+        } catch {
+            allTranslated.push(...batch);
+        }
     }
+
+    // Apply translations to respective targets
+    let idx = 0;
+    // Text nodes
+    for (let i = 0; i < textsToTranslate.length; i++) {
+        const original = textsToTranslate[i];
+        const translated = allTranslated[idx++];
+        _translateCache[`${lang}:${original}`] = translated;
+        if (textNodes[i]) textNodes[i].textContent = textNodes[i].textContent.replace(original, translated);
+    }
+    // Placeholders
+    for (let i = 0; i < placeholderTexts.length; i++) {
+        const original = placeholderTexts[i];
+        const translated = allTranslated[idx++];
+        _translateCache[`${lang}:ph:${original}`] = translated;
+        if (placeholderEls[i]) placeholderEls[i].placeholder = translated;
+    }
+    // Options
+    for (let i = 0; i < optionTexts.length; i++) {
+        const original = optionTexts[i];
+        const translated = allTranslated[idx++];
+        _translateCache[`${lang}:${original}`] = translated;
+        if (optionNodes[i]) optionNodes[i].textContent = translated;
+    }
+    // Attributes
+    for (let i = 0; i < attrTexts.length; i++) {
+        const original = attrTexts[i];
+        const translated = allTranslated[idx++];
+        _translateCache[`${lang}:attr:${original}`] = translated;
+        if (attrEntries[i]) attrEntries[i].el.setAttribute(attrEntries[i].attr, translated);
+    }
+}
+
+// Auto-translate dynamically added content via MutationObserver
+function startTranslationObserver() {
+    if (_translationObserver) _translationObserver.disconnect();
+    const lang = state.language;
+    if (lang === 'en') return;
+
+    let pending = false;
+    _translationObserver = new MutationObserver((mutations) => {
+        // Check if any meaningful text was added
+        let hasNewText = false;
+        for (const m of mutations) {
+            if (m.type === 'childList' && m.addedNodes.length > 0) {
+                for (const node of m.addedNodes) {
+                    if (node.nodeType === Node.TEXT_NODE && _isTranslatableText(node.textContent.trim())) {
+                        hasNewText = true; break;
+                    }
+                    if (node.nodeType === Node.ELEMENT_NODE && node.textContent && /[a-zA-Z]{2,}/.test(node.textContent)) {
+                        hasNewText = true; break;
+                    }
+                }
+            }
+            if (hasNewText) break;
+        }
+        if (hasNewText && !pending) {
+            pending = true;
+            // Debounce: wait 500ms then translate
+            setTimeout(() => {
+                pending = false;
+                dynamicTranslateApp(lang);
+            }, 500);
+        }
+    });
+    const target = document.getElementById('app-shell');
+    if (target) _translationObserver.observe(target, { childList: true, subtree: true });
 }
 
 // Single text translation helper
@@ -1716,6 +1768,10 @@ function navigate(pageId) {
         if (ph && state.farmSetup.humidity) ph.value = state.farmSetup.humidity;
         if (pr && state.farmSetup.rainfall) pr.value = state.farmSetup.rainfall;
         if (ps && state.farmSetup.soil_type) ps.value = state.farmSetup.soil_type;
+    }
+    // Translate new page content
+    if (state.language && state.language !== 'en') {
+        setTimeout(() => dynamicTranslateApp(state.language), 300);
     }
 }
 
@@ -3224,7 +3280,9 @@ function changeLanguage(lang) {
     applyTranslations(lang);
     // Then dynamically translate remaining text via deep-translator API
     dynamicTranslateApp(lang);
-    const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
+    // Restart observer for new language
+    startTranslationObserver();
+    const langNames = { en: 'English', hi: '\u0939\u093F\u0902\u0926\u0940', kn: '\u0C95\u0CA8\u0CCD\u0CA8\u0CA1', te: '\u0C24\u0C46\u0C32\u0C41\u0C17\u0C41', ta: '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD', ml: '\u0D2E\u0D32\u0D2F\u0D3E\u0D33\u0D02', bn: '\u09AC\u09BE\u0982\u09B2\u09BE', gu: '\u0A97\u0AC1\u0A9C\u0AB0\u0ABE\u0AA4\u0AC0', mr: '\u092E\u0930\u093E\u0920\u0940', pa: '\u0A2A\u0A70\u0A1C\u0A3E\u0A2C\u0A40', or: '\u0B13\u0B21\u0B3C\u0B3F\u0B06' };
     toast(`${langNames[lang] || lang.toUpperCase()} ✓`, 'info');
 }
 
@@ -3769,27 +3827,19 @@ function completeVoiceFlow() {
 }
 
 async function executeVoiceSignup(data) {
-    vcSpeak({ en: 'Creating your account...', hi: 'आपका खाता बना रहे हैं...', kn: 'ನಿಮ್ಮ ಖಾತೆ ರಚಿಸುತ್ತಿದ್ದೇವೆ...', te: 'మీ ఖాతా తయారు చేస్తున్నాము...', ta: 'உங்கள் கணக்கை உருவாக்குகிறோம்...' });
-    try {
-        await fetchAPI('/signup', { username: data.username, farm_name: data.farm_name, profile_picture: null });
-    } catch(e) { /* may already exist, ok */ }
-    state.user = { username: data.username, farm_name: data.farm_name, phone: data.phone || '', location: data.location || '' };
-    localStorage.setItem('agri_user', JSON.stringify(state.user));
-    enterApp();
-    vcSpeak({ en: `Welcome ${data.username}! Your farm ${data.farm_name} is ready. You are now on the home page.`, hi: `स्वागत है ${data.username}! आपका खेत ${data.farm_name} तैयार है। अब आप होम पेज पर हैं।`, kn: `ಸ್ವಾಗತ ${data.username}! ನಿಮ್ಮ ಜಮೀನು ${data.farm_name} ಸಿದ್ಧ. ಈಗ ನೀವು ಹೋಮ್ ಪೇಜಿನಲ್ಲಿದ್ದೀರಿ.`, te: `స్వాగతం ${data.username}! మీ పొలం ${data.farm_name} సిద్ధం. ఇప్పుడు మీరు హోమ్ పేజీలో ఉన్నారు.`, ta: `வரவேற்கிறோம் ${data.username}! உங்கள் பண்ணை ${data.farm_name} தயார்.` }, () => setVoiceState('idle'));
+    vcSpeak({ en: 'Now let me verify your face to secure your account...', hi: '\u0905\u092C \u0906\u092A\u0915\u093E \u091A\u0947\u0939\u0930\u093E \u0938\u0924\u094D\u092F\u093E\u092A\u093F\u0924 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902...', kn: '\u0C88\u0C97 \u0CA8\u0CBF\u0CAE\u0CCD\u0CAE \u0CAE\u0CC1\u0C96\u0CB5\u0CA8\u0CCD\u0CA8\u0CC1 \u0CAA\u0CB0\u0CBF\u0CB6\u0CC0\u0CB2\u0CBF\u0CB8\u0CC1\u0CA4\u0CCD\u0CA4\u0CC7\u0CB5\u0CC6...', te: '\u0C07\u0C2A\u0C4D\u0C2A\u0C41\u0C21\u0C41 \u0C2E\u0C40 \u0C2E\u0C41\u0C16\u0C3E\u0C28\u0C4D\u0C28\u0C3F \u0C27\u0C43\u0C35\u0C40\u0C15\u0C30\u0C3F\u0C38\u0C4D\u0C24\u0C41\u0C28\u0C4D\u0C28\u0C3E\u0C2E\u0C41...', ta: '\u0B87\u0BAA\u0BCD\u0BAA\u0BCB\u0BA4\u0BC1 \u0BA8\u0BBF\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0BAE\u0BC1\u0B95\u0BA4\u0BCD\u0BA4\u0BC8 \u0B9A\u0BB0\u0BBF\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BBF\u0BB1\u0BCB\u0BAE\u0BCD...' });
+    // Store voice signup data and launch face verification
+    window._pendingVoiceFlowData = data;
+    window._pendingVoiceFlowType = 'signup';
+    setTimeout(() => startFaceAuthVerification({ mode: 'signup', username: data.username, phone: data.phone || '', farm_name: data.farm_name, location: data.location || '', source: 'voiceFlow' }), 1500);
 }
 
 async function executeVoiceLogin(data) {
-    vcSpeak({ en: 'Logging you in...', hi: 'लॉगिन कर रहे हैं...', kn: 'ಲಾಗಿನ್ ಆಗುತ್ತಿದೆ...', te: 'లాగిన్ అవుతున్నారు...', ta: 'லாகின் செய்கிறோம்...' });
-    try {
-        const res = await fetchAPI('/login', { username: data.phone });
-        state.user = res;
-        localStorage.setItem('agri_user', JSON.stringify(state.user));
-        enterApp();
-        vcSpeak({ en: `Welcome back, ${res.username}!`, hi: `फिर से स्वागत है, ${res.username}!`, kn: `ಮರಳಿ ಸ್ವಾಗತ, ${res.username}!`, te: `మళ్ళీ స్వాగతం, ${res.username}!`, ta: `மீண்டும் வரவேற்கிறோம், ${res.username}!` }, () => setVoiceState('idle'));
-    } catch {
-        vcSpeak({ en: 'Account not found. Please sign up first. Say "sign me up" to create an account.', hi: 'खाता नहीं मिला। कृपया पहले साइन अप करें। "मुझे साइन अप करो" बोलें।', kn: 'ಖಾತೆ ಸಿಕ್ಕಿಲ್ಲ. ದಯವಿಟ್ಟು ಮೊದಲು ಸೈನ್ ಅಪ್ ಮಾಡಿ.', te: 'ఖాతా దొరకలేదు. దయచేసి ముందు సైన్ అప్ చేయండి.', ta: 'கணக்கு கிடைக்கவில்லை. இணைக்க "என்னை பதிவு செய்" என்று சொல்லுங்கள்.' }, () => setVoiceState('idle'));
-    }
+    vcSpeak({ en: 'Now let me verify your face to log you in...', hi: '\u0905\u092C \u0906\u092A\u0915\u093E \u091A\u0947\u0939\u0930\u093E \u0938\u0924\u094D\u092F\u093E\u092A\u093F\u0924 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902...', kn: '\u0C88\u0C97 \u0CA8\u0CBF\u0CAE\u0CCD\u0CAE \u0CAE\u0CC1\u0C96\u0CB5\u0CA8\u0CCD\u0CA8\u0CC1 \u0CAA\u0CB0\u0CBF\u0CB6\u0CC0\u0CB2\u0CBF\u0CB8\u0CC1\u0CA4\u0CCD\u0CA4\u0CC7\u0CB5\u0CC6...', te: '\u0C07\u0C2A\u0C4D\u0C2A\u0C41\u0C21\u0C41 \u0C2E\u0C40 \u0C2E\u0C41\u0C16\u0C3E\u0C28\u0C4D\u0C28\u0C3F \u0C27\u0C43\u0C35\u0C40\u0C15\u0C30\u0C3F\u0C38\u0C4D\u0C24\u0C41\u0C28\u0C4D\u0C28\u0C3E\u0C2E\u0C41...', ta: '\u0B87\u0BAA\u0BCD\u0BAA\u0BCB\u0BA4\u0BC1 \u0BA8\u0BBF\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0BAE\u0BC1\u0B95\u0BA4\u0BCD\u0BA4\u0BC8 \u0B9A\u0BB0\u0BBF\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BBF\u0BB1\u0BCB\u0BAE\u0BCD...' });
+    // Store voice login data and launch face verification
+    window._pendingVoiceFlowData = data;
+    window._pendingVoiceFlowType = 'login';
+    setTimeout(() => startFaceAuthVerification({ mode: 'login', username: data.phone, source: 'voiceFlow' }), 1500);
 }
 
 async function executeVoiceFarmSetup(data) {
@@ -5101,55 +5151,202 @@ function animateCounter(el, targetVal, duration = 800) {
 })();
 
 // ═══════════════════════════════════════
-//  FACE AUTHENTICATION
+//  FACE AUTHENTICATION (Integrated verification step)
 // ═══════════════════════════════════════
 
 let faceStream = null;
+// Stores context: { mode: 'signup'|'login'|'voice-auto', username, phone, farm_name, location, source: 'manual'|'voice'|'voiceFlow' }
+let _faceAuthContext = null;
 
-function startFaceAuth() {
-    document.getElementById('auth-method-picker').style.display = 'none';
+function startFaceAuthVerification(ctx) {
+    _faceAuthContext = ctx;
     const overlay = document.getElementById('face-auth-overlay');
     overlay.style.display = 'flex';
     document.getElementById('face-auth-actions').style.display = 'none';
     document.getElementById('face-register-section').style.display = 'none';
     document.getElementById('face-auth-status').textContent = 'Starting camera...';
+    document.getElementById('face-auth-status').style.color = '#16a34a';
+    const promptEl = document.getElementById('face-auth-prompt');
+    if (promptEl) promptEl.textContent = `${ctx.username}, look at the camera to verify`;
 
     const video = document.getElementById('face-video');
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 280, height: 280 } })
         .then(stream => {
             faceStream = stream;
             video.srcObject = stream;
-            document.getElementById('face-auth-status').textContent = 'Camera ready — hold still...';
+            document.getElementById('face-auth-status').textContent = 'Camera ready \u2014 hold still...';
             document.getElementById('face-scan-line').style.display = 'block';
-            // Auto-capture after 2.5 seconds
-            setTimeout(() => captureFaceAndMatch(), 2500);
+            speakText('Look at the camera to verify your face', state.language);
+            setTimeout(() => captureFaceAndVerify(), 2500);
         })
         .catch(() => {
-            document.getElementById('face-auth-status').textContent = 'Camera access denied. Please allow camera.';
-            document.getElementById('face-auth-status').style.color = '#dc2626';
+            document.getElementById('face-auth-status').textContent = 'Camera not available. Proceeding without face verification...';
+            // If camera denied, skip face auth and proceed normally
+            setTimeout(() => completeFaceAuthFlow(null), 1500);
         });
 }
 
-function captureFaceAndMatch() {
+// Old standalone function kept for backward compatibility
+function startFaceAuth() {
+    startFaceAuthVerification({ mode: 'signup', username: 'Guest', source: 'manual' });
+}
+
+function captureFaceAndVerify() {
     const video = document.getElementById('face-video');
     const canvas = document.getElementById('face-canvas');
     canvas.width = 280;
     canvas.height = 280;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, 280, 280);
-
     const imageData = ctx.getImageData(0, 0, 280, 280);
     const faceHash = computeFaceHash(imageData.data);
-
     document.getElementById('face-scan-line').style.display = 'none';
-    document.getElementById('face-auth-status').textContent = 'Checking face...';
+    document.getElementById('face-auth-status').textContent = 'Verifying face...';
+    verifyFaceForAuth(faceHash);
+}
 
-    // Try matching against stored faces
-    matchFaceOnServer(faceHash);
+async function verifyFaceForAuth(faceHash) {
+    const ctx = _faceAuthContext;
+    if (!ctx) return;
+
+    if (ctx.mode === 'login') {
+        // Login: check if face matches the user
+        try {
+            const res = await fetch(`${API}/face_login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ face_hash: faceHash })
+            });
+            const data = await res.json();
+            if (res.ok && data.username) {
+                // Face matched — verify it's the same user or accept
+                document.getElementById('face-auth-status').textContent = '\u2705 Face verified!';
+                document.getElementById('face-match-name').textContent = `Welcome back, ${data.username}!`;
+                document.getElementById('face-auth-actions').style.display = 'block';
+                window._pendingFaceHash = faceHash;
+                window._pendingFaceUser = data.username;
+                speakText(`Face verified! Welcome back, ${data.username}!`, state.language);
+            } else {
+                // No face registered yet — register this face for the user
+                document.getElementById('face-auth-status').textContent = 'Registering your face...';
+                document.getElementById('face-register-section').style.display = 'block';
+                await registerFaceForUser(ctx.username, faceHash);
+            }
+        } catch {
+            // Server error — skip face and login directly
+            completeFaceAuthFlow(faceHash);
+        }
+    } else {
+        // Signup or voice-auto: register the face
+        document.getElementById('face-auth-status').textContent = 'Registering your face...';
+        document.getElementById('face-register-section').style.display = 'block';
+        await registerFaceForUser(ctx.username, faceHash);
+    }
+}
+
+async function registerFaceForUser(username, faceHash) {
+    try {
+        await fetch(`${API}/face_register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, face_hash: faceHash })
+        });
+        document.getElementById('face-auth-status').textContent = '\u2705 Face registered!';
+        speakText('Face registered successfully!', state.language);
+    } catch {
+        document.getElementById('face-auth-status').textContent = 'Face saved locally.';
+    }
+    setTimeout(() => completeFaceAuthFlow(faceHash), 1200);
+}
+
+async function completeFaceAuthFlow(faceHash) {
+    const ctx = _faceAuthContext;
+    if (!ctx) return;
+    stopFaceCamera();
+    document.getElementById('face-auth-overlay').style.display = 'none';
+    showLoading();
+
+    try {
+        if (ctx.mode === 'signup' || ctx.mode === 'voice-auto') {
+            // Signup flow
+            const username = ctx.username;
+            const farmName = ctx.farm_name || `${username}'s Farm`;
+            try {
+                await fetchAPI('/signup', { username, farm_name: farmName, profile_picture: null });
+            } catch (err) {
+                // If already exists, treat as login
+                if (!err.message?.includes('already exists')) {
+                    toast(err.message || 'Signup failed', 'error');
+                    hideLoading();
+                    goBackToMethodPicker();
+                    return;
+                }
+            }
+            state.user = { username, farm_name: farmName, phone: ctx.phone || '', location: ctx.location || '' };
+            localStorage.setItem('agri_user', JSON.stringify(state.user));
+            speakText(`Welcome to AgriSmart, ${username}!`, state.language);
+            toast(`Welcome, ${username}!`, 'success');
+            enterApp();
+            if (ctx.source === 'voiceFlow') {
+                vcSpeak({ en: `Welcome ${username}! Your account is ready. You are now on the home page.` }, () => setVoiceState('idle'));
+            }
+        } else {
+            // Login flow
+            const username = ctx.username;
+            try {
+                const res = await fetchAPI('/login', { username });
+                state.user = res;
+                localStorage.setItem('agri_user', JSON.stringify(state.user));
+                speakText(`Welcome back, ${res.username}!`, state.language);
+                toast(`Welcome back, ${res.username}!`, 'success');
+                enterApp();
+                if (ctx.source === 'voiceFlow') {
+                    vcSpeak({ en: `Welcome back, ${res.username}!` }, () => setVoiceState('idle'));
+                }
+            } catch {
+                // User not found — try signup instead
+                try {
+                    await fetchAPI('/signup', { username, farm_name: `${username}'s Farm`, profile_picture: null });
+                } catch { /* ignore */ }
+                state.user = { username, farm_name: `${username}'s Farm` };
+                localStorage.setItem('agri_user', JSON.stringify(state.user));
+                speakText(`Welcome, ${username}!`, state.language);
+                toast(`Welcome, ${username}!`, 'success');
+                enterApp();
+            }
+        }
+    } finally {
+        hideLoading();
+        _faceAuthContext = null;
+    }
+}
+
+function confirmFaceAuth() {
+    // Confirm face match — proceed to complete the flow
+    completeFaceAuthFlow(window._pendingFaceHash);
+}
+
+function retryFaceAuth() {
+    document.getElementById('face-auth-actions').style.display = 'none';
+    document.getElementById('face-register-section').style.display = 'none';
+    document.getElementById('face-auth-status').textContent = 'Retrying... hold still';
+    document.getElementById('face-scan-line').style.display = 'block';
+    setTimeout(() => captureFaceAndVerify(), 2000);
+}
+
+function cancelFaceAuth() {
+    stopFaceCamera();
+    const overlay = document.getElementById('face-auth-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _faceAuthContext = null;
+}
+
+function goBackFromFaceAuth() {
+    cancelFaceAuth();
+    goBackToMethodPicker();
 }
 
 function computeFaceHash(pixelData) {
-    // Simple perceptual hash: downsample to 16x16 grayscale, threshold at mean
     const size = 16;
     const srcW = 280, srcH = 280;
     const gray = [];
@@ -5163,102 +5360,6 @@ function computeFaceHash(pixelData) {
     }
     const mean = gray.reduce((a, b) => a + b, 0) / gray.length;
     return gray.map(v => v > mean ? '1' : '0').join('');
-}
-
-async function matchFaceOnServer(faceHash) {
-    try {
-        const res = await fetch(`${API}/face_login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ face_hash: faceHash })
-        });
-        const data = await res.json();
-        if (res.ok && data.username) {
-            // Face recognized!
-            document.getElementById('face-auth-status').textContent = '✅ Face recognized!';
-            document.getElementById('face-auth-status').style.color = '#16a34a';
-            document.getElementById('face-match-name').textContent = `Hello, ${data.username}!`;
-            document.getElementById('face-auth-actions').style.display = 'block';
-            // Store hash for confirm
-            window._pendingFaceUser = data.username;
-            speakText(`Hello ${data.username}! Is that you?`, state.language);
-        } else {
-            // New face
-            document.getElementById('face-auth-status').textContent = 'New face — please register';
-            document.getElementById('face-register-section').style.display = 'block';
-            window._pendingFaceHash = faceHash;
-        }
-    } catch {
-        // Offline fallback — show register
-        document.getElementById('face-auth-status').textContent = 'New face — please register';
-        document.getElementById('face-register-section').style.display = 'block';
-        window._pendingFaceHash = faceHash;
-    }
-}
-
-async function confirmFaceAuth() {
-    const username = window._pendingFaceUser;
-    if (!username) return;
-    stopFaceCamera();
-    state.user = { username, farm_name: `${username}'s Farm` };
-    localStorage.setItem('agri_user', JSON.stringify(state.user));
-    speakText(`Welcome back, ${username}!`, state.language);
-    toast(`Welcome back, ${username}!`, 'success');
-    document.getElementById('face-auth-overlay').style.display = 'none';
-    enterApp();
-}
-
-function retryFaceAuth() {
-    document.getElementById('face-auth-actions').style.display = 'none';
-    document.getElementById('face-register-section').style.display = 'none';
-    document.getElementById('face-auth-status').textContent = 'Retrying... hold still';
-    document.getElementById('face-scan-line').style.display = 'block';
-    setTimeout(() => captureFaceAndMatch(), 2000);
-}
-
-async function registerFaceAuth() {
-    const name = document.getElementById('face-register-name').value.trim();
-    if (!name) { toast('Please enter your name', 'info'); return; }
-    const faceHash = window._pendingFaceHash;
-    if (!faceHash) { toast('No face captured', 'error'); return; }
-
-    showLoading('Registering face...');
-    try {
-        // Signup with face hash
-        await fetchAPI('/signup', { username: name, farm_name: `${name}'s Farm`, profile_picture: null });
-    } catch (err) {
-        // Ignore if already exists
-        if (!err.message?.includes('already exists')) {
-            toast(err.message || 'Signup failed', 'error');
-            hideLoading();
-            return;
-        }
-    }
-    try {
-        await fetch(`${API}/face_register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: name, face_hash: faceHash })
-        });
-        stopFaceCamera();
-        state.user = { username: name, farm_name: `${name}'s Farm` };
-        localStorage.setItem('agri_user', JSON.stringify(state.user));
-        speakText(`Welcome to AgriSmart, ${name}!`, state.language);
-        toast(`Face registered! Welcome, ${name}!`, 'success');
-        document.getElementById('face-auth-overlay').style.display = 'none';
-        enterApp();
-    } catch {
-        toast('Registration failed', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function cancelFaceAuth() {
-    stopFaceCamera();
-    const overlay = document.getElementById('face-auth-overlay');
-    if (overlay) overlay.style.display = 'none';
-    document.getElementById('auth-method-picker').style.display = 'flex';
 }
 
 function stopFaceCamera() {

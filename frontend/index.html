@@ -77,11 +77,6 @@
                     <span id="auth-method-voice-label">Speak (Voice)</span>
                     <small id="auth-method-voice-desc">Just say your name</small>
                 </button>
-                <button class="auth-method-btn face-btn-glow" id="auth-method-face" onclick="startFaceAuth()">
-                    <i class="fas fa-camera"></i>
-                    <span id="auth-method-face-label">Face ID</span>
-                    <small id="auth-method-face-desc">Use your face</small>
-                </button>
             </div>
         </div>
     </div>
@@ -162,9 +157,9 @@
     <!-- Face Auth Overlay -->
     <div class="face-auth-overlay" id="face-auth-overlay" style="display:none">
         <div class="voice-auth-card">
-            <button class="auth-back-btn" onclick="cancelFaceAuth()"><i class="fas fa-times"></i></button>
-            <h2 style="color:#166534;font-size:1.2rem;margin-bottom:0.5rem" id="face-auth-title">📸 Face Authentication</h2>
-            <p style="color:#6b7280;font-size:0.9rem;margin-bottom:1rem" id="face-auth-prompt">Position your face in the frame</p>
+            <button class="auth-back-btn" onclick="goBackFromFaceAuth()"><i class="fas fa-times"></i></button>
+            <h2 style="color:#166534;font-size:1.2rem;margin-bottom:0.5rem" id="face-auth-title">\uD83D\uDCF8 Face Verification</h2>
+            <p style="color:#6b7280;font-size:0.9rem;margin-bottom:1rem" id="face-auth-prompt">Look at the camera to verify your identity</p>
             <div class="face-camera-wrap">
                 <video id="face-video" autoplay playsinline muted style="width:100%;max-width:280px;border-radius:16px;border:3px solid #16a34a"></video>
                 <canvas id="face-canvas" style="display:none"></canvas>
@@ -179,12 +174,7 @@
                 </div>
             </div>
             <div id="face-register-section" style="display:none;margin-top:1rem">
-                <p style="color:#6b7280;font-size:0.85rem;margin-bottom:0.5rem" id="face-new-label">New face detected! Enter your name to register:</p>
-                <div class="input-wrap-lg" style="margin-bottom:0.75rem">
-                    <input type="text" id="face-register-name" placeholder="Your name" class="input-lg">
-                    <button type="button" class="voice-fill-btn" onclick="voiceFillField('face-register-name')" title="Speak name"><i class="fas fa-microphone"></i></button>
-                </div>
-                <button class="btn btn-primary btn-auth-lg" onclick="registerFaceAuth()" style="width:100%"><i class="fas fa-user-plus"></i> <span id="face-register-label">Register & Enter</span></button>
+                <p style="color:#16a34a;font-weight:600;font-size:0.95rem" id="face-new-label">Registering your face for future logins...</p>
             </div>
         </div>
     </div>
