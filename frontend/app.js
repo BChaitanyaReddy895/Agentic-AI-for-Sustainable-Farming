@@ -1,9 +1,9 @@
-﻿/* ══════════════════════════════════════════════════
-   AgriSmart AI — Application Logic
+/* --------------------------------------------------
+   AgriSmart AI � Application Logic
    Complete JS for all pages & features
-   ══════════════════════════════════════════════════ */
+   -------------------------------------------------- */
 
-// ─── State ───
+// --- State ---
 const state = {
     user: null,
     farmSetup: null,
@@ -17,7 +17,7 @@ const state = {
 
 const API = window.API_BASE || 'http://127.0.0.1:8001';
 
-// ─── Initialise on Load ───
+// --- Initialise on Load ---
 document.addEventListener('DOMContentLoaded', () => {
     restoreSession();
     setupNetworkListeners();
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply saved language on load
     applyTranslations(state.language);
     // Sync lang label
-    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    const labels = { en: 'EN', hi: '??', kn: '?', te: '??', ta: '?', ml: '?', bn: '??', gu: '??', mr: '?', pa: '?', or: '?' };
     const langLbl = document.getElementById('lang-label');
     if (langLbl) langLbl.textContent = labels[state.language] || 'EN';
     if (document.getElementById('settings-language')) {
@@ -42,10 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  SIMPLE MODE — For Illiterate Farmers
+// ---------------------------------------------------------------
+//  SIMPLE MODE � For Illiterate Farmers
 //  Voice-first, picture-first, minimal text, big buttons
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 
 function toggleSimpleMode() {
     const isSimple = document.body.classList.contains('simple-mode');
@@ -68,7 +68,7 @@ function activateSimpleMode(announce = true) {
     const toggle = document.getElementById('simple-mode-toggle');
     if (toggle) {
         toggle.classList.add('active');
-        toggle.querySelector('.smt-label').textContent = '✓ Simple Mode ON';
+        toggle.querySelector('.smt-label').textContent = '? Simple Mode ON';
     }
     
     // Show picture nav on dashboard
@@ -95,7 +95,7 @@ function activateSimpleMode(announce = true) {
     
     if (announce) {
         speakText(getSimpleText('simple.activated', 'Simple Mode activated! I will now speak everything aloud and show pictures instead of text. Tap the big pictures to use the app.'));
-        toast('🌾 Simple Mode ON — Pictures & Voice!', 'success');
+        toast('?? Simple Mode ON � Pictures & Voice!', 'success');
     }
 }
 
@@ -122,9 +122,9 @@ function deactivateSimpleMode() {
     toast('Advanced Mode restored', 'info');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  TEXT-TO-SPEECH ENGINE
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 const ttsLangMap = {
     'en': 'en-IN', 'hi': 'hi-IN', 'kn': 'kn-IN', 'te': 'te-IN',
@@ -139,6 +139,20 @@ function speakText(text, lang) {
     // Clean HTML tags and markdown
     const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').substring(0, 2000);
     
+    const useLang = lang || state.language;
+
+    // If text is English but user language is not, translate first then speak
+    if (useLang !== 'en' && /[a-zA-Z]{3,}/.test(cleanText) && !/[\u0900-\u0D7F\u0B80-\u0BFF]/.test(cleanText)) {
+        translateText(cleanText, useLang).then(translated => {
+            _doSpeak(translated, useLang);
+        });
+        return;
+    }
+    
+    return _doSpeak(cleanText, useLang);
+}
+
+function _doSpeak(cleanText, lang) {
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = ttsLangMap[lang || state.language] || 'en-IN';
     utterance.rate = 0.85;
@@ -176,7 +190,7 @@ if (window.speechSynthesis) {
 function addSpeakerButton(container, text) {
     const btn = document.createElement('button');
     btn.className = 'speaker-btn';
-    btn.innerHTML = '🔊';
+    btn.innerHTML = '??';
     btn.title = 'Listen';
     btn.onclick = (e) => {
         e.stopPropagation();
@@ -195,9 +209,9 @@ function addSpeakerButton(container, text) {
     container.appendChild(btn);
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  ONE-TAP SMART ADVICE
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function oneTapAdvice() {
     const progressEl = document.getElementById('one-tap-progress');
@@ -234,7 +248,7 @@ async function oneTapAdvice() {
         document.getElementById('user-lat').value = lat;
         document.getElementById('user-lon').value = lon;
         
-        let placeName = `${lat.toFixed(2)}°N`;
+        let placeName = `${lat.toFixed(2)}�N`;
         try {
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`);
             const geoData = await geoRes.json();
@@ -260,8 +274,8 @@ async function oneTapAdvice() {
         // Update simple weather display
         const simpleIcon = document.getElementById('simple-weather-icon');
         const simpleTemp = document.getElementById('simple-weather-temp');
-        if (simpleIcon) simpleIcon.textContent = temp > 35 ? '🔥' : temp > 25 ? '☀️' : temp > 15 ? '⛅' : '❄️';
-        if (simpleTemp) simpleTemp.textContent = temp + '°';
+        if (simpleIcon) simpleIcon.textContent = temp > 35 ? '??' : temp > 25 ? '??' : temp > 15 ? '?' : '??';
+        if (simpleTemp) simpleTemp.textContent = temp + '�';
         
         setOTPStep(2, 'done');
         
@@ -326,33 +340,33 @@ async function oneTapAdvice() {
         let confidence = 'Medium';
         
         if (quickData?.success) {
-            // ── Custom Engine Result (instant, no LLM) ──
+            // -- Custom Engine Result (instant, no LLM) --
             const eng = quickData.recommendation;
             topCrop = eng.recommended_crop || 'Unknown crop';
-            cropIcon = eng.crop_icon || '🌾';
+            cropIcon = eng.crop_icon || '??';
             score = Math.round((eng.final_score || 0) * 10);
             confidence = eng.confidence || 'Medium';
             alternatives = (eng.alternatives || []).slice(0, 3);
             scoreExplanation = eng.score_explanation || [];
             estimatedYield = eng.estimated_yield;
             scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
-            trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+            trafficEmoji = score >= 7 ? '??' : score >= 5 ? '??' : '??';
             
             resultHTML = buildVisualResultCard({
                 topCrop, cropIcon, score, scoreColor, trafficEmoji, placeName, temp, hum,
                 alternatives, scoreExplanation, estimatedYield, confidence,
-                engineLabel: 'AgriSmart AI Engine ⚡',
+                engineLabel: 'AgriSmart AI Engine ?',
                 layerScores: eng.layer_scores,
                 comparative: eng.comparative
             });
         } else {
-            // ── Full LLM pipeline result ──
+            // -- Full LLM pipeline result --
             topCrop = data.central_coordinator?.final_crop || 'Unknown crop';
             score = data.central_coordinator?.overall_score || 0;
             confidence = data.central_coordinator?.confidence_level || 'Medium';
             scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
-            trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
-            cropIcon = data.custom_engine?.crop_icon || '🌾';
+            trafficEmoji = score >= 7 ? '??' : score >= 5 ? '??' : '??';
+            cropIcon = data.custom_engine?.crop_icon || '??';
             alternatives = (data.custom_engine?.custom_alternatives || []).slice(0, 3);
             scoreExplanation = data.custom_engine?.score_explanation || [];
             estimatedYield = data.custom_engine?.estimated_yield;
@@ -368,10 +382,10 @@ async function oneTapAdvice() {
             // Add agent advice cards (only in full pipeline)
             const agents = data.agents || {};
             if (agents.farmer_advisor?.advice) {
-                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🚜</span><p>${agents.farmer_advisor.advice}</p></div>`;
+                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">??</span><p>${agents.farmer_advisor.advice}</p></div>`;
             }
             if (agents.weather_analyst?.advice) {
-                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">🌤️</span><p>${agents.weather_analyst.advice}</p></div>`;
+                resultHTML += `<div class="simple-advice-card"><span class="sac-icon">???</span><p>${agents.weather_analyst.advice}</p></div>`;
             }
         }
         
@@ -430,7 +444,7 @@ async function oneTapAdvice() {
         let errorMsg = 'Something went wrong. Please try again.';
         if (err.code === 1) errorMsg = 'Please allow location access and try again.';
         if (resultEl) {
-            resultEl.innerHTML = `<div class="one-tap-result-card" style="border-color:#ef4444"><div class="otr-traffic">❌</div><div class="otr-crop-name">${errorMsg}</div></div>`;
+            resultEl.innerHTML = `<div class="one-tap-result-card" style="border-color:#ef4444"><div class="otr-traffic">?</div><div class="otr-crop-name">${errorMsg}</div></div>`;
             resultEl.style.display = '';
         }
         autoSpeak(errorMsg);
@@ -439,9 +453,9 @@ async function oneTapAdvice() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  VISUAL RESULT CARD BUILDER
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function getCurrentSeason() {
     const m = new Date().getMonth();
@@ -456,7 +470,7 @@ function buildVisualResultCard(opts) {
             engineLabel, layerScores, comparative } = opts;
     
     const confidenceColor = confidence === 'High' ? '#16a34a' : confidence === 'Medium' ? '#eab308' : '#ef4444';
-    const confidenceIcon = confidence === 'High' ? '💪' : confidence === 'Medium' ? '👍' : '🤔';
+    const confidenceIcon = confidence === 'High' ? '??' : confidence === 'Medium' ? '??' : '??';
     
     let html = `
         <div class="one-tap-result-card" style="border-color:${scoreColor}">
@@ -465,22 +479,22 @@ function buildVisualResultCard(opts) {
             <div class="otr-crop-name">${topCrop}</div>
             <div class="otr-score" style="color:${scoreColor}">${score}/10</div>
             <div class="otr-confidence" style="color:${confidenceColor}">${confidenceIcon} ${confidence} Confidence</div>
-            <div class="otr-location">📍 ${placeName} | 🌡️ ${temp}° | 💧 ${hum}%</div>`;
+            <div class="otr-location">?? ${placeName} | ??? ${temp}� | ?? ${hum}%</div>`;
     
     if (estimatedYield) {
-        html += `<div class="otr-yield">🌾 Expected: ~${typeof estimatedYield === 'number' ? estimatedYield.toFixed(0) + ' kg/hectare' : estimatedYield}</div>`;
+        html += `<div class="otr-yield">?? Expected: ~${typeof estimatedYield === 'number' ? estimatedYield.toFixed(0) + ' kg/hectare' : estimatedYield}</div>`;
     }
     
     html += `<div class="otr-engine-badge">${engineLabel}</div>
         </div>`;
     
-    // Score explanation with ✅/⚠️/❌ icons (visual for illiterate farmers)
+    // Score explanation with ?/??/? icons (visual for illiterate farmers)
     if (scoreExplanation?.length) {
         html += '<div class="score-explain-cards">';
         for (const line of scoreExplanation.slice(0, 5)) {
-            const icon = line.includes('✅') ? '✅' : line.includes('⚠️') ? '⚠️' : line.includes('❌') ? '❌' : 'ℹ️';
-            const cleanText = line.replace(/[✅⚠️❌]/g, '').trim();
-            const bgClass = icon === '✅' ? 'explain-good' : icon === '⚠️' ? 'explain-warn' : icon === '❌' ? 'explain-bad' : 'explain-info';
+            const icon = line.includes('?') ? '?' : line.includes('??') ? '??' : line.includes('?') ? '?' : '??';
+            const cleanText = line.replace(/[????]/g, '').trim();
+            const bgClass = icon === '?' ? 'explain-good' : icon === '??' ? 'explain-warn' : icon === '?' ? 'explain-bad' : 'explain-info';
             html += `<div class="score-explain-card ${bgClass}"><span class="sec-icon">${icon}</span><span>${cleanText}</span></div>`;
         }
         html += '</div>';
@@ -490,14 +504,14 @@ function buildVisualResultCard(opts) {
     if (layerScores) {
         html += '<div class="layer-score-bars">';
         const layerLabels = {
-            agronomic: { icon: '🌱', label: 'Soil & Climate Match' },
-            npk: { icon: '🧪', label: 'Fertilizer Match' },
-            season: { icon: '📅', label: 'Season Match' },
-            ml_model: { icon: '🤖', label: 'AI Model Score' },
-            knowledge_base: { icon: '📚', label: 'Historical Data' }
+            agronomic: { icon: '??', label: 'Soil & Climate Match' },
+            npk: { icon: '??', label: 'Fertilizer Match' },
+            season: { icon: '??', label: 'Season Match' },
+            ml_model: { icon: '??', label: 'AI Model Score' },
+            knowledge_base: { icon: '??', label: 'Historical Data' }
         };
         for (const [key, val] of Object.entries(layerScores)) {
-            const info = layerLabels[key] || { icon: '📊', label: key };
+            const info = layerLabels[key] || { icon: '??', label: key };
             const pct = Math.round((val || 0) * 100);
             const barColor = pct >= 70 ? '#16a34a' : pct >= 40 ? '#eab308' : '#ef4444';
             html += `<div class="layer-bar-row">
@@ -512,10 +526,10 @@ function buildVisualResultCard(opts) {
     
     // Alternative crops as visual emoji cards
     if (alternatives?.length) {
-        html += '<div class="alt-crops-section"><div class="alt-crops-title">🔄 Other Good Crops</div><div class="alt-crops-grid">';
+        html += '<div class="alt-crops-section"><div class="alt-crops-title">?? Other Good Crops</div><div class="alt-crops-grid">';
         for (const alt of alternatives) {
             const altName = alt.crop || alt.name || 'Unknown';
-            const altIcon = alt.icon || '🌾';
+            const altIcon = alt.icon || '??';
             const altScore = Math.round((alt.score || alt.final_score || 0) * 100);
             const altColor = altScore >= 70 ? '#16a34a' : altScore >= 40 ? '#eab308' : '#ef4444';
             html += `<div class="alt-crop-card">
@@ -527,7 +541,7 @@ function buildVisualResultCard(opts) {
         html += '</div></div>';
     }
     
-    // ── Comparative Scoring Table — "Why this crop?" ──
+    // -- Comparative Scoring Table � "Why this crop?" --
     if (comparative) {
         html += buildComparativeSection(comparative, topCrop);
     }
@@ -548,8 +562,8 @@ function buildComparativeSection(comparative, topCrop) {
     if (prefList.length > 1) {
         html += `<div class="comparative-section">
             <div class="comp-header">
-                <span class="comp-icon">📊</span>
-                <span class="comp-title">Comparative Scores — ${prefName}</span>
+                <span class="comp-icon">??</span>
+                <span class="comp-title">Comparative Scores � ${prefName}</span>
             </div>
             <p class="comp-subtitle">Why <strong>${topCrop}</strong> ranks highest in your preferred category:</p>
             <div class="comp-table">`;
@@ -567,10 +581,10 @@ function buildComparativeSection(comparative, topCrop) {
                 </div>
                 <span class="comp-score" style="color:${textColor}">${crop.score.toFixed(1)}</span>
                 <div class="comp-breakdown">
-                    <span title="Soil & Climate">🌱${crop.agronomic.toFixed(1)}</span>
-                    <span title="Season">📅${crop.season.toFixed(0)}</span>
-                    <span title="AI Model">🤖${crop.ml.toFixed(1)}</span>
-                    <span title="Historical Data">📚${crop.kb.toFixed(1)}</span>
+                    <span title="Soil & Climate">??${crop.agronomic.toFixed(1)}</span>
+                    <span title="Season">??${crop.season.toFixed(0)}</span>
+                    <span title="AI Model">??${crop.ml.toFixed(1)}</span>
+                    <span title="Historical Data">??${crop.kb.toFixed(1)}</span>
                 </div>
             </div>`;
         }
@@ -582,8 +596,8 @@ function buildComparativeSection(comparative, topCrop) {
     if (topAll.length > 1) {
         html += `<div class="comparative-section">
             <div class="comp-header">
-                <span class="comp-icon">🏆</span>
-                <span class="comp-title">Top Crops — All Categories</span>
+                <span class="comp-icon">??</span>
+                <span class="comp-title">Top Crops � All Categories</span>
             </div>
             <div class="comp-table comp-table-overall">`;
         
@@ -591,7 +605,7 @@ function buildComparativeSection(comparative, topCrop) {
             const crop = topAll[i];
             const isTop = crop.crop.toLowerCase() === topCrop.toLowerCase();
             const pct = Math.round(crop.score * 10);
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+            const medal = i === 0 ? '??' : i === 1 ? '??' : i === 2 ? '??' : `#${i+1}`;
             html += `<div class="comp-row-mini ${isTop ? 'comp-row-top' : ''}">
                 <span class="comp-rank">${medal}</span>
                 <span class="comp-crop-icon">${crop.icon}</span>
@@ -609,9 +623,9 @@ function buildComparativeSection(comparative, topCrop) {
     return html;
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  VISUAL CROP & SOIL PICKERS
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function selectVisualCrop(crop, btn) {
     // Update visual selection
@@ -635,7 +649,7 @@ function selectVisualCrop(crop, btn) {
     state.selectedSpecificCrop = crop;
     
     autoSpeak('You selected ' + crop);
-    toast(`Selected: ${crop} ✓`, 'success');
+    toast(`Selected: ${crop} ?`, 'success');
 }
 
 function selectVisualSoil(soil, btn) {
@@ -644,12 +658,12 @@ function selectVisualSoil(soil, btn) {
     document.getElementById('soil-type').value = soil;
     
     autoSpeak('You selected ' + soil + ' soil');
-    toast(`Soil: ${soil} ✓`, 'success');
+    toast(`Soil: ${soil} ?`, 'success');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  EMERGENCY PEST HELP
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function emergencyPestHelp() {
     document.getElementById('emergency-modal').style.display = '';
@@ -682,7 +696,7 @@ async function runEmergencyPest(crop) {
         });
         
         const risk = (data.overall_risk || 'low').toLowerCase();
-        const riskEmoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
+        const riskEmoji = risk === 'high' ? '??' : risk === 'medium' ? '??' : '??';
         const riskLabel = risk === 'high' ? 'DANGER!' : risk === 'medium' ? 'Watch Out' : 'Safe';
         const riskColor = risk === 'high' ? '#ef4444' : risk === 'medium' ? '#eab308' : '#16a34a';
         
@@ -697,7 +711,7 @@ async function runEmergencyPest(crop) {
             html += '<div class="er-pests">';
             data.predictions.slice(0, 3).forEach(p => {
                 const sev = (p.severity || 'low').toLowerCase();
-                const icon = sev === 'high' ? '🔴' : sev === 'medium' ? '🟡' : '🟢';
+                const icon = sev === 'high' ? '??' : sev === 'medium' ? '??' : '??';
                 html += `<div class="er-pest-item"><span>${icon}</span><strong>${p.pest}</strong><span>${Math.round(p.probability * 100)}%</span></div>`;
             });
             html += '</div>';
@@ -707,7 +721,7 @@ async function runEmergencyPest(crop) {
         if (data.prevention_tips?.length) {
             html += '<div class="er-tips">';
             data.prevention_tips.slice(0, 2).forEach(tip => {
-                html += `<div class="er-tip">💡 ${tip}</div>`;
+                html += `<div class="er-tip">?? ${tip}</div>`;
             });
             html += '</div>';
         }
@@ -726,14 +740,14 @@ async function runEmergencyPest(crop) {
         
     } catch (err) {
         resultEl.innerHTML = `<div class="emergency-result-card" style="border-color:#ef4444">
-            <div class="er-traffic">❌</div><div class="er-label" style="color:#ef4444">Could not check. Try again.</div></div>`;
+            <div class="er-traffic">?</div><div class="er-label" style="color:#ef4444">Could not check. Try again.</div></div>`;
         autoSpeak('Could not check pest danger. Please try again.');
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  AUDIO PAGE NARRATION
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 const pageNarrations = {
     'dashboard': 'simple.narrate.dashboard|Welcome to your farm dashboard. Tap the big green button to get AI advice, or tap the pictures below to navigate.',
@@ -754,9 +768,9 @@ function narratePage(pageId) {
     setTimeout(() => speakText(fallback), 500);
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  HELPER: Get simple mode text
-// ═══════════════════════════════════════
+// ---------------------------------------
 function getSimpleText(key, fallback) {
     // Try translations first, fall back to English
     if (typeof t === 'function') {
@@ -766,38 +780,38 @@ function getSimpleText(key, fallback) {
     return fallback;
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  WALKTHROUGH / ONBOARDING
-// ═══════════════════════════════════════
+// ---------------------------------------
 const walkthroughSteps = [
     {
         illustration: 'farm',
         title: 'Welcome to AgriSmart AI!',
-        desc: 'Your smart farming assistant powered by AI. Let us guide you through the app — it takes just 30 seconds!',
+        desc: 'Your smart farming assistant powered by AI. Let us guide you through the app � it takes just 30 seconds!',
         color: '#16a34a'
     },
     {
         illustration: 'gps',
         title: 'Step 1: Detect Your Location',
-        desc: 'Go to Farm Setup and tap "Detect My Location". We automatically get your weather, temperature, and rainfall — no typing needed!',
+        desc: 'Go to Farm Setup and tap "Detect My Location". We automatically get your weather, temperature, and rainfall � no typing needed!',
         color: '#0ea5e9'
     },
     {
         illustration: 'plant',
         title: 'Step 2: Tell Us About Fertilizer',
-        desc: 'Just tap emoji buttons — None, Little, Medium, or A Lot — for each fertilizer type. Simple and quick!',
+        desc: 'Just tap emoji buttons � None, Little, Medium, or A Lot � for each fertilizer type. Simple and quick!',
         color: '#f59e0b'
     },
     {
         illustration: 'ai',
         title: 'Step 3: Get AI Recommendations',
-        desc: '5 AI agents analyze your data together — crop advisor, market researcher, weather analyst, sustainability expert, and coordinator. Watch them discuss!',
+        desc: '5 AI agents analyze your data together � crop advisor, market researcher, weather analyst, sustainability expert, and coordinator. Watch them discuss!',
         color: '#8b5cf6'
     },
     {
         illustration: 'charts',
         title: 'Explore More Features',
-        desc: 'Soil analysis from photos, pest prediction, weather alerts, community insights, crop rotation planner — all powered by AI for your farm!',
+        desc: 'Soil analysis from photos, pest prediction, weather alerts, community insights, crop rotation planner � all powered by AI for your farm!',
         color: '#ec4899'
     }
 ];
@@ -828,7 +842,7 @@ function renderWalkthroughStep() {
         `<span class="wt-dot${i === walkthroughStep ? ' active' : ''}" style="${i === walkthroughStep ? 'background:' + step.color : ''}"></span>`
     ).join('');
     const nextBtn = document.getElementById('walkthrough-next');
-    nextBtn.textContent = walkthroughStep === walkthroughSteps.length - 1 ? "Let's Go! 🚀" : 'Next →';
+    nextBtn.textContent = walkthroughStep === walkthroughSteps.length - 1 ? "Let's Go! ??" : 'Next ?';
     const card = document.getElementById('walkthrough-card');
     card.classList.remove('animate-scale-in');
     void card.offsetWidth;
@@ -850,9 +864,9 @@ function closeWalkthrough() {
     localStorage.setItem('agri_walkthrough_done', '1');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  ANIMATED SVG ILLUSTRATIONS
-// ═══════════════════════════════════════
+// ---------------------------------------
 function getWalkthroughSVG(type, color) {
     const svgs = {
         farm: `<svg viewBox="0 0 200 200" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
@@ -1052,16 +1066,16 @@ function getWalkthroughSVG(type, color) {
             </circle>
         </svg>`
     };
-    return svgs[type] || `<div style="font-size:3.5rem">🌾</div>`;
+    return svgs[type] || `<div style="font-size:3.5rem">??</div>`;
 }
 
-// ═══════════════════════════════════════
-// (confetti removed — not appropriate for farmer-focused app)
-// ═══════════════════════════════════════
+// ---------------------------------------
+// (confetti removed � not appropriate for farmer-focused app)
+// ---------------------------------------
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  ANIMATED COUNTER (count-up effect)
-// ═══════════════════════════════════════
+// ---------------------------------------
 function animateCounter(element, target, duration = 1200, suffix = '') {
     const start = 0;
     const startTime = performance.now();
@@ -1077,9 +1091,9 @@ function animateCounter(element, target, duration = 1200, suffix = '') {
     requestAnimationFrame(updateCounter);
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  RIPPLE EFFECT ON BUTTONS
-// ═══════════════════════════════════════
+// ---------------------------------------
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
@@ -1092,9 +1106,9 @@ document.addEventListener('click', function(e) {
     setTimeout(() => ripple.remove(), 600);
 });
 
-// ═══════════════════════════════════════
-//  INTERSECTION OBSERVER — ANIMATE ON SCROLL
-// ═══════════════════════════════════════
+// ---------------------------------------
+//  INTERSECTION OBSERVER � ANIMATE ON SCROLL
+// ---------------------------------------
 const scrollAnimObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -1113,9 +1127,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initDraggableSOS();
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  SKELETON LOADING HELPER
-// ═══════════════════════════════════════
+// ---------------------------------------
 function showSkeleton(containerId, rows = 3) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -1135,9 +1149,9 @@ function hideSkeleton(containerId) {
     if (sk) sk.remove();
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  TYPING ANIMATION (for AI responses)
-// ═══════════════════════════════════════
+// ---------------------------------------
 function typeText(element, text, speed = 15) {
     return new Promise(resolve => {
         let i = 0;
@@ -1156,16 +1170,16 @@ function typeText(element, text, speed = 15) {
     });
 }
 
-// ═══════════════════════════════════════
-//  AUTH — Simplified for Farmers (Voice + Manual)
-// ═══════════════════════════════════════
+// ---------------------------------------
+//  AUTH � Simplified for Farmers (Voice + Manual)
+// ---------------------------------------
 
-// ── Auth Language Selection (Step 1) ──
+// -- Auth Language Selection (Step 1) --
 function selectAuthLanguage(lang) {
     state.language = lang;
     localStorage.setItem('agri_lang', lang);
     // Update app-wide language
-    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    const labels = { en: 'EN', hi: '??', kn: '?', te: '??', ta: '?', ml: '?', bn: '??', gu: '??', mr: '?', pa: '?', or: '?' };
     const langLbl = document.getElementById('lang-label');
     if (langLbl) langLbl.textContent = labels[lang] || lang.toUpperCase();
     applyTranslations(lang);
@@ -1177,21 +1191,21 @@ function selectAuthLanguage(lang) {
     // Voice greeting in selected language
     const greetings = {
         en: 'Welcome! Choose typing or speaking to continue.',
-        hi: 'स्वागत है! आगे बढ़ने के लिए टाइपिंग या बोलना चुनें।',
-        te: 'స్వాగతం! కొనసాగించడానికి టైపింగ్ లేదా మాట్లాడడం ఎంచుకోండి.',
-        kn: 'ಸ್ವಾಗತ! ಮುಂದುವರಿಸಲು ಟೈಪಿಂಗ್ ಅಥವಾ ಮಾತನಾಡುವುದನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
-        ta: 'வரவேற்கிறோம்! தொடர தட்டச்சு அல்லது பேச்சை தேர்வு செய்யவும்.',
-        ml: 'സ്വാഗതം! തുടരാൻ ടൈപ്പിംഗ് അല്ലെങ്കിൽ സംസാരിക്കുക തിരഞ്ഞെടുക്കുക.',
-        bn: 'স্বাগতম! টাইপিং বা কথা বলা চালিয়ে যান।',
-        gu: 'સ્વાગત છે! આગળ વધવા ટાઈપિંગ અથવા બોલવાનું પસંદ કરો.',
-        mr: 'स्वागत! पुढे जाण्यासाठी टायपिंग किंवा बोलणे निवडा.',
-        pa: 'ਜੀ ਆਇਆਂ ਨੂੰ! ਅੱਗੇ ਵਧਣ ਲਈ ਟਾਈਪਿੰਗ ਜਾਂ ਬੋਲਣਾ ਚੁਣੋ।',
-        or: 'ସ୍ୱାଗତ! ଆଗକୁ ବଢ଼ିବା ପାଇଁ ଟାଇପିଂ କିମ୍ବା କହିବା ବାଛନ୍ତୁ।'
+        hi: '?????? ??! ??? ????? ?? ??? ??????? ?? ????? ??????',
+        te: '???????! ??????????????? ??????? ???? ????????? ?????????.',
+        kn: '??????! ??????????? ??????? ???? ?????????????? ?????????.',
+        ta: '????????????! ???? ???????? ?????? ?????? ?????? ?????????.',
+        ml: '???????! ?????? ????????? ?????????? ??????????? ??????????????.',
+        bn: '???????! ?????? ?? ??? ??? ??????? ????',
+        gu: '?????? ??! ??? ???? ??????? ???? ???????? ???? ???.',
+        mr: '??????! ???? ?????????? ??????? ????? ????? ?????.',
+        pa: '?? ???? ???! ???? ??? ?? ??????? ??? ????? ?????',
+        or: '??????! ???? ?????? ???? ?????? ?????? ????? ????????'
     };
     speakText(greetings[lang] || greetings.en, lang);
 }
 
-// ── Translate auth UI elements dynamically ──
+// -- Translate auth UI elements dynamically --
 async function translateAuthUI(lang) {
     if (lang === 'en') return;
     const elements = {
@@ -1201,6 +1215,8 @@ async function translateAuthUI(lang) {
         'auth-method-manual-desc': 'Fill form by typing',
         'auth-method-voice-label': 'Speak (Voice)',
         'auth-method-voice-desc': 'Just say your name',
+        'auth-method-face-label': 'Face ID',
+        'auth-method-face-desc': 'Use your face',
         'auth-simple-title': 'Welcome to AgriSmart',
         'tab-signup-label': 'New Farmer',
         'tab-login-label': 'Existing Farmer',
@@ -1212,7 +1228,13 @@ async function translateAuthUI(lang) {
         'voice-auth-status': 'Listening...',
         'voice-auth-prompt': 'Please say your name clearly',
         'voice-confirm-label': 'Yes, that is me',
-        'voice-retry-label': 'Try again'
+        'voice-retry-label': 'Try again',
+        'face-auth-title': 'Face Authentication',
+        'face-auth-prompt': 'Position your face in the frame',
+        'face-confirm-label': 'Yes, that is me',
+        'face-retry-label': 'Try again',
+        'face-new-label': 'New face detected! Enter your name to register:',
+        'face-register-label': 'Register and Enter'
     };
     const texts = Object.values(elements);
     const ids = Object.keys(elements);
@@ -1252,7 +1274,7 @@ async function translateAuthUI(lang) {
     } catch (e) { /* ok */ }
 }
 
-// ── Show Manual Auth ──
+// -- Show Manual Auth --
 function showManualAuth() {
     document.getElementById('auth-method-picker').style.display = 'none';
     document.getElementById('auth-simple-form').style.display = 'flex';
@@ -1262,10 +1284,12 @@ function showManualAuth() {
 function goBackToMethodPicker() {
     document.getElementById('auth-simple-form').style.display = 'none';
     document.getElementById('voice-auth-overlay').style.display = 'none';
+    document.getElementById('face-auth-overlay').style.display = 'none';
+    cancelFaceAuth();
     document.getElementById('auth-method-picker').style.display = 'flex';
 }
 
-// ── Voice Auth Flow ──
+// -- Voice Auth Flow --
 let voiceAuthName = '';
 function startVoiceAuth() {
     document.getElementById('auth-method-picker').style.display = 'none';
@@ -1275,16 +1299,16 @@ function startVoiceAuth() {
     // Speak prompt in selected language
     const prompts = {
         en: 'Please say your name clearly',
-        hi: 'कृपया अपना नाम स्पष्ट रूप से बोलें',
-        te: 'దయచేసి మీ పేరు స్పష్టంగా చెప్పండి',
-        kn: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಹೇಳಿ',
-        ta: 'தயவுசெய்து உங்கள் பெயரை தெளிவாக சொல்லுங்கள்',
-        ml: 'ദയവായി നിങ്ങളുടെ പേര് വ്യക്തമായി പറയുക',
-        bn: 'অনুগ্রহ করে আপনার নাম স্পষ্টভাবে বলুন',
-        gu: 'કૃપા કરીને તમારું નામ સ્પષ્ટ રીતે બોલો',
-        mr: 'कृपया तुमचे नाव स्पष्टपणे सांगा',
-        pa: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਨਾਮ ਸਾਫ਼ ਬੋਲੋ',
-        or: 'ଦୟାକରି ଆପଣଙ୍କ ନାମ ସ୍ପଷ୍ଟ ଭାବରେ କୁହନ୍ତୁ'
+        hi: '????? ???? ??? ?????? ??? ?? ?????',
+        te: '?????? ?? ???? ????????? ????????',
+        kn: '???????? ????? ???????? ?????????? ????',
+        ta: '?????????? ?????? ????? ??????? ???????????',
+        ml: '?????? ????????? ???? ?????????? ?????',
+        bn: '??????? ??? ????? ??? ?????????? ????',
+        gu: '???? ????? ?????? ??? ?????? ???? ????',
+        mr: '????? ????? ??? ????????? ?????',
+        pa: '????? ???? ???? ??? ???? ????',
+        or: '?????? ?????? ??? ?????? ????? ???????'
     };
     setTimeout(() => speakText(prompts[state.language] || prompts.en, state.language), 300);
     // Start listening
@@ -1321,16 +1345,16 @@ function listenForVoiceAuth() {
         // Speak back for confirmation
         const confirmMsg = {
             en: `I heard ${transcript}. Is that correct?`,
-            hi: `मैंने सुना ${transcript}। क्या यह सही है?`,
-            te: `నేను ${transcript} అని విన్నాను. ఇది సరైనదా?`,
-            kn: `ನಾನು ${transcript} ಎಂದು ಕೇಳಿದೆ. ಇದು ಸರಿಯೇ?`,
-            ta: `${transcript} என்று கேட்டேன். இது சரியா?`,
-            ml: `${transcript} എന്ന് കേട്ടു. ശരിയാണോ?`,
-            bn: `${transcript} শুনেছি। এটি কি ঠিক?`,
-            gu: `${transcript} સાંભળ્યું. શું આ સાચું છે?`,
-            mr: `${transcript} ऐकले. हे बरोबर आहे का?`,
-            pa: `${transcript} ਸੁਣਿਆ। ਕੀ ਇਹ ਸਹੀ ਹੈ?`,
-            or: `${transcript} ଶୁଣିଲି। ଏହା ଠିକ୍ କି?`
+            hi: `????? ???? ${transcript}? ???? ?? ??? ???`,
+            te: `???? ${transcript} ??? ????????. ??? ???????`,
+            kn: `???? ${transcript} ???? ??????. ??? ??????`,
+            ta: `${transcript} ????? ????????. ??? ??????`,
+            ml: `${transcript} ????? ??????. ????????`,
+            bn: `${transcript} ??????? ??? ?? ????`,
+            gu: `${transcript} ?????????. ??? ? ????? ???`,
+            mr: `${transcript} ????. ?? ????? ??? ???`,
+            pa: `${transcript} ?????? ?? ?? ??? ???`,
+            or: `${transcript} ??????? ??? ???? ???`
         };
         speakText(confirmMsg[state.language] || confirmMsg.en, state.language);
     };
@@ -1339,9 +1363,9 @@ function listenForVoiceAuth() {
         if (animEl) animEl.classList.remove('listening');
         const retryMsg = {
             en: 'Could not hear clearly. Please try again.',
-            hi: 'स्पष्ट सुनाई नहीं दिया। कृपया फिर से कोशिश करें।',
-            te: 'స్పష్టంగా వినలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.',
-            kn: 'ಸ್ಪಷ್ಟವಾಗಿ ಕೇಳಲಿಲ್ಲ. ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.'
+            hi: '?????? ????? ???? ????? ????? ??? ?? ????? ?????',
+            te: '????????? ???????. ?????? ????? ?????????????.',
+            kn: '?????????? ????????. ????????? ??????????.'
         };
         speakText(retryMsg[state.language] || retryMsg.en, state.language);
     };
@@ -1376,10 +1400,10 @@ async function doVoiceSignupLogin(name) {
         localStorage.setItem('agri_user', JSON.stringify(state.user));
         const welcomeBack = {
             en: `Welcome back, ${name}!`,
-            hi: `वापस स्वागत है, ${name}!`,
-            te: `తిరిగి స్వాగతం, ${name}!`,
-            kn: `ಮತ್ತೆ ಸ್ವಾಗತ, ${name}!`,
-            ta: `மீண்டும் வரவேற்கிறோம், ${name}!`
+            hi: `???? ?????? ??, ${name}!`,
+            te: `?????? ???????, ${name}!`,
+            kn: `????? ??????, ${name}!`,
+            ta: `???????? ????????????, ${name}!`
         };
         speakText(welcomeBack[state.language] || welcomeBack.en, state.language);
         toast(`Welcome back, ${name}!`, 'success');
@@ -1392,9 +1416,9 @@ async function doVoiceSignupLogin(name) {
             localStorage.setItem('agri_user', JSON.stringify(state.user));
             const welcomeNew = {
                 en: `Welcome to AgriSmart, ${name}! Your account is ready.`,
-                hi: `AgriSmart में स्वागत है, ${name}! आपका खाता तैयार है।`,
-                te: `AgriSmart కి స్వాగతం, ${name}! మీ ఖాతా సిద్ధంగా ఉంది.`,
-                kn: `AgriSmart ಗೆ ಸ್ವಾಗತ, ${name}! ನಿಮ್ಮ ಖಾತೆ ಸಿದ್ಧವಾಗಿದೆ.`
+                hi: `AgriSmart ??? ?????? ??, ${name}! ???? ???? ????? ???`,
+                te: `AgriSmart ?? ???????, ${name}! ?? ???? ???????? ????.`,
+                kn: `AgriSmart ?? ??????, ${name}! ????? ???? ???????????.`
             };
             speakText(welcomeNew[state.language] || welcomeNew.en, state.language);
             toast(`Welcome, ${name}!`, 'success');
@@ -1466,7 +1490,7 @@ async function handleLogin(e) {
         toast(`Welcome back, ${res.username}!`, 'success');
         enterApp();
     } catch {
-        toast('User not found — please sign up first', 'error');
+        toast('User not found � please sign up first', 'error');
     } finally {
         hideLoading();
     }
@@ -1494,11 +1518,13 @@ function enterApp() {
     navigate('dashboard');
     // Apply dynamic translation to entire app after entering
     dynamicTranslateApp(state.language);
+    // Start auto-translating any new DOM content
+    startTranslationObserver();
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  VOICE-FILL FOR ANY INPUT FIELD
-// ═══════════════════════════════════════
+// ---------------------------------------
 function voiceFillField(fieldId) {
     const field = document.getElementById(fieldId);
     if (!field) return;
@@ -1541,92 +1567,248 @@ function voiceFillField(fieldId) {
     recognition.start();
 }
 
-// ═══════════════════════════════════════
-//  DYNAMIC TRANSLATION — deep-translator API
-// ═══════════════════════════════════════
+// ---------------------------------------
+//  DYNAMIC TRANSLATION � deep-translator API
+//  COMPLETE: translates ALL text nodes, options,
+//  placeholders, titles, tooltips, dynamic content
+// ---------------------------------------
 let _translateCache = {};
+let _translateQueue = []; // pending batch queue
+let _translateTimer = null;
+let _translating = false;
+
+// Batch API call helper
+async function _batchTranslate(texts, lang) {
+    if (!texts.length || lang === 'en') return texts;
+    try {
+        const res = await fetch(`${API}/api/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts, target: lang, source: 'en' })
+        });
+        const data = await res.json();
+        return data.translations || texts;
+    } catch { return texts; }
+}
+
+// Check if text is English (needs translation)
+function _isEnglishText(text) {
+    if (!text || text.length < 2 || text.length > 500) return false;
+    // Skip numbers, emojis-only, special chars only
+    const cleaned = text.replace(/[\d\s.,;:!?%�?$�@#&*()\-+=/<>\[\]{}|\\'"`~^_????????????????????????????????????????????????????????????????]/g, '').trim();
+    if (!cleaned) return false;
+    // Has at least some Latin characters
+    return /[a-zA-Z]{2,}/.test(cleaned);
+}
 
 async function dynamicTranslateApp(lang) {
     if (lang === 'en') return;
-    // Collect all visible text nodes that need translation
-    const textEls = document.querySelectorAll(
-        'h1, h2, h3, h4, h5, h6, label, p, span, button, a, .card-title, .card-desc, .sidebar-link span, .section-title, .stat-label, .btn'
+    _translating = true;
+
+    // -- 1. Collect ALL text nodes using TreeWalker --
+    const textNodes = [];
+    const skip = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'TEXTAREA', 'INPUT']);
+    const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode(node) {
+                if (skip.has(node.parentElement?.tagName)) return NodeFilter.FILTER_REJECT;
+                if (node.parentElement?.closest('script, style, .lang-float-menu, .lang-grid')) return NodeFilter.FILTER_REJECT;
+                const text = node.textContent.trim();
+                if (_isEnglishText(text)) return NodeFilter.FILTER_ACCEPT;
+                return NodeFilter.FILTER_REJECT;
+            }
+        }
     );
-    const textsToTranslate = [];
-    const targetEls = [];
-    textEls.forEach(el => {
-        // Skip hidden, scripts, styles, already-translated
-        if (el.offsetParent === null && el.tagName !== 'SPAN') return;
-        if (el.closest('script, style, .lang-float-menu')) return;
-        const text = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
-            ? el.textContent.trim()
-            : null;
-        if (text && text.length > 1 && text.length < 200 && /[a-zA-Z]/.test(text)) {
-            const cacheKey = `${lang}:${text}`;
-            if (_translateCache[cacheKey]) {
-                el.textContent = _translateCache[cacheKey];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    // Separate cached vs uncached
+    const uncachedNodes = [];
+    const uncachedTexts = [];
+    textNodes.forEach(node => {
+        const text = node.textContent.trim();
+        const cacheKey = `${lang}:${text}`;
+        if (_translateCache[cacheKey]) {
+            node.textContent = node.textContent.replace(text, _translateCache[cacheKey]);
+        } else {
+            uncachedNodes.push(node);
+            uncachedTexts.push(text);
+        }
+    });
+
+    // Batch translate text nodes (50 at a time)
+    for (let i = 0; i < uncachedTexts.length; i += 50) {
+        const batch = uncachedTexts.slice(i, i + 50);
+        const batchNodes = uncachedNodes.slice(i, i + 50);
+        const translated = await _batchTranslate(batch, lang);
+        translated.forEach((t, idx) => {
+            const orig = batch[idx];
+            _translateCache[`${lang}:${orig}`] = t;
+            if (batchNodes[idx].parentNode) {
+                batchNodes[idx].textContent = batchNodes[idx].textContent.replace(orig, t);
+            }
+        });
+    }
+
+    // -- 2. Translate <option> elements --
+    const options = document.querySelectorAll('select option');
+    const optTexts = [], optEls = [];
+    options.forEach(opt => {
+        const text = opt.textContent.trim();
+        if (_isEnglishText(text)) {
+            const ck = `${lang}:${text}`;
+            if (_translateCache[ck]) {
+                opt.textContent = _translateCache[ck];
             } else {
-                textsToTranslate.push(text);
-                targetEls.push(el);
+                optTexts.push(text);
+                optEls.push(opt);
             }
         }
     });
-    // Also translate placeholders
+    if (optTexts.length) {
+        for (let i = 0; i < optTexts.length; i += 50) {
+            const batch = optTexts.slice(i, i + 50);
+            const batchEls = optEls.slice(i, i + 50);
+            const translated = await _batchTranslate(batch, lang);
+            translated.forEach((t, idx) => {
+                _translateCache[`${lang}:${batch[idx]}`] = t;
+                batchEls[idx].textContent = t;
+            });
+        }
+    }
+
+    // -- 3. Translate placeholders --
     const inputEls = document.querySelectorAll('input[placeholder], textarea[placeholder]');
-    const placeholderTexts = [];
-    const placeholderEls = [];
+    const phTexts = [], phEls = [];
     inputEls.forEach(el => {
         const ph = el.placeholder.trim();
-        if (ph && ph.length > 1 && /[a-zA-Z]/.test(ph)) {
-            const cacheKey = `${lang}:ph:${ph}`;
-            if (_translateCache[cacheKey]) {
-                el.placeholder = _translateCache[cacheKey];
+        if (_isEnglishText(ph)) {
+            const ck = `${lang}:ph:${ph}`;
+            if (_translateCache[ck]) {
+                el.placeholder = _translateCache[ck];
             } else {
-                placeholderTexts.push(ph);
-                placeholderEls.push(el);
+                phTexts.push(ph);
+                phEls.push(el);
             }
         }
     });
+    if (phTexts.length) {
+        const translated = await _batchTranslate(phTexts, lang);
+        translated.forEach((t, idx) => {
+            _translateCache[`${lang}:ph:${phTexts[idx]}`] = t;
+            phEls[idx].placeholder = t;
+        });
+    }
 
-    // Batch translate text content (max 50 at a time)
-    if (textsToTranslate.length > 0) {
-        for (let i = 0; i < textsToTranslate.length; i += 50) {
-            const batch = textsToTranslate.slice(i, i + 50);
-            const batchEls = targetEls.slice(i, i + 50);
-            try {
-                const res = await fetch(`${API}/api/translate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ texts: batch, target: lang, source: 'en' })
-                });
-                const data = await res.json();
-                if (data.translations) {
-                    data.translations.forEach((t, idx) => {
-                        batchEls[idx].textContent = t;
-                        _translateCache[`${lang}:${batch[idx]}`] = t;
-                    });
-                }
-            } catch (e) { /* fallback to English */ }
+    // -- 4. Translate title/tooltip attributes --
+    const titledEls = document.querySelectorAll('[title]');
+    const titleTexts = [], titleEls = [];
+    titledEls.forEach(el => {
+        const tt = el.title.trim();
+        if (_isEnglishText(tt)) {
+            const ck = `${lang}:title:${tt}`;
+            if (_translateCache[ck]) {
+                el.title = _translateCache[ck];
+            } else {
+                titleTexts.push(tt);
+                titleEls.push(el);
+            }
+        }
+    });
+    if (titleTexts.length) {
+        const translated = await _batchTranslate(titleTexts, lang);
+        translated.forEach((t, idx) => {
+            _translateCache[`${lang}:title:${titleTexts[idx]}`] = t;
+            titleEls[idx].title = t;
+        });
+    }
+
+    _translating = false;
+}
+
+// -- Translate a specific container (for dynamic content) --
+async function translateContainer(container, lang) {
+    if (!container || (lang || state.language) === 'en') return;
+    lang = lang || state.language;
+    const textNodes = [];
+    const skip = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'TEXTAREA', 'INPUT']);
+    const walker = document.createTreeWalker(
+        container, NodeFilter.SHOW_TEXT,
+        { acceptNode(node) {
+            if (skip.has(node.parentElement?.tagName)) return NodeFilter.FILTER_REJECT;
+            return _isEnglishText(node.textContent.trim()) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }}
+    );
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    const uncached = [], uncachedNodes = [];
+    textNodes.forEach(node => {
+        const text = node.textContent.trim();
+        const ck = `${lang}:${text}`;
+        if (_translateCache[ck]) {
+            node.textContent = node.textContent.replace(text, _translateCache[ck]);
+        } else {
+            uncached.push(text);
+            uncachedNodes.push(node);
+        }
+    });
+    if (uncached.length) {
+        for (let i = 0; i < uncached.length; i += 50) {
+            const batch = uncached.slice(i, i + 50);
+            const bNodes = uncachedNodes.slice(i, i + 50);
+            const translated = await _batchTranslate(batch, lang);
+            translated.forEach((t, idx) => {
+                _translateCache[`${lang}:${batch[idx]}`] = t;
+                if (bNodes[idx].parentNode) bNodes[idx].textContent = bNodes[idx].textContent.replace(batch[idx], t);
+            });
         }
     }
+    // Also translate options inside container
+    container.querySelectorAll('select option').forEach(async opt => {
+        const text = opt.textContent.trim();
+        if (_isEnglishText(text)) {
+            const ck = `${lang}:${text}`;
+            if (_translateCache[ck]) { opt.textContent = _translateCache[ck]; return; }
+            const tr = await _batchTranslate([text], lang);
+            if (tr[0]) { _translateCache[ck] = tr[0]; opt.textContent = tr[0]; }
+        }
+    });
+    // Placeholders inside container
+    container.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(async el => {
+        const ph = el.placeholder.trim();
+        if (_isEnglishText(ph)) {
+            const ck = `${lang}:ph:${ph}`;
+            if (_translateCache[ck]) { el.placeholder = _translateCache[ck]; return; }
+            const tr = await _batchTranslate([ph], lang);
+            if (tr[0]) { _translateCache[ck] = tr[0]; el.placeholder = tr[0]; }
+        }
+    });
+}
 
-    // Batch translate placeholders
-    if (placeholderTexts.length > 0) {
-        try {
-            const res = await fetch(`${API}/api/translate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texts: placeholderTexts, target: lang, source: 'en' })
+// -- MutationObserver: auto-translate new DOM content --
+let _translateObserver = null;
+function startTranslationObserver() {
+    if (_translateObserver) _translateObserver.disconnect();
+    _translateObserver = new MutationObserver((mutations) => {
+        if (state.language === 'en' || _translating) return;
+        const containers = new Set();
+        mutations.forEach(m => {
+            m.addedNodes.forEach(node => {
+                if (node.nodeType === 1 && !node.closest('script, style')) {
+                    containers.add(node);
+                }
             });
-            const data = await res.json();
-            if (data.translations) {
-                data.translations.forEach((t, idx) => {
-                    placeholderEls[idx].placeholder = t;
-                    _translateCache[`${lang}:ph:${placeholderTexts[idx]}`] = t;
-                });
-            }
-        } catch (e) { /* ok */ }
-    }
+        });
+        if (containers.size > 0) {
+            // Debounce: wait 300ms after last mutation
+            clearTimeout(_translateTimer);
+            _translateTimer = setTimeout(() => {
+                containers.forEach(c => translateContainer(c, state.language));
+            }, 300);
+        }
+    });
+    _translateObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 // Single text translation helper
@@ -1649,6 +1831,27 @@ async function translateText(text, lang) {
     return text;
 }
 
+// Batch translate multiple texts at once (convenience)
+async function translateTexts(texts, lang) {
+    if (!texts.length || lang === 'en') return texts;
+    lang = lang || state.language;
+    const results = new Array(texts.length);
+    const uncached = [], uncachedIdx = [];
+    texts.forEach((text, i) => {
+        const ck = `${lang}:${text}`;
+        if (_translateCache[ck]) { results[i] = _translateCache[ck]; }
+        else { uncached.push(text); uncachedIdx.push(i); }
+    });
+    if (uncached.length) {
+        const translated = await _batchTranslate(uncached, lang);
+        translated.forEach((t, i) => {
+            _translateCache[`${lang}:${uncached[i]}`] = t;
+            results[uncachedIdx[i]] = t;
+        });
+    }
+    return results;
+}
+
 function updateHeaderProfile() {
     if (!state.user) return;
     const avatar = document.getElementById('header-avatar');
@@ -1665,9 +1868,9 @@ function logout() {
     toast('Logged out', 'info');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  NAVIGATION
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function navigate(pageId) {
     state.currentPage = pageId;
@@ -1693,6 +1896,13 @@ function navigate(pageId) {
     if (mainArea) mainArea.scrollTop = 0;
     // Audio narration for illiterate farmers (Simple Mode)
     narratePage(pageId);
+    // Re-translate newly visible page if not English
+    if (state.language && state.language !== 'en') {
+        setTimeout(() => {
+            const activePage = document.querySelector('.page.active');
+            if (activePage) translateContainer(activePage, state.language);
+        }, 200);
+    }
     // Lazy-load actions
     if (pageId === 'history') loadHistory();
     if (pageId === 'profile') loadProfileData();
@@ -1717,7 +1927,7 @@ function navigate(pageId) {
     }
 }
 
-// ─── Mobile menu ───
+// --- Mobile menu ---
 function openMobileMenu() {
     document.getElementById('sidebar').classList.add('mobile-open');
     document.getElementById('sidebar-overlay').classList.add('open');
@@ -1727,9 +1937,9 @@ function closeMobileMenu() {
     document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  SIDEBAR / DASHBOARD
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function updateSidebarProfile() {
     if (!state.user) return;
@@ -1748,11 +1958,11 @@ function setGreeting() {
 
 function updateDashboard() {
     if (!state.user) return;
-    document.getElementById('dash-name').textContent = `${state.user.username} 🌾`;
+    document.getElementById('dash-name').textContent = `${state.user.username} ??`;
     document.getElementById('dash-farm').textContent = state.user.farm_name || '';
     // Stats
     if (state.farmSetup) {
-        document.getElementById('stat-farm-size').textContent = `${state.farmSetup.land_size || '—'} ha`;
+        document.getElementById('stat-farm-size').textContent = `${state.farmSetup.land_size || '�'} ha`;
     }
     document.getElementById('stat-recs').textContent = state.recommendations.length;
 }
@@ -1767,7 +1977,7 @@ async function loadDashboardWeather() {
             const hum = data.current_weather.humidity;
             const wind = data.current_weather.wind_speed;
             const desc = data.current_weather.description || 'Clear';
-            document.getElementById('dash-temp').textContent = `${temp}°C`;
+            document.getElementById('dash-temp').textContent = `${temp}�C`;
             document.getElementById('dash-humidity').textContent = `${hum}%`;
             document.getElementById('dash-wind').textContent = `${wind} km/h`;
             // Enhanced dashboard weather
@@ -1776,7 +1986,7 @@ async function loadDashboardWeather() {
             const detHum = document.getElementById('dash-det-hum');
             const detWind = document.getElementById('dash-det-wind');
             const detRain = document.getElementById('dash-det-rain');
-            if (bigTemp) bigTemp.textContent = `${temp}°`;
+            if (bigTemp) bigTemp.textContent = `${temp}�`;
             if (bigDesc) bigDesc.textContent = desc.charAt(0).toUpperCase() + desc.slice(1);
             if (detHum) detHum.textContent = `${hum}%`;
             if (detWind) detWind.textContent = `${wind} km/h`;
@@ -1785,9 +1995,9 @@ async function loadDashboardWeather() {
     } catch { /* fallback defaults */ }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  FARM SETUP
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 // NPK simple emoji selector
 function setNPK(type, val, btn) {
@@ -1829,7 +2039,7 @@ async function detectMyLocation() {
         document.getElementById('user-lon').value = lon;
 
         // Reverse geocode (simple - using Open-Meteo geocoding API)
-        let placeName = `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+        let placeName = `${lat.toFixed(2)}�N, ${lon.toFixed(2)}�E`;
         try {
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`);
             const geoData = await geoRes.json();
@@ -1860,7 +2070,7 @@ async function detectMyLocation() {
 
         // Show result chips
         document.getElementById('gps-place-name').textContent = placeName;
-        document.getElementById('gps-temp').textContent = `${temp}°C`;
+        document.getElementById('gps-temp').textContent = `${temp}�C`;
         document.getElementById('gps-hum').textContent = `${hum}%`;
         document.getElementById('gps-rain').textContent = `${rain} mm/week`;
         document.getElementById('gps-result').style.display = '';
@@ -1869,7 +2079,7 @@ async function detectMyLocation() {
         const autoCard = document.getElementById('auto-weather-card');
         if (autoCard) {
             autoCard.style.display = '';
-            document.getElementById('auto-temp-val').textContent = `${temp}°C`;
+            document.getElementById('auto-temp-val').textContent = `${temp}�C`;
             document.getElementById('auto-hum-val').textContent = `${hum}%`;
             document.getElementById('auto-rain-val').textContent = `${rain} mm`;
             document.getElementById('auto-ph-val').textContent = ph;
@@ -1887,7 +2097,7 @@ async function detectMyLocation() {
         statusText.innerHTML = `<i class="fas fa-check-circle"></i> Location detected: <strong>${placeName}</strong>`;
         btn.innerHTML = '<i class="fas fa-check"></i> Location Detected!';
         btn.className = 'btn btn-success btn-large';
-        toast(`Location detected: ${placeName} — weather data loaded! 📍`, 'success');
+        toast(`Location detected: ${placeName} � weather data loaded! ??`, 'success');
         autoSpeak(`Location detected: ${placeName}. Temperature ${temp} degrees, humidity ${hum} percent.`);
 
     } catch (err) {
@@ -1912,7 +2122,7 @@ function convertLandUnit() {
     else if (unit === 'cents') hectares = val * 0.004047;
     const el = document.getElementById('land-converted');
     if (unit !== 'hectares') {
-        el.textContent = `≈ ${hectares.toFixed(2)} hectares`;
+        el.textContent = `� ${hectares.toFixed(2)} hectares`;
     } else {
         el.textContent = '';
     }
@@ -1958,7 +2168,7 @@ async function saveFarmSetup() {
     // Add to recent activity
     addActivity('Farm details saved', 'green');
     updateDashboard();
-    toast('Farm details saved! 🚜', 'success');
+    toast('Farm details saved! ??', 'success');
 }
 
 // Track recent activity on dashboard
@@ -1975,9 +2185,9 @@ function addActivity(text, color = 'green') {
     while (feed.children.length > 10) feed.removeChild(feed.lastChild);
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  AI RECOMMENDATION (Multi-Agent)
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function getRecommendation() {
     if (!state.farmSetup) { toast('Please set up farm details first', 'info'); navigate('farm-setup'); return; }
@@ -2008,16 +2218,16 @@ async function getRecommendation() {
             const topCrop = eng.recommended_crop || 'Unknown';
             const score = Math.round((eng.final_score || 0) * 10);
             const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#eab308' : '#dc2626';
-            const trafficEmoji = score >= 7 ? '🟢' : score >= 5 ? '🟡' : '🔴';
+            const trafficEmoji = score >= 7 ? '??' : score >= 5 ? '??' : '??';
             container.innerHTML = buildVisualResultCard({
-                topCrop, cropIcon: eng.crop_icon || '🌾', score, scoreColor, trafficEmoji,
+                topCrop, cropIcon: eng.crop_icon || '??', score, scoreColor, trafficEmoji,
                 placeName: state.farmSetup.city || 'Your Farm',
                 temp: state.farmSetup.temperature, hum: state.farmSetup.humidity,
                 alternatives: (eng.alternatives || []).slice(0, 3),
                 scoreExplanation: eng.score_explanation || [],
                 estimatedYield: eng.estimated_yield,
                 confidence: eng.confidence || 'Medium',
-                engineLabel: 'AgriSmart Custom Engine ⚡ (loading agents...)',
+                engineLabel: 'AgriSmart Custom Engine ? (loading agents...)',
                 layerScores: eng.layer_scores,
                 comparative: eng.comparative
             });
@@ -2079,23 +2289,23 @@ function renderRecommendation(data, container) {
     const agents = data.agents || {};
     const coord = data.central_coordinator || {};
 
-    // ── 1. Visual Score Hero (icon-heavy for illiterate farmers) ──
+    // -- 1. Visual Score Hero (icon-heavy for illiterate farmers) --
     const scoreColor = finalScore >= 7 ? '#16a34a' : finalScore >= 5 ? '#eab308' : '#dc2626';
-    const cropIcon = ce?.crop_icon || data.custom_engine?.crop_icon || '🌾';
+    const cropIcon = ce?.crop_icon || data.custom_engine?.crop_icon || '??';
     html += `<div class="rec-hero animate-scale-in" style="background:linear-gradient(135deg,${scoreColor}15,${scoreColor}05);border:2px solid ${scoreColor}30;border-radius:20px;padding:1.5rem;margin-bottom:1.5rem">
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
             <div style="width:80px;height:80px;border-radius:50%;background:${scoreColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;flex-shrink:0">${finalScore}</div>
             <div style="flex:1;min-width:150px">
                 <div style="font-size:1.5rem;font-weight:800;color:#1e293b">${cropIcon} ${topCrop}</div>
                 <div style="font-size:0.95rem;color:#64748b;margin-top:4px">
-                    ${confidence === 'High' ? '✅' : confidence === 'Medium' ? '⚠️' : '❌'} ${confidence} Confidence
+                    ${confidence === 'High' ? '?' : confidence === 'Medium' ? '??' : '?'} ${confidence} Confidence
                 </div>
-                <div style="font-size:0.78rem;color:#8b5cf6;margin-top:2px">⚡ Custom Engine (primary) + 5 AI Agents (validation)</div>
+                <div style="font-size:0.78rem;color:#8b5cf6;margin-top:2px">? Custom Engine (primary) + 5 AI Agents (validation)</div>
             </div>
         </div>
     </div>`;
 
-    // ── 2. Custom Engine Insights (unique algorithm data) ──
+    // -- 2. Custom Engine Insights (unique algorithm data) --
     const ce = data.custom_engine || {};
     if (ce.enabled !== false && ce.custom_score) {
         const ceConfidence = ce.custom_confidence || 'Medium';
@@ -2103,20 +2313,20 @@ function renderRecommendation(data, container) {
         
         html += `<div class="card mb-4" style="margin-bottom:1.5rem;border:2px solid #8b5cf620">
             <h3 class="card-title"><i class="fas fa-microchip" style="color:#8b5cf6"></i> AgriSmart Custom Engine Analysis</h3>
-            <div class="otr-engine-badge" style="margin-bottom:1rem">Engine v${ce.engine_version || '1.0'} • ${ce.layers_used || '?'} Layers • ${ce.data_points_analysed || '?'} Data Points</div>`;
+            <div class="otr-engine-badge" style="margin-bottom:1rem">Engine v${ce.engine_version || '1.0'} � ${ce.layers_used || '?'} Layers � ${ce.data_points_analysed || '?'} Data Points</div>`;
         
         // Layer score bars
         if (ce.layer_scores) {
             html += '<div class="layer-score-bars" style="margin-bottom:1rem">';
             const layerLabels = {
-                agronomic: { icon: '🌱', label: 'Soil & Climate Match' },
-                npk: { icon: '🧪', label: 'NPK Fertilizer Match' },
-                season: { icon: '📅', label: 'Season Suitability' },
-                ml_model: { icon: '🤖', label: 'ML Model Prediction' },
-                knowledge_base: { icon: '📚', label: 'Historical Data Match' }
+                agronomic: { icon: '??', label: 'Soil & Climate Match' },
+                npk: { icon: '??', label: 'NPK Fertilizer Match' },
+                season: { icon: '??', label: 'Season Suitability' },
+                ml_model: { icon: '??', label: 'ML Model Prediction' },
+                knowledge_base: { icon: '??', label: 'Historical Data Match' }
             };
             for (const [key, val] of Object.entries(ce.layer_scores)) {
-                const info = layerLabels[key] || { icon: '📊', label: key };
+                const info = layerLabels[key] || { icon: '??', label: key };
                 const pct = Math.round((val || 0) * 100);
                 const barColor = pct >= 70 ? '#16a34a' : pct >= 40 ? '#eab308' : '#ef4444';
                 html += `<div class="layer-bar-row">
@@ -2133,9 +2343,9 @@ function renderRecommendation(data, container) {
         if (ce.score_explanation?.length) {
             html += '<div class="score-explain-cards" style="margin-bottom:1rem">';
             for (const line of ce.score_explanation) {
-                const icon = line.includes('✅') ? '✅' : line.includes('⚠️') ? '⚠️' : line.includes('❌') ? '❌' : 'ℹ️';
-                const cleanText = line.replace(/[✅⚠️❌]/g, '').trim();
-                const bgClass = icon === '✅' ? 'explain-good' : icon === '⚠️' ? 'explain-warn' : icon === '❌' ? 'explain-bad' : 'explain-info';
+                const icon = line.includes('?') ? '?' : line.includes('??') ? '??' : line.includes('?') ? '?' : '??';
+                const cleanText = line.replace(/[????]/g, '').trim();
+                const bgClass = icon === '?' ? 'explain-good' : icon === '??' ? 'explain-warn' : icon === '?' ? 'explain-bad' : 'explain-info';
                 html += `<div class="score-explain-card ${bgClass}"><span class="sec-icon">${icon}</span><span>${cleanText}</span></div>`;
             }
             html += '</div>';
@@ -2143,10 +2353,10 @@ function renderRecommendation(data, container) {
         
         // Alternative crops
         if (ce.custom_alternatives?.length) {
-            html += '<div class="alt-crops-section"><div class="alt-crops-title">🔄 Alternative Crops</div><div class="alt-crops-grid">';
+            html += '<div class="alt-crops-section"><div class="alt-crops-title">?? Alternative Crops</div><div class="alt-crops-grid">';
             for (const alt of ce.custom_alternatives.slice(0, 6)) {
                 const altName = alt.crop || alt.name || 'Unknown';
-                const altIcon = alt.icon || '🌾';
+                const altIcon = alt.icon || '??';
                 const altScore = Math.round((alt.score || alt.final_score || 0) * 100);
                 const altColor = altScore >= 70 ? '#16a34a' : altScore >= 40 ? '#eab308' : '#ef4444';
                 html += `<div class="alt-crop-card">
@@ -2160,7 +2370,7 @@ function renderRecommendation(data, container) {
         
         // Historical evidence
         if (ce.historical_evidence?.length) {
-            html += '<div style="margin-top:1rem"><strong style="font-size:0.9rem;color:#1e293b">📜 Historical Evidence:</strong><ul style="padding-left:1.25rem;margin:0.5rem 0 0">';
+            html += '<div style="margin-top:1rem"><strong style="font-size:0.9rem;color:#1e293b">?? Historical Evidence:</strong><ul style="padding-left:1.25rem;margin:0.5rem 0 0">';
             for (const ev of ce.historical_evidence.slice(0, 3)) {
                 html += `<li style="font-size:0.85rem;color:#475569;margin-bottom:4px">${typeof ev === 'string' ? ev : JSON.stringify(ev)}</li>`;
             }
@@ -2170,20 +2380,20 @@ function renderRecommendation(data, container) {
         html += '</div>';
     }
 
-    // ── 2b. Comparative Scoring (custom engine's crop comparison) ──
+    // -- 2b. Comparative Scoring (custom engine's crop comparison) --
     if (ce.comparative) {
         html += buildComparativeSection(ce.comparative, topCrop);
     }
 
-    // ── 3. Agent Visual Score Bars ──
+    // -- 3. Agent Visual Score Bars --
     const scoreData = [];
-    if (agents.farmer_advisor?.confidence) scoreData.push({ emoji: '🚜', label: 'Crop Match', val: agents.farmer_advisor.confidence, max: 100 });
-    if (agents.market_researcher?.market_score) scoreData.push({ emoji: '💰', label: 'Market', val: agents.market_researcher.market_score * 10, max: 100 });
-    if (agents.weather_analyst?.weather_score) scoreData.push({ emoji: '🌤️', label: 'Weather', val: agents.weather_analyst.weather_score * 10, max: 100 });
-    if (agents.sustainability_expert?.sustainability_score) scoreData.push({ emoji: '🌱', label: 'Sustainability', val: agents.sustainability_expert.sustainability_score * 10, max: 100 });
+    if (agents.farmer_advisor?.confidence) scoreData.push({ emoji: '??', label: 'Crop Match', val: agents.farmer_advisor.confidence, max: 100 });
+    if (agents.market_researcher?.market_score) scoreData.push({ emoji: '??', label: 'Market', val: agents.market_researcher.market_score * 10, max: 100 });
+    if (agents.weather_analyst?.weather_score) scoreData.push({ emoji: '???', label: 'Weather', val: agents.weather_analyst.weather_score * 10, max: 100 });
+    if (agents.sustainability_expert?.sustainability_score) scoreData.push({ emoji: '??', label: 'Sustainability', val: agents.sustainability_expert.sustainability_score * 10, max: 100 });
 
     if (scoreData.length) {
-        html += `<div class="card mb-4" style="margin-bottom:1.5rem"><h3 class="card-title"><i class="fas fa-chart-bar"></i> ${t('dash.recommendations', state.language)} — Visual Scores</h3>`;
+        html += `<div class="card mb-4" style="margin-bottom:1.5rem"><h3 class="card-title"><i class="fas fa-chart-bar"></i> ${t('dash.recommendations', state.language)} � Visual Scores</h3>`;
         html += '<div class="visual-scores" style="display:grid;gap:0.75rem;padding:0.5rem 0">';
         scoreData.forEach(s => {
             const pct = Math.min(100, Math.max(0, s.val));
@@ -2200,7 +2410,7 @@ function renderRecommendation(data, container) {
         html += '</div></div>';
     }
 
-    // ── 4. Charts row: Radar + Bar ──
+    // -- 4. Charts row: Radar + Bar --
     html += `<div class="rec-charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem">`;
     if (data.chart_data?.length) {
         html += `<div class="card"><h3 class="card-title"><i class="fas fa-chart-pie"></i> Score Analysis</h3><div id="rec-radar-chart" class="chart-container" style="min-height:300px"></div></div>`;
@@ -2208,17 +2418,17 @@ function renderRecommendation(data, container) {
     }
     html += '</div>';
 
-    // ── 5. Agent Discussion Panel — shows a natural "conversation" ──
+    // -- 5. Agent Discussion Panel � shows a natural "conversation" --
     html += `<div class="card mb-4" style="margin-bottom:1.5rem">
         <h3 class="card-title"><i class="fas fa-comments"></i> Agent Discussion</h3>
         <p style="font-size:0.85rem;color:#64748b;margin-bottom:1rem">5 AI experts analysed your farm data and discussed to reach this recommendation:</p>
         <div class="agent-discussion" style="display:flex;flex-direction:column;gap:0.75rem">`;
 
     const agentMeta = {
-        farmer_advisor:        { icon: '🚜', color: '#16a34a', label: 'Farmer Advisor',  bg: '#f0fdf4' },
-        market_researcher:     { icon: '💰', color: '#d97706', label: 'Market Researcher', bg: '#fffbeb' },
-        weather_analyst:       { icon: '🌤️', color: '#2563eb', label: 'Weather Analyst',  bg: '#eff6ff' },
-        sustainability_expert: { icon: '🌱', color: '#059669', label: 'Sustainability Expert', bg: '#ecfdf5' }
+        farmer_advisor:        { icon: '??', color: '#16a34a', label: 'Farmer Advisor',  bg: '#f0fdf4' },
+        market_researcher:     { icon: '??', color: '#d97706', label: 'Market Researcher', bg: '#fffbeb' },
+        weather_analyst:       { icon: '???', color: '#2563eb', label: 'Weather Analyst',  bg: '#eff6ff' },
+        sustainability_expert: { icon: '??', color: '#059669', label: 'Sustainability Expert', bg: '#ecfdf5' }
     };
 
     // Farmer Advisor speaks first
@@ -2249,24 +2459,24 @@ function renderRecommendation(data, container) {
             `Sustainability score: <strong>${a.sustainability_score}/10</strong>, environmental impact: <strong>${a.environmental_impact}</strong>. ${a.recommendations || ''} ${a.advice || ''}`);
     }
 
-    // Central Coordinator synthesis — the final word
+    // Central Coordinator synthesis � the final word
     if (coord.reasoning || coord.action_plan) {
         html += `<div style="border-left:3px solid #7c3aed;padding:1rem;background:#f5f3ff;border-radius:0 12px 12px 0;margin-top:0.5rem">
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
-                <span style="font-size:1.3rem">🧠</span>
+                <span style="font-size:1.3rem">??</span>
                 <strong style="color:#7c3aed">Central Coordinator (Final Synthesis)</strong>
             </div>
             <div style="font-size:0.9rem;color:#334155;line-height:1.6">
                 ${coord.reasoning || ''}
-                ${coord.risk_summary ? `<br><strong>⚠️ Risk Summary:</strong> ${coord.risk_summary}` : ''}
-                ${coord.conflicts_resolved && coord.conflicts_resolved !== 'None' ? `<br><strong>🔄 Conflicts Resolved:</strong> ${coord.conflicts_resolved}` : ''}
+                ${coord.risk_summary ? `<br><strong>?? Risk Summary:</strong> ${coord.risk_summary}` : ''}
+                ${coord.conflicts_resolved && coord.conflicts_resolved !== 'None' ? `<br><strong>?? Conflicts Resolved:</strong> ${coord.conflicts_resolved}` : ''}
             </div>
         </div>`;
     }
 
     html += '</div></div>';
 
-    // ── 6. Action Plan (visual steps) ──
+    // -- 6. Action Plan (visual steps) --
     if (coord.action_plan) {
         html += `<div class="card mb-4" style="margin-bottom:1.5rem">
             <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Action Plan</h3>
@@ -2274,7 +2484,7 @@ function renderRecommendation(data, container) {
         </div>`;
     }
 
-    // ── 7. Key Factors & Warnings ──
+    // -- 7. Key Factors & Warnings --
     if (coord.key_factors?.length || coord.action_items?.length) {
         html += '<div class="rec-info-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem">';
         if (coord.key_factors?.length) {
@@ -2290,10 +2500,10 @@ function renderRecommendation(data, container) {
         html += '</div>';
     }
 
-    // ── 8. Agent detail cards (expandable) ──
+    // -- 8. Agent detail cards (expandable) --
     html += '<div class="agent-results-grid">';
     for (const [key, agent] of Object.entries(agents)) {
-        const meta = agentMeta[key] || { icon: '🤖', color: '#16a34a', label: key, bg: '#f0fdf4' };
+        const meta = agentMeta[key] || { icon: '??', color: '#16a34a', label: key, bg: '#f0fdf4' };
         html += `<div class="agent-card animate-fade-in">
             <div class="agent-card-header">
                 <div class="agent-avatar" style="background:${meta.color};color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem">${meta.icon}</div>
@@ -2306,7 +2516,7 @@ function renderRecommendation(data, container) {
 
     container.innerHTML = html;
 
-    // ── Draw Charts ──
+    // -- Draw Charts --
     if (data.chart_data?.length) {
         const cd = data.chart_data[0];
         // Radar chart
@@ -2325,7 +2535,7 @@ function renderRecommendation(data, container) {
             font: { family: 'Inter', size: 11 }
         }, { responsive: true, displayModeBar: false });
 
-        // Bar chart — visual comparison
+        // Bar chart � visual comparison
         const barLabels = cd.labels;
         const barValues = cd.values;
         const barColors = barValues.map(v => v >= 70 ? '#16a34a' : v >= 50 ? '#eab308' : '#dc2626');
@@ -2398,9 +2608,9 @@ function renderSimpleRecommendation(data, container) {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  CROP ROTATION
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function generateRotationPlan() {
     const crop = document.getElementById('current-crop').value;
@@ -2411,6 +2621,11 @@ async function generateRotationPlan() {
         let html = `<div class="card mt-4"><h3 class="card-title"><i class="fas fa-calendar-check"></i> Rotation Plan for ${crop}</h3>`;
         html += `<div class="agent-body" style="white-space:pre-line">${data.plan}</div></div>`;
         container.innerHTML = html;
+
+        // Store plan text for voice reading
+        lastRotationPlanText = data.plan.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const voiceNoteDiv = document.getElementById('rotation-voice-note');
+        if (voiceNoteDiv) voiceNoteDiv.style.display = 'block';
 
         // Timeline chart
         if (data.timeline) {
@@ -2438,9 +2653,9 @@ async function generateRotationPlan() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  FERTILIZER CALCULATOR
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function calculateFertilizer() {
     const soil = document.getElementById('fert-soil').value;
@@ -2476,9 +2691,9 @@ async function calculateFertilizer() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  FARM MAP (Leaflet)
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function createFarmMap() {
     const lat = parseFloat(document.getElementById('farm-lat').value) || 12.9716;
@@ -2489,7 +2704,7 @@ function createFarmMap() {
     if (state.leafletMap) { state.leafletMap.remove(); state.leafletMap = null; }
 
     state.leafletMap = L.map(container).setView([lat, lon], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(state.leafletMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '� OpenStreetMap' }).addTo(state.leafletMap);
 
     // Farm center marker
     L.marker([lat, lon]).addTo(state.leafletMap)
@@ -2513,13 +2728,13 @@ function createFarmMap() {
     recCard.style.display = '';
     document.getElementById('map-rec-content').innerHTML = `
         <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">
-            <li><strong>Clay zone:</strong> Good for rice and wheat — ensure drainage</li>
-            <li><strong>Sandy zone:</strong> Ideal for root crops — add organic matter</li>
-            <li><strong>Loamy zone:</strong> Versatile — great for most crops</li>
+            <li><strong>Clay zone:</strong> Good for rice and wheat � ensure drainage</li>
+            <li><strong>Sandy zone:</strong> Ideal for root crops � add organic matter</li>
+            <li><strong>Loamy zone:</strong> Versatile � great for most crops</li>
             <li><strong>Erosion risk:</strong> Plant cover crops, build terraces</li>
             <li><strong>Waterlogging:</strong> Improve drainage; avoid flood-sensitive crops</li>
         </ul>`;
-    toast('Farm map created! 🗺️', 'success');
+    toast('Farm map created! ???', 'success');
 }
 
 async function loadSavedMap() {
@@ -2545,13 +2760,13 @@ async function saveFarmMap() {
             recommendations: [],
             risk_areas: []
         });
-        toast('Map saved! 💾', 'success');
+        toast('Map saved! ??', 'success');
     } catch { toast('Could not save map', 'error'); }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  SUSTAINABILITY
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function logSustainability() {
     const water_score = parseFloat(document.getElementById('water-usage').value) || 2;
@@ -2573,7 +2788,7 @@ async function logSustainability() {
             data.tips.forEach(t => tipsHtml += `<li>${t}</li>`);
             tipsHtml += '</ul>';
         } else {
-            tipsHtml += '<p style="color:var(--farm-green);font-weight:600">🎉 Great work! Your practices are sustainable.</p>';
+            tipsHtml += '<p style="color:var(--farm-green);font-weight:600">?? Great work! Your practices are sustainable.</p>';
         }
         tipsEl.innerHTML = tipsHtml;
         loadSustainabilityChart();
@@ -2588,7 +2803,9 @@ async function logSustainability() {
 async function loadSustainabilityChart() {
     try {
         const data = await fetch(`${API}/sustainability/scores?username=${state.user?.username || 'anonymous'}`).then(r => r.json());
+        const noDataEl = document.getElementById('sustainability-no-data');
         if (data.timestamps?.length) {
+            if (noDataEl) noDataEl.style.display = 'none';
             requestAnimationFrame(() => {
                 Plotly.react('sustainability-trend-chart', [{
                     x: data.timestamps, y: data.scores,
@@ -2604,13 +2821,15 @@ async function loadSustainabilityChart() {
                     font: { family: 'Inter' }
                 }, { responsive: true, displayModeBar: false, staticPlot: false });
             });
+        } else {
+            if (noDataEl) noDataEl.style.display = 'block';
         }
     } catch { /* offline ok */ }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  COMMUNITY
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function shareCommunityData() {
     showLoading('Sharing your data...');
@@ -2624,7 +2843,7 @@ async function shareCommunityData() {
             season: document.getElementById('community-season').value,
             sustainability_practice: document.getElementById('community-practice').value
         });
-        toast('Data shared with the community! 🤝', 'success');
+        toast('Data shared with the community! ??', 'success');
         addActivity('Shared data with community', 'blue');
         loadCommunityInsights();
         loadMyPosts();
@@ -2679,7 +2898,7 @@ async function loadMyPosts() {
                 </div>
                 <div class="my-post-details">
                     <span><i class="fas fa-wheat-awn"></i> ${p.yield_data} t/ha</span>
-                    <span><i class="fas fa-rupee-sign"></i> ₹${p.market_price?.toLocaleString()}/ton</span>
+                    <span><i class="fas fa-rupee-sign"></i> ?${p.market_price?.toLocaleString()}/ton</span>
                     <span><i class="fas fa-map-marker-alt"></i> ${p.region}</span>
                     <span><i class="fas fa-leaf"></i> ${p.practice}</span>
                 </div>
@@ -2692,9 +2911,9 @@ async function loadMyPosts() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  MARKET FORECAST
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function generateMarketForecast() {
     const crop = document.getElementById('market-crop').value;
@@ -2707,10 +2926,10 @@ async function generateMarketForecast() {
             const prices = data.forecast.map(f => f.price);
             const confs = data.forecast.map(f => f.confidence * 100);
             Plotly.newPlot('market-price-chart', [
-                { x: months, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Price (₹/ton)', line: { color: '#16a34a', width: 3, shape: 'spline' }, marker: { size: 8 } },
+                { x: months, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Price (?/ton)', line: { color: '#16a34a', width: 3, shape: 'spline' }, marker: { size: 8 } },
                 { x: months, y: confs, type: 'scatter', mode: 'lines', name: 'Confidence %', line: { color: '#0ea5e9', width: 2, dash: 'dot' }, yaxis: 'y2' }
             ], {
-                yaxis: { title: '₹/ton' },
+                yaxis: { title: '?/ton' },
                 yaxis2: { title: 'Confidence %', overlaying: 'y', side: 'right', range: [0, 100] },
                 margin: { t: 10, b: 40, l: 60, r: 60 },
                 legend: { orientation: 'h', y: -0.15 },
@@ -2722,13 +2941,13 @@ async function generateMarketForecast() {
         const insEl = document.getElementById('market-insights');
         insEl.innerHTML = `<h3 class="card-title"><i class="fas fa-lightbulb"></i> Market Insights</h3>
             <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">
-                <li><strong>Current Price:</strong> ₹${data.current_price?.toLocaleString()}/ton</li>
-                <li><strong>Predicted:</strong> ₹${data.predicted_price?.toLocaleString()}/ton</li>
-                <li><strong>Change:</strong> <span style="color:${data.price_change_percent >= 0 ? 'var(--farm-green)' : 'var(--farm-red)'}">${data.price_change_percent >= 0 ? '▲' : '▼'} ${Math.abs(data.price_change_percent)}%</span></li>
+                <li><strong>Current Price:</strong> ?${data.current_price?.toLocaleString()}/ton</li>
+                <li><strong>Predicted:</strong> ?${data.predicted_price?.toLocaleString()}/ton</li>
+                <li><strong>Change:</strong> <span style="color:${data.price_change_percent >= 0 ? 'var(--farm-green)' : 'var(--farm-red)'}">${data.price_change_percent >= 0 ? '?' : '?'} ${Math.abs(data.price_change_percent)}%</span></li>
                 <li><strong>Recommendation:</strong> ${data.recommendation}</li>
                 <li>${data.analysis}</li>
             </ul>`;
-        toast('Market forecast generated 📈', 'success');
+        toast('Market forecast generated ??', 'success');
     } catch {
         toast('Could not generate forecast', 'error');
     } finally {
@@ -2736,9 +2955,9 @@ async function generateMarketForecast() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  CHATBOT
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function sendChatMessage() {
     const input = document.getElementById('chat-input');
@@ -2767,9 +2986,9 @@ async function sendChatMessage() {
     messages.scrollTop = messages.scrollHeight;
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  WEATHER
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function getWeatherForecast() {
     const lat = parseFloat(document.getElementById('weather-lat').value) || 12.9716;
@@ -2780,9 +2999,9 @@ async function getWeatherForecast() {
         const data = await fetchAPI('/weather', { lat, lon, crop_type: crop });
         const container = document.getElementById('weather-results');
         // Current weather card
-        let html = `<div class="card"><h3 class="card-title"><i class="fas fa-sun"></i> Current Weather — ${data.current_weather?.city || ''}</h3>
+        let html = `<div class="card"><h3 class="card-title"><i class="fas fa-sun"></i> Current Weather � ${data.current_weather?.city || ''}</h3>
             <div class="stat-grid">
-                <div class="stat-card stat-green"><i class="fas fa-thermometer-half stat-icon"></i><div class="stat-value">${Math.round(data.current_weather?.temperature || 0)}°C</div><div class="stat-label">Temperature</div></div>
+                <div class="stat-card stat-green"><i class="fas fa-thermometer-half stat-icon"></i><div class="stat-value">${Math.round(data.current_weather?.temperature || 0)}�C</div><div class="stat-label">Temperature</div></div>
                 <div class="stat-card stat-blue"><i class="fas fa-tint stat-icon"></i><div class="stat-value">${data.current_weather?.humidity || 0}%</div><div class="stat-label">Humidity</div></div>
                 <div class="stat-card stat-amber"><i class="fas fa-wind stat-icon"></i><div class="stat-value">${data.current_weather?.wind_speed || 0}</div><div class="stat-label">Wind (m/s)</div></div>
                 <div class="stat-card stat-purple"><i class="fas fa-cloud stat-icon"></i><div class="stat-value">${data.current_weather?.clouds || 0}%</div><div class="stat-label">Clouds</div></div>
@@ -2793,7 +3012,7 @@ async function getWeatherForecast() {
         const riskClass = risk === 'low' ? 'low-risk' : risk === 'medium' ? 'medium-risk' : 'high-risk';
         html += `<div class="weather-risk-cards">
             <div class="risk-card ${riskClass}"><i class="fas fa-shield-alt"></i><br>Risk: ${risk.toUpperCase()}</div>
-            <div class="risk-card low-risk"><i class="fas fa-thermometer-half"></i><br>Avg: ${data.metrics?.avg_temperature || '—'}°C</div>
+            <div class="risk-card low-risk"><i class="fas fa-thermometer-half"></i><br>Avg: ${data.metrics?.avg_temperature || '�'}�C</div>
             <div class="risk-card low-risk"><i class="fas fa-cloud-rain"></i><br>Rain: ${data.metrics?.total_rainfall || '0'}mm</div>
         </div>`;
 
@@ -2805,24 +3024,55 @@ async function getWeatherForecast() {
         }
         container.innerHTML = html;
 
-        // Forecast chart
+        // Forecast chart � simplified for farmers
         if (data.forecast?.length) {
-            const times = data.forecast.map(f => f.datetime);
+            const times = data.forecast.map(f => {
+                const d = new Date(f.datetime);
+                return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' });
+            });
             const temps = data.forecast.map(f => f.temperature);
             const hums = data.forecast.map(f => f.humidity);
-            Plotly.newPlot('weather-forecast-chart', [
-                { x: times, y: temps, name: 'Temp °C', type: 'scatter', mode: 'lines+markers', line: { color: '#ef4444', width: 2 } },
-                { x: times, y: hums, name: 'Humidity %', type: 'scatter', mode: 'lines', line: { color: '#0ea5e9', width: 2, dash: 'dot' }, yaxis: 'y2' }
-            ], {
-                yaxis: { title: 'Temperature (°C)' },
-                yaxis2: { title: 'Humidity (%)', overlaying: 'y', side: 'right' },
-                margin: { t: 10, b: 40, l: 50, r: 50 },
-                legend: { orientation: 'h', y: -0.15 },
+
+            // Simple bar chart � temp only, color-coded
+            const colors = temps.map(t => t > 35 ? '#ef4444' : t > 28 ? '#f97316' : t > 20 ? '#22c55e' : '#0ea5e9');
+            const labels = temps.map(t => t > 35 ? '?? Hot' : t > 28 ? '?? Warm' : t > 20 ? '??? Nice' : '?? Cool');
+
+            Plotly.newPlot('weather-forecast-chart', [{
+                x: times, y: temps,
+                type: 'bar',
+                marker: { color: colors, cornerradius: 8 },
+                text: labels,
+                textposition: 'outside',
+                hovertemplate: '%{x}<br>%{y}�C<extra></extra>'
+            }], {
+                yaxis: { title: 'Temperature �C', range: [0, Math.max(...temps) + 10] },
+                margin: { t: 20, b: 40, l: 50, r: 20 },
                 paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-                font: { family: 'Inter' }
+                font: { family: 'Inter', size: 12 }
             }, { responsive: true, displayModeBar: false });
+
+            // Build simple explanation
+            const maxTemp = Math.max(...temps);
+            const minTemp = Math.min(...temps);
+            const avgHum = Math.round(hums.reduce((a, b) => a + b, 0) / hums.length);
+            const hotDays = temps.filter(t => t > 35).length;
+            const rainyDays = hums.filter(h => h > 80).length;
+
+            let explain = `<p>Over the next 7 days, temperature will range from <strong>${Math.round(minTemp)}�C to ${Math.round(maxTemp)}�C</strong>.</p>`;
+            explain += `<p>Average humidity: <strong>${avgHum}%</strong>.</p>`;
+            if (hotDays > 0) explain += `<p>?? <strong>${hotDays} hot day${hotDays > 1 ? 's' : ''}</strong> above 35�C � ensure crops have enough water and consider shade nets.</p>`;
+            if (rainyDays > 0) explain += `<p>??? <strong>${rainyDays} humid day${rainyDays > 1 ? 's' : ''}</strong> (>80% humidity) � watch for fungal diseases. Avoid spraying pesticides on these days.</p>`;
+            if (minTemp < 15) explain += `<p>?? Cold nights expected � cover frost-sensitive crops.</p>`;
+            if (hotDays === 0 && rainyDays === 0 && minTemp >= 15) explain += `<p>??? Good weather ahead � ideal for fieldwork and planting!</p>`;
+
+            lastWeatherExplanation = explain.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const summaryDiv = document.getElementById('weather-simple-summary');
+            if (summaryDiv) {
+                summaryDiv.style.display = 'block';
+                document.getElementById('weather-explain-text').innerHTML = explain;
+            }
         }
-        toast('Weather data updated 🌤️', 'success');
+        toast('Weather data updated ???', 'success');
         // Auto-speak weather for illiterate farmers
         const weatherSpeech = `Current temperature is ${Math.round(data.current_weather?.temperature || 0)} degrees, humidity ${data.current_weather?.humidity || 0} percent. Risk level: ${data.agricultural_conditions?.overall_risk || 'unknown'}. ${data.recommendations?.[0] || ''}`;
         autoSpeak(weatherSpeech);
@@ -2834,9 +3084,9 @@ async function getWeatherForecast() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  SOIL ANALYSIS
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function previewSoilPhoto(input) {
     if (!input.files?.[0]) return;
@@ -2862,7 +3112,7 @@ async function analyzeSoil() {
         try {
             data = JSON.parse(text);
         } catch {
-            throw new Error('Server error — please try again later');
+            throw new Error('Server error � please try again later');
         }
         if (!res.ok) throw new Error(data.detail || 'Analysis failed');
         showSoilResult(data.soil_type);
@@ -2906,9 +3156,9 @@ function showSoilResult(soilType) {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  PEST PREDICTION
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function predictPests() {
     const crop = document.getElementById('pest-crop').value;
@@ -2945,7 +3195,7 @@ async function predictPests() {
             html += '</ul></div>';
         }
         container.innerHTML = html;
-        toast('Pest analysis complete 🐛', 'success');
+        toast('Pest analysis complete ??', 'success');
         // Auto-speak pest result for illiterate farmers
         let pestSpeech = `Pest risk for ${crop} is ${risk}. `;
         if (data.predictions?.length) pestSpeech += 'Main risks: ' + data.predictions.slice(0, 2).map(p => p.pest).join(' and ') + '. ';
@@ -2959,9 +3209,9 @@ async function predictPests() {
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  HISTORY
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 async function loadHistory() {
     const container = document.getElementById('history-table-container');
@@ -2970,7 +3220,7 @@ async function loadHistory() {
         if (recs?.length) {
             let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop / Type</th><th>Score</th><th>Details</th></tr></thead><tbody>';
             recs.forEach(r => {
-                html += `<tr><td>${r.timestamp || '—'}</td><td>${r.crop || '—'}</td><td>${r.score ? Math.round(r.score) : '—'}</td><td style="max-width:300px;font-size:0.82rem">${(r.recommendation || '').substring(0, 120)}...</td></tr>`;
+                html += `<tr><td>${r.timestamp || '�'}</td><td>${r.crop || '�'}</td><td>${r.score ? Math.round(r.score) : '�'}</td><td style="max-width:300px;font-size:0.82rem">${(r.recommendation || '').substring(0, 120)}...</td></tr>`;
             });
             html += '</tbody></table>';
             container.innerHTML = html;
@@ -2992,9 +3242,9 @@ async function loadHistory() {
             // Use local data
             let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop</th><th>Score</th></tr></thead><tbody>';
             state.recommendations.forEach(r => {
-                const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 30) || '—';
-                const score = r.central_coordinator?.overall_score || '—';
-                html += `<tr><td>${r.timestamp || '—'}</td><td>${crop}</td><td>${score}</td></tr>`;
+                const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 30) || '�';
+                const score = r.central_coordinator?.overall_score || '�';
+                html += `<tr><td>${r.timestamp || '�'}</td><td>${crop}</td><td>${score}</td></tr>`;
             });
             html += '</tbody></table>';
             container.innerHTML = html;
@@ -3003,8 +3253,8 @@ async function loadHistory() {
         if (state.recommendations.length) {
             let html = '<table class="history-table"><thead><tr><th>Date</th><th>Crop</th><th>Score</th></tr></thead><tbody>';
             state.recommendations.slice(0, 10).forEach(r => {
-                const crop = r.central_coordinator?.final_crop || '—';
-                const score = r.central_coordinator?.overall_score || '—';
+                const crop = r.central_coordinator?.final_crop || '�';
+                const score = r.central_coordinator?.overall_score || '�';
                 html += `<tr><td>${new Date(r.timestamp).toLocaleDateString()}</td><td>${crop}</td><td>${score}</td></tr>`;
             });
             html += '</tbody></table>';
@@ -3017,7 +3267,7 @@ function exportRecommendations() {
     if (!state.recommendations.length) { toast('No recommendations to export', 'info'); return; }
     let csv = 'Date,Crop,Score,Details\n';
     state.recommendations.forEach(r => {
-        const crop = r.central_coordinator?.final_crop || '—';
+        const crop = r.central_coordinator?.final_crop || '�';
         const score = r.central_coordinator?.overall_score || '';
         const details = (r.central_coordinator?.reasoning || '').replace(/,/g, ';').replace(/\n/g, ' ');
         csv += `"${r.timestamp}","${crop}","${score}","${details}"\n`;
@@ -3026,13 +3276,13 @@ function exportRecommendations() {
     toast('Exported as CSV', 'success');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  OFFLINE
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function setupNetworkListeners() {
-    window.addEventListener('online', () => { state.isOffline = false; updateOfflineUI(); toast('Back online! 🌐', 'success'); });
-    window.addEventListener('offline', () => { state.isOffline = true; updateOfflineUI(); toast('You are offline — data will sync later', 'info'); });
+    window.addEventListener('online', () => { state.isOffline = false; updateOfflineUI(); toast('Back online! ??', 'success'); });
+    window.addEventListener('offline', () => { state.isOffline = true; updateOfflineUI(); toast('You are offline � data will sync later', 'info'); });
 }
 
 function updateOfflineUI() {
@@ -3044,10 +3294,10 @@ function updateOfflinePage() {
     const box = document.getElementById('offline-status-box');
     if (state.isOffline) {
         box.className = 'status-box offline';
-        box.innerHTML = '<i class="fas fa-wifi-slash"></i><span>You are offline — basic features available</span>';
+        box.innerHTML = '<i class="fas fa-wifi-slash"></i><span>You are offline � basic features available</span>';
     } else {
         box.className = 'status-box online';
-        box.innerHTML = '<i class="fas fa-wifi text-green"></i><span>You are online — All features available</span>';
+        box.innerHTML = '<i class="fas fa-wifi text-green"></i><span>You are online � All features available</span>';
     }
     document.getElementById('offline-recs-count').textContent = state.recommendations.length;
     const pending = JSON.parse(localStorage.getItem('agri_pending_sync') || '[]');
@@ -3062,17 +3312,17 @@ async function syncOfflineData() {
         const data = await res.json();
         localStorage.setItem('agri_pending_sync', '[]');
         updateOfflinePage();
-        toast(`Synced ${data.synced_count || 0} items ✅`, 'success');
+        toast(`Synced ${data.synced_count || 0} items ?`, 'success');
     } catch {
-        toast('Sync failed — try again later', 'error');
+        toast('Sync failed � try again later', 'error');
     } finally {
         hideLoading();
     }
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  PROFILE
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function switchProfileTab(tab) {
     document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
@@ -3114,7 +3364,7 @@ async function loadProfileData() {
     if (state.recommendations.length) {
         let html = '';
         state.recommendations.slice(0, 5).forEach(r => {
-            const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 40) || '—';
+            const crop = r.central_coordinator?.final_crop || r.recommendation?.substring(0, 40) || '�';
             const score = r.central_coordinator?.overall_score || '';
             html += `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.9rem">
                 <span>${crop}</span><span style="font-weight:600">${score ? score + '/10' : ''}</span></div>`;
@@ -3142,7 +3392,7 @@ async function saveProfile() {
         state.user.location = document.getElementById('profile-location').value.trim();
         localStorage.setItem('agri_user', JSON.stringify(state.user));
         updateSidebarProfile();
-        toast('Profile saved! ✅', 'success');
+        toast('Profile saved! ?', 'success');
     } catch {
         toast('Could not save profile', 'error');
     } finally {
@@ -3161,9 +3411,9 @@ function exportProfileData() {
     toast('Data exported as JSON', 'success');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  LANGUAGE
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 function toggleLangMenu() {
     document.getElementById('lang-menu').classList.toggle('open');
@@ -3172,7 +3422,7 @@ function toggleLangMenu() {
 function changeLanguage(lang) {
     state.language = lang;
     localStorage.setItem('agri_lang', lang);
-    const labels = { en: 'EN', hi: 'हि', kn: 'ಕ', te: 'తె', ta: 'த', ml: 'മ', bn: 'বা', gu: 'ગુ', mr: 'म', pa: 'ਪ', or: 'ଓ' };
+    const labels = { en: 'EN', hi: '??', kn: '?', te: '??', ta: '?', ml: '?', bn: '??', gu: '??', mr: '?', pa: '?', or: '?' };
     document.getElementById('lang-label').textContent = labels[lang] || lang.toUpperCase();
     document.getElementById('lang-menu').classList.remove('open');
     if (document.getElementById('settings-language')) {
@@ -3180,10 +3430,12 @@ function changeLanguage(lang) {
     }
     // Apply hardcoded translations first
     applyTranslations(lang);
-    // Then dynamically translate remaining text via deep-translator API
+    // Then dynamically translate ALL text via deep-translator API
     dynamicTranslateApp(lang);
-    const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
-    toast(`${langNames[lang] || lang.toUpperCase()} ✓`, 'info');
+    // Restart translation observer for new content
+    startTranslationObserver();
+    const langNames = { en: 'English', hi: '?????', kn: '?????', te: '??????', ta: '?????', ml: '??????', bn: '?????', gu: '???????', mr: '?????', pa: '??????', or: '?????' };
+    toast(`${langNames[lang] || lang.toUpperCase()} ?`, 'info');
 }
 
 // Close lang menu on outside click
@@ -3194,9 +3446,9 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 //  VOICE ASSISTANT PANEL
-// ═══════════════════════════════════════
+// ---------------------------------------
 
 let voicePanelOpen = false;
 let lastVoiceResponse = '';
@@ -3280,11 +3532,11 @@ function setVoiceState(state) {
 
     const lang = localStorage.getItem('agri_lang') || 'en';
     const texts = {
-       idle:       { en: 'Tap the mic to speak', hi: 'माइक दबाएं और बोलें', kn: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ', te: 'మైక్ నొక్కి మాట్లాడండి', ta: 'மைக் அழுத்தி பேசுங்கள்' },
-       listening:  { en: '🎤 Listening... speak now', hi: '🎤 सुन रहे हैं... अभी बोलें', kn: '🎤 ಕೇಳುತ್ತಿದ್ದೇನೆ... ಈಗ ಮಾತನಾಡಿ', te: '🎤 వింటున్నాను... ఇప్పుడు మాట్లాడండి', ta: '🎤 கேட்கிறேன்... இப்போது பேசுங்கள்' },
-       processing: { en: '🧠 Thinking...', hi: '🧠 सोच रहे हैं...', kn: '🧠 ಯೋಚಿಸುತ್ತಿದ್ದೇನೆ...', te: '🧠 ఆలోచిస్తున్నాను...', ta: '🧠 சிந்திக்கிறேன்...' },
-       speaking:   { en: '🔊 Speaking...', hi: '🔊 बोल रहे हैं...', kn: '🔊 ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ...', te: '🔊 చెప్తున్నాను...', ta: '🔊 பேசுகிறேன்...' },
-       error:      { en: '❌ Could not hear. Try again.', hi: '❌ सुनाई नहीं दिया। फिर बोलें।', kn: '❌ ಕೇಳಿಸಲಿಲ್ಲ. ಮತ್ತೆ ಹೇಳಿ.', te: '❌ వినబడలేదు. మళ్ళీ చెప్పండి.', ta: '❌ கேட்கவில்லை. மீண்டும் சொல்லுங்கள்.' }
+       idle:       { en: 'Tap the mic to speak', hi: '???? ????? ?? ?????', kn: '???? ????? ???????', te: '???? ?????? ??????????', ta: '???? ??????? ?????????' },
+       listening:  { en: '?? Listening... speak now', hi: '?? ??? ??? ???... ??? ?????', kn: '?? ??????????????... ?? ???????', te: '?? ???????????... ??????? ??????????', ta: '?? ??????????... ??????? ?????????' },
+       processing: { en: '?? Thinking...', hi: '?? ??? ??? ???...', kn: '?? ????????????????...', te: '?? ???????????????...', ta: '?? ??????????????...' },
+       speaking:   { en: '?? Speaking...', hi: '?? ??? ??? ???...', kn: '?? ?????????????????...', te: '?? ????????????...', ta: '?? ??????????...' },
+       error:      { en: '? Could not hear. Try again.', hi: '? ????? ???? ????? ??? ??????', kn: '? ??????????. ????? ????.', te: '? ?????????. ????? ????????.', ta: '? ???????????. ???????? ???????????.' }
     };
     stateText.textContent = texts[state]?.[lang] || texts[state]?.en || '';
 
@@ -3426,11 +3678,11 @@ function toggleVoiceInterface() {
     toggleVoicePanel();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  VOICE CONVERSATION ENGINE
 //  Multi-step conversational flows for entire app via voice
 //  Handles: login, signup, farm setup, navigation, actions
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 
 const voiceConvo = {
     active: false,
@@ -3443,21 +3695,21 @@ const voiceConvo = {
 // All voice flows defined as step arrays
 const voiceFlows = {
     signup: [
-        { ask: { en: 'What is your name?', hi: 'आपका नाम क्या है?', kn: 'ನಿಮ್ಮ ಹೆಸರೇನು?', te: 'మీ పేరు ఏమిటి?', ta: 'உங்கள் பெயர் என்ன?' }, field: 'username' },
-        { ask: { en: 'What is your farm name?', hi: 'आपके खेत का नाम क्या है?', kn: 'ನಿಮ್ಮ ಜಮೀನಿನ ಹೆಸರೇನು?', te: 'మీ పొలం పేరు ఏమిటి?', ta: 'உங்கள் பண்ணை பெயர் என்ன?' }, field: 'farm_name' },
-        { ask: { en: 'What is your phone number? Say skip if you don\'t want to share.', hi: 'आपका फोन नंबर क्या है? नहीं देना हो तो "छोड़ें" बोलें।', kn: 'ನಿಮ್ಮ ಫೋನ್ ನಂಬರ್ ಏನು? "ಬಿಡಿ" ಎಂದು ಹೇಳಿ.', te: 'మీ ఫోన్ నంబర్ ఏమిటి? "వదిలేయండి" అని చెప్పండి.', ta: 'உங்கள் தொலைபேசி எண் என்ன? "விடு" என்று சொல்லுங்கள்.' }, field: 'phone', optional: true },
-        { ask: { en: 'Where is your farm located? Which village or city?', hi: 'आपका खेत कहां है? कौन सा गांव या शहर?', kn: 'ನಿಮ್ಮ ಜಮೀನು ಎಲ್ಲಿದೆ? ಯಾವ ಊರು?', te: 'మీ పొలం ఎక్కడ ఉంది? ఏ ఊరు?', ta: 'உங்கள் பண்ணை எங்கே? எந்த கிராமம்?' }, field: 'location', optional: true }
+        { ask: { en: 'What is your name?', hi: '???? ??? ???? ???', kn: '????? ????????', te: '?? ???? ??????', ta: '?????? ????? ?????' }, field: 'username' },
+        { ask: { en: 'What is your farm name?', hi: '???? ??? ?? ??? ???? ???', kn: '????? ?????? ????????', te: '?? ???? ???? ??????', ta: '?????? ????? ????? ?????' }, field: 'farm_name' },
+        { ask: { en: 'What is your phone number? Say skip if you don\'t want to share.', hi: '???? ??? ???? ???? ??? ???? ???? ?? ?? "??????" ??????', kn: '????? ???? ????? ???? "????" ???? ????.', te: '?? ???? ????? ?????? "?????????" ??? ????????.', ta: '?????? ???????? ??? ????? "????" ????? ???????????.' }, field: 'phone', optional: true },
+        { ask: { en: 'Where is your farm located? Which village or city?', hi: '???? ??? ???? ??? ??? ?? ???? ?? ????', kn: '????? ????? ???????? ??? ????', te: '?? ???? ????? ????? ? ????', ta: '?????? ????? ?????? ???? ????????' }, field: 'location', optional: true }
     ],
     login: [
-        { ask: { en: 'What is your phone number to login?', hi: 'लॉगिन के लिए अपना फोन नंबर बताएं।', kn: 'ಲಾಗಿನ್ ಆಗಲು ನಿಮ್ಮ ಫೋನ್ ನಂಬರ್ ಹೇಳಿ.', te: 'లాగిన్ కోసం మీ ఫోన్ నంబర్ చెప్పండి.', ta: 'லாகின் செய்ய உங்கள் தொலைபேசி எண் சொல்லுங்கள்.' }, field: 'phone' }
+        { ask: { en: 'What is your phone number to login?', hi: '????? ?? ??? ???? ??? ???? ??????', kn: '?????? ???? ????? ???? ????? ????.', te: '?????? ???? ?? ???? ????? ????????.', ta: '?????? ????? ?????? ???????? ??? ???????????.' }, field: 'phone' }
     ],
     farmSetup: [
-        { ask: { en: 'What crop do you want to grow? For example: Rice, Wheat, Corn, Tomato, Cotton.', hi: 'आप कौन सी फसल उगाना चाहते हैं? जैसे: चावल, गेहूं, मक्का, टमाटर, कपास।', kn: 'ಯಾವ ಬೆಳೆ ಬೆಳೆಯಬೇಕು? ಉದಾ: ಭತ್ತ, ಗೋಧಿ, ಜೋಳ, ಟೊಮೆಟೊ.', te: 'ఏ పంట పండించాలనుకుంటున్నారు? ఉదా: వరి, గోధుమ, మొక్కజొన్న.', ta: 'என்ன பயிர் பயிரிட விரும்புகிறீர்கள்? உதா: அரிசி, கோதுமை.' }, field: 'crop' },
-        { ask: { en: 'What type of soil do you have? Loamy, Sandy, Clay, Black, or Red?', hi: 'आपकी मिट्टी कैसी है? दोमट, रेतीली, चिकनी, काली, या लाल?', kn: 'ನಿಮ್ಮ ಮಣ್ಣು ಯಾವ ರೀತಿ? ಮರಳು, ಜೇಡಿ, ಕಪ್ಪು, ಕೆಂಪು?', te: 'మీ మట్టి ఏ రకం? ఒండ్రు, ఇసుక, బంక, నల్ల, ఎర్ర?', ta: 'உங்கள் மண் எந்த வகை? கரிசல், மணல், களிமண்?' }, field: 'soil' },
-        { ask: { en: 'How big is your farm in acres? Say a number.', hi: 'आपका खेत कितने एकड़ का है? संख्या बताएं।', kn: 'ನಿಮ್ಮ ಜಮೀನು ಎಷ್ಟು ಎಕರೆ? ಸಂಖ್ಯೆ ಹೇಳಿ.', te: 'మీ పొలం ఎంత ఎకరాలు? సంఖ్య చెప్పండి.', ta: 'உங்கள் பண்ணை எத்தனை ஏக்கர்? எண் சொல்லுங்கள்.' }, field: 'landSize' }
+        { ask: { en: 'What crop do you want to grow? For example: Rice, Wheat, Corn, Tomato, Cotton.', hi: '?? ??? ?? ??? ????? ????? ???? ????: ????, ?????, ?????, ?????, ?????', kn: '??? ???? ?????????? ???: ????, ????, ???, ??????.', te: '? ??? ?????????????????????? ???: ???, ?????, ??????????.', ta: '???? ????? ?????? ?????????????????? ???: ?????, ??????.' }, field: 'crop' },
+        { ask: { en: 'What type of soil do you have? Loamy, Sandy, Clay, Black, or Red?', hi: '???? ?????? ???? ??? ????, ??????, ?????, ????, ?? ????', kn: '????? ????? ??? ????? ????, ????, ?????, ??????', te: '?? ????? ? ???? ??????, ????, ???, ????, ?????', ta: '?????? ??? ???? ???? ??????, ????, ???????' }, field: 'soil' },
+        { ask: { en: 'How big is your farm in acres? Say a number.', hi: '???? ??? ????? ???? ?? ??? ?????? ??????', kn: '????? ????? ????? ????? ?????? ????.', te: '?? ???? ??? ??????? ????? ????????.', ta: '?????? ????? ?????? ??????? ??? ???????????.' }, field: 'landSize' }
     ],
     pestCheck: [
-        { ask: { en: 'Which crop has the problem? For example: Rice, Wheat, Tomato, Cotton.', hi: 'किस फसल में समस्या है? जैसे: चावल, गेहूं, टमाटर, कपास।', kn: 'ಯಾವ ಬೆಳೆಯಲ್ಲಿ ಸಮಸ್ಯೆ? ಉದಾ: ಭತ್ತ, ಗೋಧಿ, ಟೊಮೆಟೊ.', te: 'ఏ పంటలో సమస్య? ఉదా: వరి, గోధుమ, టమాటా.', ta: 'எந்த பயிரில் பிரச்சனை? உதா: அரிசி, தக்காளி.' }, field: 'crop' }
+        { ask: { en: 'Which crop has the problem? For example: Rice, Wheat, Tomato, Cotton.', hi: '??? ??? ??? ?????? ??? ????: ????, ?????, ?????, ?????', kn: '??? ????????? ??????? ???: ????, ????, ??????.', te: '? ????? ?????? ???: ???, ?????, ?????.', ta: '???? ??????? ????????? ???: ?????, ???????.' }, field: 'crop' }
     ]
 };
 
@@ -3524,7 +3776,7 @@ function handleConvoResponse(text) {
     const lower = text.toLowerCase().trim();
 
     // Check for skip/cancel
-    if (['skip', 'छोड़ें', 'ಬಿಡಿ', 'వదిలేయండి', 'விடு', 'next', 'अगला'].some(w => lower.includes(w))) {
+    if (['skip', '??????', '????', '?????????', '????', 'next', '????'].some(w => lower.includes(w))) {
         if (step.optional) {
             voiceConvo.data[step.field] = '';
             voiceConvo.step++;
@@ -3532,8 +3784,8 @@ function handleConvoResponse(text) {
             return true;
         }
     }
-    if (['cancel', 'stop', 'रुको', 'बंद', 'ನಿಲ್ಲಿ', 'ఆపు', 'நிறுத்து'].some(w => lower.includes(w))) {
-        endVoiceConvo({ en: 'Cancelled.', hi: 'रद्द किया।', kn: 'ರದ್ದಾಗಿದೆ.', te: 'రద్దు చేయబడింది.', ta: 'ரத்து செய்யப்பட்டது.' });
+    if (['cancel', 'stop', '????', '???', '??????', '???', '????????'].some(w => lower.includes(w))) {
+        endVoiceConvo({ en: 'Cancelled.', hi: '???? ?????', kn: '?????????.', te: '????? ?????????.', ta: '????? ?????????????.' });
         return true;
     }
 
@@ -3563,10 +3815,10 @@ function handleConvoResponse(text) {
     const lang = vcLang();
     const confirmMsgs = {
         en: `Got it: ${value}`,
-        hi: `समझ गया: ${value}`,
-        kn: `ಅರ್ಥವಾಯಿತು: ${value}`,
-        te: `అర్థమైంది: ${value}`,
-        ta: `புரிந்தது: ${value}`
+        hi: `??? ???: ${value}`,
+        kn: `??????????: ${value}`,
+        te: `?????????: ${value}`,
+        ta: `?????????: ${value}`
     };
     vcSpeak(confirmMsgs, () => {
         voiceConvo.step++;
@@ -3577,7 +3829,7 @@ function handleConvoResponse(text) {
 
 function matchCropFromText(text) {
     const crops = { rice: 'Grains', wheat: 'Grains', corn: 'Grains', tomato: 'Vegetables', potato: 'Vegetables', cotton: 'Cash Crops', soybean: 'Oilseeds', sugarcane: 'Cash Crops' };
-    const cropNames = { 'चावल': 'rice', 'गेहूं': 'wheat', 'धान': 'rice', 'मक्का': 'corn', 'टमाटर': 'tomato', 'आलू': 'potato', 'कपास': 'cotton', 'ಅಕ್ಕಿ': 'rice', 'ಗೋಧಿ': 'wheat', 'ಜೋಳ': 'corn', 'ಟೊಮೆಟೊ': 'tomato', 'వరి': 'rice', 'గోధుమ': 'wheat', 'அரிசி': 'rice', 'கோதுமை': 'wheat' };
+    const cropNames = { '????': 'rice', '?????': 'wheat', '???': 'rice', '?????': 'corn', '?????': 'tomato', '???': 'potato', '????': 'cotton', '?????': 'rice', '????': 'wheat', '???': 'corn', '??????': 'tomato', '???': 'rice', '?????': 'wheat', '?????': 'rice', '??????': 'wheat' };
     for (const [name, eng] of Object.entries(cropNames)) {
         if (text.includes(name)) return eng;
     }
@@ -3588,28 +3840,28 @@ function matchCropFromText(text) {
 }
 
 function matchSoilFromText(text) {
-    const soilMap = { 'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red', 'दोमट': 'Loamy', 'रेतीली': 'Sandy', 'चिकनी': 'Clay', 'काली': 'Black', 'लाल': 'Red', 'ಮರಳು': 'Sandy', 'ಕಪ್ಪು': 'Black', 'ಕೆಂಪು': 'Red' };
+    const soilMap = { 'loamy': 'Loamy', 'sandy': 'Sandy', 'clay': 'Clay', 'black': 'Black', 'red': 'Red', '????': 'Loamy', '??????': 'Sandy', '?????': 'Clay', '????': 'Black', '???': 'Red', '????': 'Sandy', '?????': 'Black', '?????': 'Red' };
     for (const [kw, soil] of Object.entries(soilMap)) {
         if (text.includes(kw)) return soil;
     }
     return null;
 }
 
-// ── Smart field extraction from natural speech ──
+// -- Smart field extraction from natural speech --
 function extractName(text) {
     const t = text.trim();
-    // Patterns: "my name is X", "I am X", "name is X", "it's X", "call me X", "मेरा नाम X है", "నా పేరు X", "என் பெயர் X", "ನನ್ನ ಹೆಸರು X"
+    // Patterns: "my name is X", "I am X", "name is X", "it's X", "call me X", "???? ??? X ??", "?? ???? X", "??? ????? X", "???? ????? X"
     const patterns = [
         /(?:my name is|i am|i'm|name is|it's|call me|this is)\s+(.+)/i,
-        /(?:मेरा नाम|मै|मैं)\s+(.+?)(?:\s+है|\s*$)/i,
-        /(?:నా పేరు|నేను)\s+(.+)/i,
-        /(?:என் பெயர்|நான்)\s+(.+)/i,
-        /(?:ನನ್ನ ಹೆಸರು|ನಾನು)\s+(.+)/i,
-        /(?:আমার নাম|আমি)\s+(.+)/i,
-        /(?:माझे नाव|मी)\s+(.+)/i,
-        /(?:મારું નામ|હું)\s+(.+)/i,
-        /(?:ମୋ ନାମ|ମୁଁ)\s+(.+)/i,
-        /(?:ਮੇਰਾ ਨਾਮ|ਮੈਂ)\s+(.+)/i,
+        /(?:???? ???|??|???)\s+(.+?)(?:\s+??|\s*$)/i,
+        /(?:?? ????|????)\s+(.+)/i,
+        /(?:??? ?????|????)\s+(.+)/i,
+        /(?:???? ?????|????)\s+(.+)/i,
+        /(?:???? ???|???)\s+(.+)/i,
+        /(?:???? ???|??)\s+(.+)/i,
+        /(?:????? ???|???)\s+(.+)/i,
+        /(?:?? ???|???)\s+(.+)/i,
+        /(?:???? ???|???)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3618,7 +3870,7 @@ function extractName(text) {
     // If single/two words, likely just the name
     const words = t.split(/\s+/).filter(w => w.length > 0);
     if (words.length <= 3) return t;
-    // Fallback: take last meaningful word(s) — skip filler
+    // Fallback: take last meaningful word(s) � skip filler
     const fillers = ['is', 'am', 'my', 'name', 'i', 'me', 'the', 'a', 'it', 'yeah', 'yes', 'ok', 'so', 'well', 'please', 'sir'];
     const meaningful = words.filter(w => !fillers.includes(w.toLowerCase()));
     return meaningful.length > 0 ? meaningful.join(' ') : t;
@@ -3626,13 +3878,13 @@ function extractName(text) {
 
 function extractFarmName(text) {
     const t = text.trim();
-    // Patterns: "my farm is X", "farm name is X", "it is X", "called X", "मेरे खेत का नाम X", "నా పొలం X", "என் பண்ணை X"
+    // Patterns: "my farm is X", "farm name is X", "it is X", "called X", "???? ??? ?? ??? X", "?? ???? X", "??? ????? X"
     const patterns = [
         /(?:my farm is|farm name is|farm is called|it is|it's|called)\s+(.+)/i,
-        /(?:मेरे खेत का नाम|खेत का नाम|मेरा खेत)\s+(.+?)(?:\s+है|\s*$)/i,
-        /(?:నా పొలం పేరు|పొలం పేరు|నా పొలం)\s+(.+)/i,
-        /(?:என் பண்ணை பெயர்|பண்ணை பெயர்|என் பண்ணை)\s+(.+)/i,
-        /(?:ನನ್ನ ಜಮೀನಿನ ಹೆಸರು|ಜಮೀನು)\s+(.+)/i,
+        /(?:???? ??? ?? ???|??? ?? ???|???? ???)\s+(.+?)(?:\s+??|\s*$)/i,
+        /(?:?? ???? ????|???? ????|?? ????)\s+(.+)/i,
+        /(?:??? ????? ?????|????? ?????|??? ?????)\s+(.+)/i,
+        /(?:???? ?????? ?????|?????)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3649,10 +3901,10 @@ function extractLocation(text) {
     const t = text.trim();
     const patterns = [
         /(?:i am from|i live in|from|located in|located at|my farm is in|my village is|village is|city is|in)\s+(.+)/i,
-        /(?:मैं|मेरा गांव|गांव|शहर)\s+(.+?)(?:\s+से|\s+में|\s+है|\s*$)/i,
-        /(?:నేను|నా ఊరు|ఊరు)\s+(.+)/i,
-        /(?:நான்|என் கிராமம்|கிராமம்)\s+(.+)/i,
-        /(?:ನಾನು|ನನ್ನ ಊರು|ಊರು)\s+(.+)/i,
+        /(?:???|???? ????|????|???)\s+(.+?)(?:\s+??|\s+???|\s+??|\s*$)/i,
+        /(?:????|?? ???|???)\s+(.+)/i,
+        /(?:????|??? ???????|???????)\s+(.+)/i,
+        /(?:????|???? ???|???)\s+(.+)/i,
     ];
     for (const pat of patterns) {
         const m = t.match(pat);
@@ -3672,26 +3924,26 @@ function extractKeyword(text) {
     return words.length > 0 ? words[words.length - 1] : t;
 }
 
-// ── Language switch detection from any language ──
+// -- Language switch detection from any language --
 function detectLanguageSwitch(text) {
     const t = text.toLowerCase().trim();
     // Map keywords in ANY language to lang codes
     const langKeywords = {
-        'en': ['english', 'change to english', 'speak english', 'in english', 'switch to english', 'अंग्रेजी', 'ఇంగ్లీష్', 'ஆங்கிலம்', 'ಇಂಗ್ಲಿಷ್', 'ইংরেজি'],
-        'hi': ['hindi', 'हिंदी', 'हिन्दी', 'change to hindi', 'speak hindi', 'speak in hindi', 'switch to hindi', 'हिंदी में बोलो', 'హిందీ', 'ஹிந்தி', 'ಹಿಂದಿ'],
-        'te': ['telugu', 'తెలుగు', 'change to telugu', 'speak telugu', 'speak in telugu', 'switch to telugu', 'తెలుగులో మాట్లాడు', 'తెలుగులో చెప్పు', 'తెలుగు లో', 'तेलुगु', 'தெலுங்கு', 'ತೆಲುಗು'],
-        'kn': ['kannada', 'ಕನ್ನಡ', 'change to kannada', 'speak kannada', 'speak in kannada', 'switch to kannada', 'ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ', 'ಕನ್ನಡದಲ್ಲಿ', 'कन्नड़', 'கன்னடம்', 'కన్నడ'],
-        'ta': ['tamil', 'தமிழ்', 'change to tamil', 'speak tamil', 'speak in tamil', 'switch to tamil', 'தமிழில் பேசு', 'தமிழில்', 'तमिल', 'తమిళం', 'ತಮಿಳು'],
-        'ml': ['malayalam', 'മലയാളം', 'change to malayalam', 'speak malayalam', 'switch to malayalam', 'മലയാളത്തിൽ', 'मलयालम', 'మలయాళం', 'ಮಲಯಾಳಂ'],
-        'bn': ['bengali', 'bangla', 'বাংলা', 'change to bengali', 'speak bengali', 'switch to bengali', 'বাংলায় বলো', 'बंगाली', 'బెంగాలీ'],
-        'gu': ['gujarati', 'ગુજરાતી', 'change to gujarati', 'speak gujarati', 'switch to gujarati', 'ગુજરાતીમાં', 'गुजराती', 'గుజరాతీ'],
-        'mr': ['marathi', 'मराठी', 'change to marathi', 'speak marathi', 'switch to marathi', 'मराठीत बोल', 'మరాఠీ', 'மராத்தி'],
-        'pa': ['punjabi', 'ਪੰਜਾਬੀ', 'change to punjabi', 'speak punjabi', 'switch to punjabi', 'ਪੰਜਾਬੀ ਵਿੱਚ', 'पंजाबी', 'పంజాబీ'],
-        'or': ['odia', 'oriya', 'ଓଡ଼ିଆ', 'change to odia', 'speak odia', 'switch to odia', 'ଓଡ଼ିଆରେ', 'ओडिया', 'ఒడియా']
+        'en': ['english', 'change to english', 'speak english', 'in english', 'switch to english', '????????', '????????', '????????', '????????', '??????'],
+        'hi': ['hindi', '?????', '??????', 'change to hindi', 'speak hindi', 'speak in hindi', 'switch to hindi', '????? ??? ????', '?????', '??????', '?????'],
+        'te': ['telugu', '??????', 'change to telugu', 'speak telugu', 'speak in telugu', 'switch to telugu', '???????? ????????', '???????? ??????', '?????? ??', '??????', '????????', '??????'],
+        'kn': ['kannada', '?????', 'change to kannada', 'speak kannada', 'speak in kannada', 'switch to kannada', '?????????? ???????', '??????????', '??????', '???????', '?????'],
+        'ta': ['tamil', '?????', 'change to tamil', 'speak tamil', 'speak in tamil', 'switch to tamil', '??????? ????', '???????', '????', '?????', '?????'],
+        'ml': ['malayalam', '??????', 'change to malayalam', 'speak malayalam', 'switch to malayalam', '??????????', '??????', '??????', '??????'],
+        'bn': ['bengali', 'bangla', '?????', 'change to bengali', 'speak bengali', 'switch to bengali', '??????? ???', '??????', '???????'],
+        'gu': ['gujarati', '???????', 'change to gujarati', 'speak gujarati', 'switch to gujarati', '??????????', '???????', '???????'],
+        'mr': ['marathi', '?????', 'change to marathi', 'speak marathi', 'switch to marathi', '?????? ???', '?????', '???????'],
+        'pa': ['punjabi', '??????', 'change to punjabi', 'speak punjabi', 'switch to punjabi', '?????? ????', '??????', '??????'],
+        'or': ['odia', 'oriya', '?????', 'change to odia', 'speak odia', 'switch to odia', '???????', '?????', '?????']
     };
 
     // Check if text contains language change intent
-    const changeIntents = ['change', 'switch', 'speak', 'talk', 'convert', 'बदलो', 'बोलो', 'भाषा', 'మార్చు', 'మాట్లాడు', 'భాష', 'மாற்று', 'பேசு', 'மொழி', 'ಬದಲಿಸಿ', 'ಮಾತನಾಡಿ', 'ಭಾಷೆ', 'বলো', 'ভাষা', 'બોલો', 'ભાષા', 'बोला', 'भाषा', 'ਬੋਲੋ', 'ਭਾਸ਼ਾ', 'କୁହ', 'ভාৱা'];
+    const changeIntents = ['change', 'switch', 'speak', 'talk', 'convert', '????', '????', '????', '??????', '????????', '???', '??????', '????', '????', '??????', '???????', '????', '???', '????', '????', '????', '????', '????', '????', '?????', '???', '????'];
     const hasIntent = changeIntents.some(w => t.includes(w));
 
     for (const [code, keywords] of Object.entries(langKeywords)) {
@@ -3727,31 +3979,31 @@ function completeVoiceFlow() {
 }
 
 async function executeVoiceSignup(data) {
-    vcSpeak({ en: 'Creating your account...', hi: 'आपका खाता बना रहे हैं...', kn: 'ನಿಮ್ಮ ಖಾತೆ ರಚಿಸುತ್ತಿದ್ದೇವೆ...', te: 'మీ ఖాతా తయారు చేస్తున్నాము...', ta: 'உங்கள் கணக்கை உருவாக்குகிறோம்...' });
+    vcSpeak({ en: 'Creating your account...', hi: '???? ???? ??? ??? ???...', kn: '????? ???? ???????????????...', te: '?? ???? ????? ????????????...', ta: '?????? ?????? ???????????????...' });
     try {
         await fetchAPI('/signup', { username: data.username, farm_name: data.farm_name, profile_picture: null });
     } catch(e) { /* may already exist, ok */ }
     state.user = { username: data.username, farm_name: data.farm_name, phone: data.phone || '', location: data.location || '' };
     localStorage.setItem('agri_user', JSON.stringify(state.user));
     enterApp();
-    vcSpeak({ en: `Welcome ${data.username}! Your farm ${data.farm_name} is ready. You are now on the home page.`, hi: `स्वागत है ${data.username}! आपका खेत ${data.farm_name} तैयार है। अब आप होम पेज पर हैं।`, kn: `ಸ್ವಾಗತ ${data.username}! ನಿಮ್ಮ ಜಮೀನು ${data.farm_name} ಸಿದ್ಧ. ಈಗ ನೀವು ಹೋಮ್ ಪೇಜಿನಲ್ಲಿದ್ದೀರಿ.`, te: `స్వాగతం ${data.username}! మీ పొలం ${data.farm_name} సిద్ధం. ఇప్పుడు మీరు హోమ్ పేజీలో ఉన్నారు.`, ta: `வரவேற்கிறோம் ${data.username}! உங்கள் பண்ணை ${data.farm_name} தயார்.` }, () => setVoiceState('idle'));
+    vcSpeak({ en: `Welcome ${data.username}! Your farm ${data.farm_name} is ready. You are now on the home page.`, hi: `?????? ?? ${data.username}! ???? ??? ${data.farm_name} ????? ??? ?? ?? ??? ??? ?? ????`, kn: `?????? ${data.username}! ????? ????? ${data.farm_name} ?????. ?? ???? ???? ???????????????.`, te: `??????? ${data.username}! ?? ???? ${data.farm_name} ??????. ??????? ???? ???? ?????? ???????.`, ta: `???????????? ${data.username}! ?????? ????? ${data.farm_name} ?????.` }, () => setVoiceState('idle'));
 }
 
 async function executeVoiceLogin(data) {
-    vcSpeak({ en: 'Logging you in...', hi: 'लॉगिन कर रहे हैं...', kn: 'ಲಾಗಿನ್ ಆಗುತ್ತಿದೆ...', te: 'లాగిన్ అవుతున్నారు...', ta: 'லாகின் செய்கிறோம்...' });
+    vcSpeak({ en: 'Logging you in...', hi: '????? ?? ??? ???...', kn: '?????? ?????????...', te: '?????? ???????????...', ta: '?????? ??????????...' });
     try {
         const res = await fetchAPI('/login', { username: data.phone });
         state.user = res;
         localStorage.setItem('agri_user', JSON.stringify(state.user));
         enterApp();
-        vcSpeak({ en: `Welcome back, ${res.username}!`, hi: `फिर से स्वागत है, ${res.username}!`, kn: `ಮರಳಿ ಸ್ವಾಗತ, ${res.username}!`, te: `మళ్ళీ స్వాగతం, ${res.username}!`, ta: `மீண்டும் வரவேற்கிறோம், ${res.username}!` }, () => setVoiceState('idle'));
+        vcSpeak({ en: `Welcome back, ${res.username}!`, hi: `??? ?? ?????? ??, ${res.username}!`, kn: `???? ??????, ${res.username}!`, te: `????? ???????, ${res.username}!`, ta: `???????? ????????????, ${res.username}!` }, () => setVoiceState('idle'));
     } catch {
-        vcSpeak({ en: 'Account not found. Please sign up first. Say "sign me up" to create an account.', hi: 'खाता नहीं मिला। कृपया पहले साइन अप करें। "मुझे साइन अप करो" बोलें।', kn: 'ಖಾತೆ ಸಿಕ್ಕಿಲ್ಲ. ದಯವಿಟ್ಟು ಮೊದಲು ಸೈನ್ ಅಪ್ ಮಾಡಿ.', te: 'ఖాతా దొరకలేదు. దయచేసి ముందు సైన్ అప్ చేయండి.', ta: 'கணக்கு கிடைக்கவில்லை. இணைக்க "என்னை பதிவு செய்" என்று சொல்லுங்கள்.' }, () => setVoiceState('idle'));
+        vcSpeak({ en: 'Account not found. Please sign up first. Say "sign me up" to create an account.', hi: '???? ???? ????? ????? ???? ???? ?? ????? "???? ???? ?? ???" ??????', kn: '???? ?????????. ???????? ????? ???? ??? ????.', te: '???? ????????. ?????? ????? ???? ??? ??????.', ta: '?????? ?????????????. ?????? "????? ????? ????" ????? ???????????.' }, () => setVoiceState('idle'));
     }
 }
 
 async function executeVoiceFarmSetup(data) {
-    vcSpeak({ en: 'Saving your farm details...', hi: 'खेत की जानकारी सहेज रहे हैं...', kn: 'ಜಮೀನಿನ ವಿವರ ಉಳಿಸುತ್ತಿದ್ದೇವೆ...', te: 'పొలం వివరాలు సేవ్ చేస్తున్నాము...', ta: 'பண்ணை விவரங்கள் சேமிக்கிறோம்...' });
+    vcSpeak({ en: 'Saving your farm details...', hi: '??? ?? ??????? ???? ??? ???...', kn: '?????? ???? ???????????????...', te: '???? ??????? ???? ????????????...', ta: '????? ????????? ????????????...' });
     // Use GPS for lat/lon
     let lat = 12.97, lon = 77.59;
     try {
@@ -3788,12 +4040,12 @@ async function executeVoiceFarmSetup(data) {
     try { await fetchAPI('/farm_details', { username: state.user?.username || 'anonymous', land_size: state.farmSetup.land_size, soil_type: state.farmSetup.soil_type, crop_preference: state.farmSetup.crop_preference }); } catch {}
     
     navigate('farm-setup');
-    vcSpeak({ en: `Farm saved! ${data.crop || 'Crops'} on ${data.landSize || 5} acres of ${data.soil || 'Loamy'} soil. Say "get recommendation" for AI advice.`, hi: `खेत सहेजा गया! ${data.crop || 'फसल'} ${data.landSize || 5} एकड़ ${data.soil || 'दोमट'} मिट्टी पर। AI सलाह के लिए "सलाह दो" बोलें।`, kn: `ಜಮೀನು ಉಳಿಸಲಾಗಿದೆ! ${data.crop || 'ಬೆಳೆ'} ${data.landSize || 5} ಎಕರೆ ${data.soil || 'ಮರಳು'} ಮಣ್ಣಿನಲ್ಲಿ.`, te: `పొలం సేవ్ అయింది! ${data.crop || 'పంట'} ${data.landSize || 5} ఎకరాల ${data.soil || 'ఒండ్రు'} మట్టిలో.`, ta: `பண்ணை சேமிக்கப்பட்டது! ${data.crop || 'பயிர்'} ${data.landSize || 5} ஏக்கர் ${data.soil || 'கரிசல்'} மண்ணில்.` }, () => setVoiceState('idle'));
+    vcSpeak({ en: `Farm saved! ${data.crop || 'Crops'} on ${data.landSize || 5} acres of ${data.soil || 'Loamy'} soil. Say "get recommendation" for AI advice.`, hi: `??? ????? ???! ${data.crop || '???'} ${data.landSize || 5} ???? ${data.soil || '????'} ?????? ??? AI ???? ?? ??? "???? ??" ??????`, kn: `????? ??????????! ${data.crop || '????'} ${data.landSize || 5} ???? ${data.soil || '????'} ??????????.`, te: `???? ???? ??????! ${data.crop || '???'} ${data.landSize || 5} ????? ${data.soil || '??????'} ???????.`, ta: `????? ???????????????! ${data.crop || '?????'} ${data.landSize || 5} ?????? ${data.soil || '??????'} ???????.` }, () => setVoiceState('idle'));
 }
 
 async function executeVoicePestCheck(data) {
     const crop = data.crop || 'Rice';
-    vcSpeak({ en: `Checking pests for ${crop}...`, hi: `${crop} के लिए कीट जांच कर रहे हैं...`, kn: `${crop} ಗೆ ಕೀಟ ಪರೀಕ್ಷೆ ಮಾಡುತ್ತಿದ್ದೇವೆ...`, te: `${crop} కోసం పురుగు పరీక్ష చేస్తున్నాము...`, ta: `${crop} க்கான பூச்சி சோதனை...` });
+    vcSpeak({ en: `Checking pests for ${crop}...`, hi: `${crop} ?? ??? ??? ???? ?? ??? ???...`, kn: `${crop} ?? ??? ??????? ??????????????...`, te: `${crop} ???? ?????? ?????? ????????????...`, ta: `${crop} ????? ?????? ?????...` });
     navigate('pest-prediction');
     // Use stored farm data or defaults
     const fs = state.farmSetup || { temperature: 28, humidity: 65, rainfall: 100, soil_type: 'Loamy' };
@@ -3802,9 +4054,9 @@ async function executeVoicePestCheck(data) {
         const risk = result.risk_level || 'Unknown';
         const pests = (result.pests || []).slice(0, 3).map(p => p.pest_name || p.name || p).join(', ');
         const tips = (result.prevention_tips || []).slice(0, 2).join('. ');
-        vcSpeak({ en: `${crop} pest risk is ${risk}. Main pests: ${pests}. Tips: ${tips}`, hi: `${crop} कीट खतरा ${risk} है। मुख्य कीट: ${pests}। सुझाव: ${tips}`, kn: `${crop} ಕೀಟ ಅಪಾಯ ${risk}. ಕೀಟಗಳು: ${pests}. ಸಲಹೆ: ${tips}`, te: `${crop} పురుగు ముప్పు ${risk}. పురుగులు: ${pests}. సలహా: ${tips}`, ta: `${crop} பூச்சி ஆபத்து ${risk}. பூச்சிகள்: ${pests}` }, () => setVoiceState('idle'));
+        vcSpeak({ en: `${crop} pest risk is ${risk}. Main pests: ${pests}. Tips: ${tips}`, hi: `${crop} ??? ???? ${risk} ??? ????? ???: ${pests}? ?????: ${tips}`, kn: `${crop} ??? ???? ${risk}. ??????: ${pests}. ????: ${tips}`, te: `${crop} ?????? ?????? ${risk}. ????????: ${pests}. ????: ${tips}`, ta: `${crop} ?????? ?????? ${risk}. ?????????: ${pests}` }, () => setVoiceState('idle'));
     } catch(e) {
-        vcSpeak({ en: 'Could not check pests. Please try again.', hi: 'कीट जांच नहीं हो पाई। फिर कोशिश करें।' }, () => setVoiceState('idle'));
+        vcSpeak({ en: 'Could not check pests. Please try again.', hi: '??? ???? ???? ?? ???? ??? ????? ?????' }, () => setVoiceState('idle'));
     }
 }
 
@@ -3815,7 +4067,7 @@ function endVoiceConvo(msg) {
     else setVoiceState('idle');
 }
 
-// ── Master voice intent detection ──
+// -- Master voice intent detection --
 // Intercepts ALL recognized text and routes to flows or actions
 function processVoiceMasterCommand(text) {
     const t = text.toLowerCase().trim();
@@ -3825,149 +4077,149 @@ function processVoiceMasterCommand(text) {
         return handleConvoResponse(text);
     }
 
-    // ── Registration / Login ──
-    if (['sign me up', 'register', 'create account', 'new account', 'sign up', 'मुझे साइन अप करो', 'नया खाता', 'खाता बनाओ', 'ಸೈನ್ ಅಪ್', 'ಹೊಸ ಖಾತೆ', 'సైన్ అప్', 'புதிய கணக்கு'].some(w => t.includes(w))) {
+    // -- Registration / Login --
+    if (['sign me up', 'register', 'create account', 'new account', 'sign up', '???? ???? ?? ???', '??? ????', '???? ????', '???? ???', '??? ????', '???? ???', '????? ??????'].some(w => t.includes(w))) {
         startVoiceFlow('signup');
         return true;
     }
-    if (['log me in', 'login', 'log in', 'sign in', 'मुझे लॉगिन करो', 'लॉगिन', 'ಲಾಗಿನ್', 'లాగిన్', 'உள்நுழை'].some(w => t.includes(w))) {
+    if (['log me in', 'login', 'log in', 'sign in', '???? ????? ???', '?????', '??????', '??????', '???????'].some(w => t.includes(w))) {
         if (state.user) {
-            vcSpeak({ en: 'You are already logged in!', hi: 'आप पहले से लॉगिन हैं!', kn: 'ನೀವು ಈಗಾಗಲೇ ಲಾಗಿನ್ ಆಗಿದ್ದೀರಿ!', te: 'మీరు ఇప్పటికే లాగిన్ అయ్యారు!', ta: 'நீங்கள் ஏற்கனவே உள்நுழைந்துள்ளீர்கள்!' });
+            vcSpeak({ en: 'You are already logged in!', hi: '?? ???? ?? ????? ???!', kn: '???? ?????? ?????? ?????????!', te: '???? ???????? ?????? ???????!', ta: '??????? ??????? ????????????????????!' });
             return true;
         }
         startVoiceFlow('login');
         return true;
     }
-    if (['logout', 'log out', 'sign out', 'लॉगआउट', 'बाहर', 'ಲಾಗ್ಔಟ್', 'లాగ్ అవుట్', 'வெளியேறு'].some(w => t.includes(w))) {
+    if (['logout', 'log out', 'sign out', '??????', '????', '???????', '???? ?????', '????????'].some(w => t.includes(w))) {
         logout();
-        vcSpeak({ en: 'You have been logged out.', hi: 'आप लॉगआउट हो गए।', kn: 'ನೀವು ಲಾಗ್ ಔಟ್ ಆಗಿದ್ದೀರಿ.', te: 'మీరు లాగ్ అవుట్ అయ్యారు.', ta: 'நீங்கள் வெளியேறிவிட்டீர்கள்.' });
+        vcSpeak({ en: 'You have been logged out.', hi: '?? ?????? ?? ???', kn: '???? ???? ??? ?????????.', te: '???? ???? ????? ???????.', ta: '??????? ???????????????????.' });
         return true;
     }
 
-    // ── Language Switching ──
+    // -- Language Switching --
     const langSwitch = detectLanguageSwitch(t);
     if (langSwitch) {
         changeLanguage(langSwitch);
         if (window.voiceInterface) window.voiceInterface.setLanguage(langSwitch);
-        const langNames = { en: 'English', hi: 'हिंदी', kn: 'ಕನ್ನಡ', te: 'తెలుగు', ta: 'தமிழ்', ml: 'മലയാളം', bn: 'বাংলা', gu: 'ગુજરાતી', mr: 'मराठी', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ' };
+        const langNames = { en: 'English', hi: '?????', kn: '?????', te: '??????', ta: '?????', ml: '??????', bn: '?????', gu: '???????', mr: '?????', pa: '??????', or: '?????' };
         const name = langNames[langSwitch] || langSwitch;
-        vcSpeak({ en: `Language changed to ${name}. I will now speak in ${name}.`, hi: `भाषा ${name} में बदल दी गई। अब मैं ${name} में बात करूंगा।`, kn: `ಭಾಷೆ ${name} ಗೆ ಬದಲಾಯಿಸಿದ್ದೇವೆ.`, te: `భాష ${name} కి మార్చబడింది.`, ta: `மொழி ${name} ஆக மாற்றப்பட்டது.` });
+        vcSpeak({ en: `Language changed to ${name}. I will now speak in ${name}.`, hi: `???? ${name} ??? ??? ?? ??? ?? ??? ${name} ??? ??? ???????`, kn: `???? ${name} ?? ??????????????.`, te: `??? ${name} ?? ???????????.`, ta: `???? ${name} ?? ?????????????.` });
         return true;
     }
 
-    // ── Navigation ──
-    if (['go home', 'go to home', 'home page', 'dashboard', 'होम', 'घर', 'ಹೋಮ್', 'హోమ్', 'வீடு', 'முகப்பு'].some(w => t.includes(w))) {
-        navigate('dashboard'); vcSpeak({ en: 'Home page', hi: 'होम पेज', kn: 'ಹೋಮ್ ಪೇಜ್', te: 'హోమ్ పేజీ', ta: 'முகப்பு' }); return true;
+    // -- Navigation --
+    if (['go home', 'go to home', 'home page', 'dashboard', '???', '??', '????', '????', '????', '???????'].some(w => t.includes(w))) {
+        navigate('dashboard'); vcSpeak({ en: 'Home page', hi: '??? ???', kn: '???? ????', te: '???? ????', ta: '???????' }); return true;
     }
-    if (['go to farm', 'farm setup', 'setup farm', 'set up farm', 'खेत सेटअप', 'ಜಮೀನು ಸೆಟಪ್', 'పొలం సెటప్', 'பண்ணை அமைப்பு'].some(w => t.includes(w))) {
-        navigate('farm-setup'); vcSpeak({ en: 'Farm setup page. You can say "set up my farm" to fill details by voice.', hi: 'खेत सेटअप पेज। "मेरा खेत सेट करो" बोलें।' }); return true;
+    if (['go to farm', 'farm setup', 'setup farm', 'set up farm', '??? ?????', '????? ?????', '???? ?????', '????? ???????'].some(w => t.includes(w))) {
+        navigate('farm-setup'); vcSpeak({ en: 'Farm setup page. You can say "set up my farm" to fill details by voice.', hi: '??? ????? ???? "???? ??? ??? ???" ??????' }); return true;
     }
-    if (['set up my farm', 'setup my farm', 'fill farm', 'मेरा खेत सेट करो', 'खेत भरो', 'ಜಮೀನು ಸೆಟ್ ಮಾಡಿ', 'పొలం సెట్ చేయండి', 'பண்ணை அமை'].some(w => t.includes(w))) {
+    if (['set up my farm', 'setup my farm', 'fill farm', '???? ??? ??? ???', '??? ???', '????? ???? ????', '???? ???? ??????', '????? ???'].some(w => t.includes(w))) {
         startVoiceFlow('farmSetup'); return true;
     }
-    if (['go to weather', 'show weather', 'weather page', 'मौसम पेज', 'ಹವಾಮಾನ', 'వాతావరణం పేజీ', 'வானிலை பக்கம்'].some(w => t.includes(w))) {
-        navigate('weather'); vcSpeak({ en: 'Weather page', hi: 'मौसम पेज' }); return true;
+    if (['go to weather', 'show weather', 'weather page', '???? ???', '??????', '???????? ????', '?????? ??????'].some(w => t.includes(w))) {
+        navigate('weather'); vcSpeak({ en: 'Weather page', hi: '???? ???' }); return true;
     }
-    if (['go to pest', 'pest page', 'pest prediction', 'कीट पेज', 'ಕೀಟ ಪೇಜ್', 'పురుగు పేజీ', 'பூச்சி பக்கம்'].some(w => t.includes(w))) {
-        navigate('pest-prediction'); vcSpeak({ en: 'Pest prediction page', hi: 'कीट भविष्यवाणी पेज' }); return true;
+    if (['go to pest', 'pest page', 'pest prediction', '??? ???', '??? ????', '?????? ????', '?????? ??????'].some(w => t.includes(w))) {
+        navigate('pest-prediction'); vcSpeak({ en: 'Pest prediction page', hi: '??? ?????????? ???' }); return true;
     }
-    if (['go to soil', 'soil page', 'soil analysis', 'मिट्टी पेज', 'ಮಣ್ಣು ಪೇಜ್', 'మట్టి పేజీ', 'மண் பக்கம்'].some(w => t.includes(w))) {
-        navigate('soil-analysis'); vcSpeak({ en: 'Soil analysis page', hi: 'मिट्टी विश्लेषण पेज' }); return true;
+    if (['go to soil', 'soil page', 'soil analysis', '?????? ???', '????? ????', '????? ????', '??? ??????'].some(w => t.includes(w))) {
+        navigate('soil-analysis'); vcSpeak({ en: 'Soil analysis page', hi: '?????? ???????? ???' }); return true;
     }
-    if (['go to community', 'community page', 'समुदाय', 'ಸಮುದಾಯ', 'సముదాయం', 'சமூகம்'].some(w => t.includes(w))) {
-        navigate('community'); vcSpeak({ en: 'Community page', hi: 'समुदाय पेज' }); return true;
+    if (['go to community', 'community page', '??????', '??????', '???????', '??????'].some(w => t.includes(w))) {
+        navigate('community'); vcSpeak({ en: 'Community page', hi: '?????? ???' }); return true;
     }
-    if (['go to profile', 'settings', 'profile page', 'my profile', 'सेटिंग्स', 'प्रोफ़ाइल', 'ಸೆಟ್ಟಿಂಗ್ಸ್', 'సెట్టింగ్‌లు', 'அமைப்புகள்'].some(w => t.includes(w))) {
-        navigate('profile'); vcSpeak({ en: 'Settings page', hi: 'सेटिंग्स पेज' }); return true;
+    if (['go to profile', 'settings', 'profile page', 'my profile', '????????', '?????????', '???????????', '????????????', '??????????'].some(w => t.includes(w))) {
+        navigate('profile'); vcSpeak({ en: 'Settings page', hi: '???????? ???' }); return true;
     }
-    if (['go to history', 'history page', 'my history', 'इतिहास', 'ಇತಿಹಾಸ', 'చరిత్ర', 'வரலாறு'].some(w => t.includes(w))) {
-        navigate('history'); vcSpeak({ en: 'History page', hi: 'इतिहास पेज' }); return true;
+    if (['go to history', 'history page', 'my history', '??????', '??????', '??????', '??????'].some(w => t.includes(w))) {
+        navigate('history'); vcSpeak({ en: 'History page', hi: '?????? ???' }); return true;
     }
-    if (['go to sustainability', 'sustainability', 'टिकाऊपन', 'ಸುಸ್ಥಿರತೆ', 'సుస్థిరత', 'நிலைத்தன்மை'].some(w => t.includes(w))) {
-        navigate('sustainability'); vcSpeak({ en: 'Sustainability page', hi: 'टिकाऊपन पेज' }); return true;
+    if (['go to sustainability', 'sustainability', '???????', '?????????', '????????', '???????????'].some(w => t.includes(w))) {
+        navigate('sustainability'); vcSpeak({ en: 'Sustainability page', hi: '??????? ???' }); return true;
     }
 
-    // ── Actions ──
-    if (['get recommendation', 'recommend crop', 'crop advice', 'what should i grow', 'फसल सलाह', 'क्या उगाऊं', 'फसल बताओ', 'सलाह दो', 'ಬೆಳೆ ಸಲಹೆ', 'ಏನು ಬೆಳೆಸಲಿ', 'పంట సలహా', 'ఏం పండించాలి', 'பயிர் ஆலோசனை'].some(w => t.includes(w))) {
+    // -- Actions --
+    if (['get recommendation', 'recommend crop', 'crop advice', 'what should i grow', '??? ????', '???? ?????', '??? ????', '???? ??', '???? ????', '??? ???????', '??? ????', '?? ?????????', '????? ??????'].some(w => t.includes(w))) {
         if (!state.farmSetup) {
-            vcSpeak({ en: 'First, let me set up your farm.', hi: 'पहले अपना खेत सेट करें।' }, () => startVoiceFlow('farmSetup'));
+            vcSpeak({ en: 'First, let me set up your farm.', hi: '???? ???? ??? ??? ?????' }, () => startVoiceFlow('farmSetup'));
         } else {
-            vcSpeak({ en: 'Getting AI crop recommendation...', hi: 'AI फसल सिफारिश ला रहे हैं...' });
+            vcSpeak({ en: 'Getting AI crop recommendation...', hi: 'AI ??? ??????? ?? ??? ???...' });
             navigate('recommendation');
             setTimeout(() => getRecommendation(), 500);
         }
         return true;
     }
-    if (['check weather', 'today weather', 'weather forecast', 'मौसम बताओ', 'मौसम कैसा है', 'ಹವಾಮಾನ ಹೇಳಿ', 'వాతావరణం చెప్పు', 'வானிலை சொல்'].some(w => t.includes(w))) {
+    if (['check weather', 'today weather', 'weather forecast', '???? ????', '???? ???? ??', '?????? ????', '???????? ??????', '?????? ????'].some(w => t.includes(w))) {
         navigate('weather');
-        vcSpeak({ en: 'Checking weather...', hi: 'मौसम देख रहे हैं...' });
+        vcSpeak({ en: 'Checking weather...', hi: '???? ??? ??? ???...' });
         setTimeout(() => getWeatherForecast(), 500);
         return true;
     }
-    if (['check pest', 'pest problem', 'my crop is sick', 'crop disease', 'कीड़ा लगा है', 'फसल में रोग', 'ಕೀಟ ಸಮಸ್ಯೆ', 'పురుగు సమస్య', 'பூச்சி பிரச்சனை'].some(w => t.includes(w))) {
+    if (['check pest', 'pest problem', 'my crop is sick', 'crop disease', '????? ??? ??', '??? ??? ???', '??? ??????', '?????? ?????', '?????? ????????'].some(w => t.includes(w))) {
         startVoiceFlow('pestCheck');
         return true;
     }
-    if (['analyze soil', 'soil test', 'check soil', 'मिट्टी जांचो', 'ಮಣ್ಣು ಪರೀಕ್ಷೆ', 'మట్టి పరీక్ష', 'மண் சோதனை'].some(w => t.includes(w))) {
+    if (['analyze soil', 'soil test', 'check soil', '?????? ?????', '????? ???????', '????? ??????', '??? ?????'].some(w => t.includes(w))) {
         navigate('soil-analysis');
-        vcSpeak({ en: 'Soil analysis page. Upload a photo or select soil type.', hi: 'मिट्टी विश्लेषण। फोटो अपलोड करें या मिट्टी चुनें।' });
+        vcSpeak({ en: 'Soil analysis page. Upload a photo or select soil type.', hi: '?????? ????????? ???? ????? ???? ?? ?????? ??????' });
         return true;
     }
-    if (['detect location', 'find my location', 'where am i', 'gps', 'मेरा स्थान', 'मेरी लोकेशन', 'ಸ್ಥಳ ಪತ್ತೆ', 'నా స్థానం', 'என் இடம்'].some(w => t.includes(w))) {
+    if (['detect location', 'find my location', 'where am i', 'gps', '???? ?????', '???? ??????', '???? ?????', '?? ??????', '??? ????'].some(w => t.includes(w))) {
         if (typeof detectMyLocation === 'function') detectMyLocation();
-        vcSpeak({ en: 'Detecting your location...', hi: 'आपका स्थान ढूंढ रहे हैं...' });
+        vcSpeak({ en: 'Detecting your location...', hi: '???? ????? ???? ??? ???...' });
         return true;
     }
-    if (['simple mode', 'easy mode', 'सरल मोड', 'आसान मोड', 'ಸರಳ ಮೋಡ್', 'సింపుల్ మోడ్', 'எளிய முறை'].some(w => t.includes(w))) {
+    if (['simple mode', 'easy mode', '??? ???', '???? ???', '??? ????', '??????? ????', '???? ????'].some(w => t.includes(w))) {
         toggleSimpleMode();
         const isOn = document.body.classList.contains('simple-mode');
-        vcSpeak({ en: isOn ? 'Simple mode activated' : 'Simple mode off', hi: isOn ? 'सरल मोड चालू' : 'सरल मोड बंद' });
+        vcSpeak({ en: isOn ? 'Simple mode activated' : 'Simple mode off', hi: isOn ? '??? ??? ????' : '??? ??? ???' });
         return true;
     }
-    if (['one tap advice', 'quick advice', 'smart advice', 'एक टैप सलाह', 'ಒಂದು ಟ್ಯಾಪ್ ಸಲಹೆ', 'ఒక్క ట్యాప్ సలహా'].some(w => t.includes(w))) {
+    if (['one tap advice', 'quick advice', 'smart advice', '?? ??? ????', '???? ?????? ????', '???? ?????? ????'].some(w => t.includes(w))) {
         if (typeof oneTapAdvice === 'function') oneTapAdvice();
         return true;
     }
 
-    // ── New Feature Navigation ──
-    if (['crop diagnosis', 'diagnose crop', 'take photo', 'crop photo', 'crop disease', 'photo diagnosis', 'camera', 'फसल रोग', 'फोटो जांच', 'ಬೆಳೆ ರೋಗ', 'ఫోటో పరీక్ష', 'பயிர் நோய்'].some(w => t.includes(w))) {
+    // -- New Feature Navigation --
+    if (['crop diagnosis', 'diagnose crop', 'take photo', 'crop photo', 'crop disease', 'photo diagnosis', 'camera', '??? ???', '???? ????', '???? ???', '???? ??????', '????? ????'].some(w => t.includes(w))) {
         navigate('crop-diagnosis');
-        vcSpeak({ en: 'Crop diagnosis page. Take a photo or describe symptoms to get instant AI diagnosis.', hi: 'फसल निदान पेज। फोटो लें या लक्षण बताएं।', kn: 'ಬೆಳೆ ರೋಗ ನಿರ್ಣಯ ಪುಟ.', te: 'పంట రోగ నిర్ధారణ పేజీ.', ta: 'பயிர் நோய் கண்டறிதல் பக்கம்.' });
+        vcSpeak({ en: 'Crop diagnosis page. Take a photo or describe symptoms to get instant AI diagnosis.', hi: '??? ????? ???? ???? ??? ?? ????? ??????', kn: '???? ??? ?????? ???.', te: '??? ??? ???????? ????.', ta: '????? ???? ????????? ??????.' });
         return true;
     }
-    if (['government scheme', 'govt scheme', 'sarkari yojana', 'subsidy', 'सरकारी योजना', 'सब्सिडी', 'ಸರ್ಕಾರಿ ಯೋಜನೆ', 'ప్రభుత్వ పథకం', 'அரசு திட்டம்'].some(w => t.includes(w))) {
+    if (['government scheme', 'govt scheme', 'sarkari yojana', 'subsidy', '?????? ?????', '???????', '??????? ?????', '???????? ????', '???? ???????'].some(w => t.includes(w))) {
         navigate('govt-schemes');
-        vcSpeak({ en: 'Government schemes page. Find subsidies and loans you are eligible for.', hi: 'सरकारी योजना पेज। आपके लिए उपलब्ध सब्सिडी और लोन खोजें।', kn: 'ಸರ್ಕಾರಿ ಯೋಜನೆ ಪುಟ.', te: 'ప్రభుత్వ పథకాల పేజీ.', ta: 'அரசு திட்டங்கள் பக்கம்.' });
+        vcSpeak({ en: 'Government schemes page. Find subsidies and loans you are eligible for.', hi: '?????? ????? ???? ???? ??? ?????? ??????? ?? ??? ??????', kn: '??????? ????? ???.', te: '???????? ????? ????.', ta: '???? ?????????? ??????.' });
         return true;
     }
-    if (['mandi price', 'market price', 'crop price', 'what is the price', 'मंडी भाव', 'भाव बताओ', 'बाजार भाव', 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ', 'ధర చెప్పు', 'மண்டி விலை', 'விலை'].some(w => t.includes(w))) {
+    if (['mandi price', 'market price', 'crop price', 'what is the price', '???? ???', '??? ????', '????? ???', '????????? ????', '?? ??????', '????? ????', '????'].some(w => t.includes(w))) {
         navigate('mandi-prices');
-        vcSpeak({ en: 'Mandi prices page. Check latest crop prices and get sell or hold advice.', hi: 'मंडी भाव पेज। फसल के दाम और बेचें या रुकें सलाह पाएं।', kn: 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ ಪುಟ.', te: 'మండి ధరల పేజీ.', ta: 'மண்டி விலை பக்கம்.' });
+        vcSpeak({ en: 'Mandi prices page. Check latest crop prices and get sell or hold advice.', hi: '???? ??? ???? ??? ?? ??? ?? ????? ?? ????? ???? ?????', kn: '????????? ???? ???.', te: '???? ??? ????.', ta: '????? ???? ??????.' });
         return true;
     }
-    if (['voice note', 'record tip', 'share tip', 'farmer tip', 'वॉइस नोट', 'टिप शेयर करो', 'ಧ್ವನಿ ಟಿಪ್ಪಣಿ', 'వాయిస్ నోట్', 'குரல் குறிப்பு'].some(w => t.includes(w))) {
+    if (['voice note', 'record tip', 'share tip', 'farmer tip', '???? ???', '??? ???? ???', '????? ???????', '?????? ????', '????? ????????'].some(w => t.includes(w))) {
         navigate('voice-notes');
-        vcSpeak({ en: 'Voice notes page. Record and share farming tips with fellow farmers.', hi: 'वॉइस नोट पेज। खेती की टिप्स रिकॉर्ड करें और शेयर करें।', kn: 'ಧ್ವನಿ ಟಿಪ್ಪಣಿ ಪುಟ.', te: 'వాయిస్ నోట్ పేజీ.', ta: 'குரல் குறிப்பு பக்கம்.' });
+        vcSpeak({ en: 'Voice notes page. Record and share farming tips with fellow farmers.', hi: '???? ??? ???? ???? ?? ????? ??????? ???? ?? ???? ?????', kn: '????? ??????? ???.', te: '?????? ???? ????.', ta: '????? ???????? ??????.' });
         return true;
     }
-    if (['expense', 'add expense', 'track expense', 'profit', 'income', 'खर्चा', 'खर्च जोड़ो', 'मुनाफा', 'आमदनी', 'ಖರ್ಚು', 'ಲಾಭ', 'ఖర్చు', 'లాభం', 'செலவு', 'லாபம்'].some(w => t.includes(w))) {
+    if (['expense', 'add expense', 'track expense', 'profit', 'income', '?????', '???? ?????', '??????', '?????', '?????', '???', '?????', '????', '?????', '?????'].some(w => t.includes(w))) {
         navigate('expense-tracker');
-        vcSpeak({ en: 'Expense tracker page. Track your farm spending and profits.', hi: 'खर्चा ट्रैकर पेज। खेती का खर्च और मुनाफा ट्रैक करें।', kn: 'ಖರ್ಚು ಟ್ರ್ಯಾಕರ್ ಪುಟ.', te: 'ఖర్చు ట్రాకర్ పేజీ.', ta: 'செலவு கண்காணிப்பான் பக்கம்.' });
+        vcSpeak({ en: 'Expense tracker page. Track your farm spending and profits.', hi: '????? ?????? ???? ???? ?? ???? ?? ?????? ????? ?????', kn: '????? ????????? ???.', te: '????? ??????? ????.', ta: '????? ????????????? ??????.' });
         return true;
     }
 
-    // ── What can I do? (help) ──
-    if (['what can i do', 'what can you do', 'help me', 'help', 'क्या कर सकते हो', 'मदद', 'सहायता', 'ಏನು ಮಾಡಬಹುದು', 'ಸಹಾಯ', 'ఏం చేయవచ్చు', 'సహాయం', 'என்ன செய்யலாம்', 'உதவி'].some(w => t.includes(w))) {
-        vcSpeak({ en: 'You can say: Login me, Sign me up, Set up my farm, Get crop recommendation, Check weather, Check pest, Analyze soil, Go to community, Go to settings, Detect location, Simple mode, or Logout. Ask any farming question and I will answer!', hi: 'आप बोल सकते हैं: लॉगिन करो, साइन अप करो, खेत सेट करो, फसल सलाह दो, मौसम बताओ, कीड़ा जांचो, मिट्टी जांचो, समुदाय, सेटिंग्स, लोकेशन ढूंढो, सरल मोड, या लॉगआउट। कोई भी खेती का सवाल पूछें!' });
+    // -- What can I do? (help) --
+    if (['what can i do', 'what can you do', 'help me', 'help', '???? ?? ???? ??', '???', '??????', '??? ????????', '????', '?? ????????', '?????', '???? ?????????', '????'].some(w => t.includes(w))) {
+        vcSpeak({ en: 'You can say: Login me, Sign me up, Set up my farm, Get crop recommendation, Check weather, Check pest, Analyze soil, Go to community, Go to settings, Detect location, Simple mode, or Logout. Ask any farming question and I will answer!', hi: '?? ??? ???? ???: ????? ???, ???? ?? ???, ??? ??? ???, ??? ???? ??, ???? ????, ????? ?????, ?????? ?????, ??????, ????????, ?????? ?????, ??? ???, ?? ??????? ??? ?? ???? ?? ???? ?????!' });
         return true;
     }
 
-    return false; // Not handled — let it fall through to chatbot
+    return false; // Not handled � let it fall through to chatbot
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 //  DRAGGABLE SOS BUTTON
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 
 function initDraggableSOS() {
     const btn = document.querySelector('.emergency-pest-btn');
@@ -4046,9 +4298,9 @@ function initDraggableSOS() {
     btn.onclick = (e) => { if (hasMoved) { e.preventDefault(); e.stopPropagation(); } };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 //  FEATURE 1: CROP PHOTO DIAGNOSIS
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 
 let diagImageBase64 = null;
 
@@ -4186,9 +4438,9 @@ async function loadDiagnosisHistory() {
     } catch(e) { /* silent */ }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 //  FEATURE 2: GOVERNMENT SCHEME MATCHER
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 
 function prefillSchemeData() {
     if (state.farmSetup) {
@@ -4288,9 +4540,9 @@ function renderSchemeResults(data) {
         </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 //  FEATURE 3: MANDI PRICE ALERT SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 
 function selectMandiCrop(btn, crop) {
     document.querySelectorAll('.mandi-crop-chip').forEach(c => c.classList.remove('active'));
@@ -4339,22 +4591,22 @@ function renderMandiResults(data) {
         <div class="mandi-price-cards animate-fade-in">
             <div class="mandi-price-card">
                 <div class="mandi-pc-label">Min Price</div>
-                <div class="mandi-pc-value">₹${cp.min || 0}</div>
+                <div class="mandi-pc-value">?${cp.min || 0}</div>
                 <div class="mandi-pc-unit">${cp.unit || '/quintal'}</div>
             </div>
             <div class="mandi-price-card highlight">
                 <div class="mandi-pc-label">Modal Price</div>
-                <div class="mandi-pc-value">₹${cp.modal || 0}</div>
+                <div class="mandi-pc-value">?${cp.modal || 0}</div>
                 <div class="mandi-pc-trend" style="color:${trendColor}"><i class="fas ${trendIcon}"></i> ${data.price_trend || 'stable'}</div>
             </div>
             <div class="mandi-price-card">
                 <div class="mandi-pc-label">Max Price</div>
-                <div class="mandi-pc-value">₹${cp.max || 0}</div>
+                <div class="mandi-pc-value">?${cp.max || 0}</div>
                 <div class="mandi-pc-unit">${cp.unit || '/quintal'}</div>
             </div>
             <div class="mandi-price-card msp-card">
                 <div class="mandi-pc-label">MSP ${data.msp?.year || ''}</div>
-                <div class="mandi-pc-value">₹${data.msp?.price || 0}</div>
+                <div class="mandi-pc-value">?${data.msp?.price || 0}</div>
                 <div class="mandi-pc-unit">Govt. Support Price</div>
             </div>
         </div>
@@ -4368,13 +4620,13 @@ function renderMandiResults(data) {
             <h3 class="card-title"><i class="fas fa-store-alt"></i> Top Mandis</h3>
             <div class="mandi-table-wrap">
                 <table class="mandi-table">
-                    <thead><tr><th>Mandi</th><th>State</th><th>Price (₹/q)</th><th>Arrivals</th></tr></thead>
+                    <thead><tr><th>Mandi</th><th>State</th><th>Price (?/q)</th><th>Arrivals</th></tr></thead>
                     <tbody>
                         ${(data.top_mandis || []).map(m => `
                             <tr>
                                 <td><strong>${m.name}</strong></td>
                                 <td>${m.state || ''}</td>
-                                <td class="mandi-price-cell">₹${m.price || 0}</td>
+                                <td class="mandi-price-cell">?${m.price || 0}</td>
                                 <td>${m.arrival_tons ? m.arrival_tons + ' tons' : '-'}</td>
                             </tr>
                         `).join('')}
@@ -4400,7 +4652,7 @@ function renderMandiResults(data) {
         ], {
             margin: { t: 20, r: 20, b: 40, l: 60 },
             xaxis: { title: '' },
-            yaxis: { title: '₹ / quintal' },
+            yaxis: { title: '? / quintal' },
             legend: { orientation: 'h', y: -0.2 },
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
@@ -4409,9 +4661,9 @@ function renderMandiResults(data) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 //  FEATURE 4: FARMER-TO-FARMER VOICE NOTES
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 
 let vnoteRecording = false;
 let vnoteRecognition = null;
@@ -4485,7 +4737,7 @@ async function shareVoiceNote() {
             crop: crop,
             language: lang
         });
-        toast('Voice note shared with community! 🎉', 'success');
+        toast('Voice note shared with community! ??', 'success');
         document.getElementById('vnote-text').value = '';
         document.getElementById('vnote-transcript').style.display = 'none';
         loadVoiceNotes();
@@ -4542,9 +4794,9 @@ async function likeVoiceNote(id, btn) {
     } catch(e) { /* silent */ }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 //  FEATURE 5: EXPENSE & PROFIT TRACKER
-// ═══════════════════════════════════════════════════════════════════════════════
+// -------------------------------------------------------------------------------
 
 let currentExpenseType = 'expense';
 
@@ -4555,9 +4807,9 @@ function setExpenseType(type) {
     
     const catEl = document.getElementById('exp-category');
     if (type === 'income') {
-        catEl.innerHTML = '<option value="sale">💰 Crop Sale</option><option value="subsidy">🏛️ Govt Subsidy</option><option value="income">💵 Other Income</option><option value="grant">🎁 Grant/Aid</option>';
+        catEl.innerHTML = '<option value="sale">?? Crop Sale</option><option value="subsidy">??? Govt Subsidy</option><option value="income">?? Other Income</option><option value="grant">?? Grant/Aid</option>';
     } else {
-        catEl.innerHTML = '<option value="seeds">🌱 Seeds</option><option value="fertilizer">💊 Fertilizer</option><option value="pesticide">🧪 Pesticide</option><option value="labor">👷 Labor</option><option value="irrigation">💧 Irrigation</option><option value="equipment">🔧 Equipment</option><option value="transport">🚛 Transport</option><option value="rent">🏡 Land Rent</option><option value="other">📦 Other</option>';
+        catEl.innerHTML = '<option value="seeds">?? Seeds</option><option value="fertilizer">?? Fertilizer</option><option value="pesticide">?? Pesticide</option><option value="labor">?? Labor</option><option value="irrigation">?? Irrigation</option><option value="equipment">?? Equipment</option><option value="transport">?? Transport</option><option value="rent">?? Land Rent</option><option value="other">?? Other</option>';
     }
 }
 
@@ -4592,11 +4844,11 @@ async function loadExpenseData() {
         
         // Update summary cards
         const s = res.summary || {};
-        document.getElementById('exp-income').textContent = `₹${(s.total_income || 0).toLocaleString('en-IN')}`;
-        document.getElementById('exp-expense').textContent = `₹${(s.total_expense || 0).toLocaleString('en-IN')}`;
+        document.getElementById('exp-income').textContent = `?${(s.total_income || 0).toLocaleString('en-IN')}`;
+        document.getElementById('exp-expense').textContent = `?${(s.total_expense || 0).toLocaleString('en-IN')}`;
         const profitEl = document.getElementById('exp-profit');
         const profit = s.profit || 0;
-        profitEl.textContent = `₹${Math.abs(profit).toLocaleString('en-IN')}`;
+        profitEl.textContent = `?${Math.abs(profit).toLocaleString('en-IN')}`;
         profitEl.style.color = profit >= 0 ? '#22c55e' : '#ef4444';
         profitEl.textContent = (profit >= 0 ? '+' : '-') + profitEl.textContent;
         
@@ -4607,13 +4859,13 @@ async function loadExpenseData() {
         } else {
             listEl.innerHTML = res.entries.slice(0, 20).map(e => `
                 <div class="exp-entry-item ${e.entry_type}">
-                    <div class="exp-entry-icon ${e.entry_type}">${e.entry_type === 'income' ? '↓' : '↑'}</div>
+                    <div class="exp-entry-icon ${e.entry_type}">${e.entry_type === 'income' ? '?' : '?'}</div>
                     <div class="exp-entry-info">
                         <strong>${e.category}</strong>
                         ${e.description ? `<span class="exp-entry-desc">${escapeHtml(e.description)}</span>` : ''}
                         <span class="exp-entry-date">${e.date || ''}</span>
                     </div>
-                    <div class="exp-entry-amount ${e.entry_type}">${e.entry_type === 'income' ? '+' : '-'}₹${(e.amount || 0).toLocaleString('en-IN')}</div>
+                    <div class="exp-entry-amount ${e.entry_type}">${e.entry_type === 'income' ? '+' : '-'}?${(e.amount || 0).toLocaleString('en-IN')}</div>
                     <button class="exp-delete-btn" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash-alt"></i></button>
                 </div>`).join('');
         }
@@ -4659,7 +4911,7 @@ function renderExpenseCharts(summary) {
             margin: { t: 20, r: 20, b: 40, l: 60 },
             barmode: 'group',
             xaxis: { title: '' },
-            yaxis: { title: '₹' },
+            yaxis: { title: '?' },
             legend: { orientation: 'h', y: -0.2 },
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
@@ -4724,6 +4976,13 @@ function toast(message, type = 'info') {
     div.className = `toast ${type}`;
     div.innerHTML = `<i class="fas ${icons[type] || icons.info} toast-icon"></i><span>${message}</span>`;
     container.appendChild(div);
+    // Auto-translate toast text if not English
+    if (state.language && state.language !== 'en') {
+        const spanEl = div.querySelector('span');
+        if (spanEl && _isEnglishText(message)) {
+            translateText(message, state.language).then(t => { if (spanEl.parentNode) spanEl.textContent = t; });
+        }
+    }
     setTimeout(() => { div.style.opacity = '0'; div.style.transform = 'translateX(80px)'; setTimeout(() => div.remove(), 300); }, 4000);
 }
 
@@ -4744,14 +5003,14 @@ function downloadFile(content, filename, mimeType) {
     URL.revokeObjectURL(url);
 }
 
-// ─── Service Worker Registration ───
+// --- Service Worker Registration ---
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
 }
 
-// ═══════════════════════════════════════
-//  PRODUCTION UI — Header, Footer, Breadcrumb, Back-to-top, Search, Notifications
-// ═══════════════════════════════════════
+// ---------------------------------------
+//  PRODUCTION UI � Header, Footer, Breadcrumb, Back-to-top, Search, Notifications
+// ---------------------------------------
 
 const pageNameMap = {
     'dashboard': 'Dashboard',
@@ -4782,7 +5041,7 @@ function updateBreadcrumb(pageId) {
     if (el) el.textContent = pageNameMap[pageId] || pageId;
 }
 
-// ─── Global Search ───
+// --- Global Search ---
 function handleGlobalSearch(query) {
     const resultsEl = document.getElementById('search-results');
     if (!resultsEl) return;
@@ -4805,7 +5064,7 @@ document.addEventListener('click', (e) => {
     if (sr && !sr.contains(e.target) && e.target !== si) sr.style.display = 'none';
 });
 
-// ─── Notifications ───
+// --- Notifications ---
 function toggleNotifPanel() {
     const panel = document.getElementById('notif-panel');
     if (!panel) return;
@@ -4837,7 +5096,7 @@ function clearNotifications() {
     if (dot) { dot.classList.remove('active'); dot.style.display = 'none'; }
 }
 
-// ─── User Dropdown ───
+// --- User Dropdown ---
 function toggleUserDropdown() {
     const dd = document.getElementById('user-dropdown-menu');
     if (!dd) return;
@@ -4862,7 +5121,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// ─── Back to Top ───
+// --- Back to Top ---
 function scrollToTop() {
     const mainArea = document.querySelector('.main-area');
     if (mainArea) mainArea.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4880,7 +5139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ─── Update community post count on dashboard ───
+// --- Update community post count on dashboard ---
 function updateCommunityCount() {
     const el = document.getElementById('stat-community');
     if (!el) return;
@@ -4888,11 +5147,11 @@ function updateCommunityCount() {
     el.textContent = posts.length || '0';
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  VISUAL POLISH — Scroll Reveal, Animated Counters, Tilt cards
-//  ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
+//  VISUAL POLISH � Scroll Reveal, Animated Counters, Tilt cards
+//  ---------------------------------------------------------------
 
-// ── Scroll Reveal: fade-in cards/sections as they enter viewport ──
+// -- Scroll Reveal: fade-in cards/sections as they enter viewport --
 (function initScrollReveal() {
     function tagElements() {
         const selectors = [
@@ -4944,7 +5203,7 @@ function updateCommunityCount() {
     }, 500);
 })();
 
-// ── Animated Number Counter — animates stat values on dashboard ──
+// -- Animated Number Counter � animates stat values on dashboard --
 function animateCounter(el, targetVal, duration = 800) {
     if (!el || isNaN(targetVal)) return;
     const start = 0;
@@ -4983,7 +5242,7 @@ function animateCounter(el, targetVal, duration = 800) {
     });
 })();
 
-// ── Tilt hover effect — subtle 3D parallax on cards ──
+// -- Tilt hover effect � subtle 3D parallax on cards --
 (function initTiltCards() {
     document.addEventListener('DOMContentLoaded', () => {
         const cards = document.querySelectorAll('.dash-hero, .one-tap-card');
@@ -5003,13 +5262,13 @@ function animateCounter(el, targetVal, duration = 800) {
     });
 })();
 
-// ── Parallax floating elements in hero ──
+// -- Parallax floating elements in hero --
 (function initHeroParallax() {
     document.addEventListener('DOMContentLoaded', () => {
         const hero = document.querySelector('.dash-hero');
         if (!hero) return;
         // Create floating decorative elements
-        const emojis = ['🌱', '🌿', '☀️', '💧', '🦋'];
+        const emojis = ['??', '??', '??', '??', '??'];
         emojis.forEach((emoji, i) => {
             const el = document.createElement('span');
             el.className = 'hero-float-el';
@@ -5026,7 +5285,7 @@ function animateCounter(el, targetVal, duration = 800) {
     });
 })();
 
-// ── Smooth page transition pulse on navigate ──
+// -- Smooth page transition pulse on navigate --
 (function enhancePageTransitions() {
     const origNav = window.navigate;
     if (typeof origNav !== 'function') return;
@@ -5056,4 +5315,285 @@ function animateCounter(el, targetVal, duration = 800) {
             }
         }, 150);
     };
+})();
+
+// ---------------------------------------
+//  FACE AUTHENTICATION
+// ---------------------------------------
+
+let faceStream = null;
+
+function startFaceAuth() {
+    document.getElementById('auth-method-picker').style.display = 'none';
+    const overlay = document.getElementById('face-auth-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('face-auth-actions').style.display = 'none';
+    document.getElementById('face-register-section').style.display = 'none';
+    document.getElementById('face-auth-status').textContent = 'Starting camera...';
+
+    const video = document.getElementById('face-video');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 280, height: 280 } })
+        .then(stream => {
+            faceStream = stream;
+            video.srcObject = stream;
+            document.getElementById('face-auth-status').textContent = 'Camera ready � hold still...';
+            document.getElementById('face-scan-line').style.display = 'block';
+            // Auto-capture after 2.5 seconds
+            setTimeout(() => captureFaceAndMatch(), 2500);
+        })
+        .catch(() => {
+            document.getElementById('face-auth-status').textContent = 'Camera access denied. Please allow camera.';
+            document.getElementById('face-auth-status').style.color = '#dc2626';
+        });
+}
+
+function captureFaceAndMatch() {
+    const video = document.getElementById('face-video');
+    const canvas = document.getElementById('face-canvas');
+    canvas.width = 280;
+    canvas.height = 280;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 280, 280);
+
+    const imageData = ctx.getImageData(0, 0, 280, 280);
+    const faceHash = computeFaceHash(imageData.data);
+
+    document.getElementById('face-scan-line').style.display = 'none';
+    document.getElementById('face-auth-status').textContent = 'Checking face...';
+
+    // Try matching against stored faces
+    matchFaceOnServer(faceHash);
+}
+
+function computeFaceHash(pixelData) {
+    // Simple perceptual hash: downsample to 16x16 grayscale, threshold at mean
+    const size = 16;
+    const srcW = 280, srcH = 280;
+    const gray = [];
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const sx = Math.floor(x * srcW / size);
+            const sy = Math.floor(y * srcH / size);
+            const idx = (sy * srcW + sx) * 4;
+            gray.push(pixelData[idx] * 0.299 + pixelData[idx + 1] * 0.587 + pixelData[idx + 2] * 0.114);
+        }
+    }
+    const mean = gray.reduce((a, b) => a + b, 0) / gray.length;
+    return gray.map(v => v > mean ? '1' : '0').join('');
+}
+
+async function matchFaceOnServer(faceHash) {
+    try {
+        const res = await fetch(`${API}/face_login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ face_hash: faceHash })
+        });
+        const data = await res.json();
+        if (res.ok && data.username) {
+            // Face recognized!
+            document.getElementById('face-auth-status').textContent = '? Face recognized!';
+            document.getElementById('face-auth-status').style.color = '#16a34a';
+            document.getElementById('face-match-name').textContent = `Hello, ${data.username}!`;
+            document.getElementById('face-auth-actions').style.display = 'block';
+            // Store hash for confirm
+            window._pendingFaceUser = data.username;
+            speakText(`Hello ${data.username}! Is that you?`, state.language);
+        } else {
+            // New face
+            document.getElementById('face-auth-status').textContent = 'New face � please register';
+            document.getElementById('face-register-section').style.display = 'block';
+            window._pendingFaceHash = faceHash;
+        }
+    } catch {
+        // Offline fallback � show register
+        document.getElementById('face-auth-status').textContent = 'New face � please register';
+        document.getElementById('face-register-section').style.display = 'block';
+        window._pendingFaceHash = faceHash;
+    }
+}
+
+async function confirmFaceAuth() {
+    const username = window._pendingFaceUser;
+    if (!username) return;
+    stopFaceCamera();
+    state.user = { username, farm_name: `${username}'s Farm` };
+    localStorage.setItem('agri_user', JSON.stringify(state.user));
+    speakText(`Welcome back, ${username}!`, state.language);
+    toast(`Welcome back, ${username}!`, 'success');
+    document.getElementById('face-auth-overlay').style.display = 'none';
+    enterApp();
+}
+
+function retryFaceAuth() {
+    document.getElementById('face-auth-actions').style.display = 'none';
+    document.getElementById('face-register-section').style.display = 'none';
+    document.getElementById('face-auth-status').textContent = 'Retrying... hold still';
+    document.getElementById('face-scan-line').style.display = 'block';
+    setTimeout(() => captureFaceAndMatch(), 2000);
+}
+
+async function registerFaceAuth() {
+    const name = document.getElementById('face-register-name').value.trim();
+    if (!name) { toast('Please enter your name', 'info'); return; }
+    const faceHash = window._pendingFaceHash;
+    if (!faceHash) { toast('No face captured', 'error'); return; }
+
+    showLoading('Registering face...');
+    try {
+        // Signup with face hash
+        await fetchAPI('/signup', { username: name, farm_name: `${name}'s Farm`, profile_picture: null });
+    } catch (err) {
+        // Ignore if already exists
+        if (!err.message?.includes('already exists')) {
+            toast(err.message || 'Signup failed', 'error');
+            hideLoading();
+            return;
+        }
+    }
+    try {
+        await fetch(`${API}/face_register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: name, face_hash: faceHash })
+        });
+        stopFaceCamera();
+        state.user = { username: name, farm_name: `${name}'s Farm` };
+        localStorage.setItem('agri_user', JSON.stringify(state.user));
+        speakText(`Welcome to AgriSmart, ${name}!`, state.language);
+        toast(`Face registered! Welcome, ${name}!`, 'success');
+        document.getElementById('face-auth-overlay').style.display = 'none';
+        enterApp();
+    } catch {
+        toast('Registration failed', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function cancelFaceAuth() {
+    stopFaceCamera();
+    const overlay = document.getElementById('face-auth-overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.getElementById('auth-method-picker').style.display = 'flex';
+}
+
+function stopFaceCamera() {
+    if (faceStream) {
+        faceStream.getTracks().forEach(t => t.stop());
+        faceStream = null;
+    }
+    const video = document.getElementById('face-video');
+    if (video) video.srcObject = null;
+}
+
+// ---------------------------------------
+//  CROP ROTATION VOICE NOTE
+// ---------------------------------------
+
+let lastRotationPlanText = '';
+
+function speakRotationPlan() {
+    if (lastRotationPlanText) {
+        speakText(lastRotationPlanText, state.language);
+    } else {
+        toast('No rotation plan to read', 'info');
+    }
+}
+
+// ---------------------------------------
+//  WEATHER EXPLANATION (SIMPLE)
+// ---------------------------------------
+
+let lastWeatherExplanation = '';
+
+function speakWeatherExplanation() {
+    if (lastWeatherExplanation) {
+        speakText(lastWeatherExplanation, state.language);
+    }
+}
+
+// ---------------------------------------
+//  SUSTAINABILITY EXPLANATION VOICE
+// ---------------------------------------
+
+function speakSustainabilityExplanation() {
+    const text = 'Your sustainability score is based on three factors. Water usage counts for 40 percent, lower water use gives a higher score. Fertilizer use counts for 30 percent, using less chemical fertilizer is better. Crop rotation counts for 30 percent, rotating crops keeps soil healthy. A score above 80 is excellent, 60 to 79 is good, 40 to 59 needs improvement, and below 40 is critical.';
+    speakText(text, state.language);
+}
+
+// ---------------------------------------
+//  DRAGGABLE VOICE FAB
+// ---------------------------------------
+
+(function initDraggableVoiceFab() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const fab = document.getElementById('voice-btn');
+        if (!fab) return;
+        let isDragging = false, wasDragged = false;
+        let startX, startY, startLeft, startTop;
+
+        function onStart(e) {
+            const touch = e.touches ? e.touches[0] : e;
+            isDragging = true;
+            wasDragged = false;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            const rect = fab.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            fab.style.transition = 'none';
+            fab.style.zIndex = '9999';
+        }
+        function onMove(e) {
+            if (!isDragging) return;
+            const touch = e.touches ? e.touches[0] : e;
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) wasDragged = true;
+            if (!wasDragged) return;
+            if (e.cancelable) e.preventDefault();
+            const newLeft = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, startLeft + dx));
+            const newTop = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, startTop + dy));
+            fab.style.position = 'fixed';
+            fab.style.left = newLeft + 'px';
+            fab.style.top = newTop + 'px';
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        }
+        function onEnd() {
+            isDragging = false;
+            fab.style.transition = 'transform 0.2s';
+            fab.style.zIndex = '30';
+            if (wasDragged) {
+                // Save position
+                localStorage.setItem('voiceFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+        }
+
+        fab.addEventListener('touchstart', onStart, { passive: true });
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+        fab.addEventListener('mousedown', onStart);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+
+        // Override click to ignore drag
+        fab.addEventListener('click', (e) => {
+            if (wasDragged) { e.stopImmediatePropagation(); wasDragged = false; }
+        }, true);
+
+        // Restore saved position
+        const saved = localStorage.getItem('voiceFabPos');
+        if (saved) {
+            try {
+                const pos = JSON.parse(saved);
+                fab.style.position = 'fixed';
+                fab.style.left = pos.left;
+                fab.style.top = pos.top;
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+            } catch {}
+        }
+    });
 })();

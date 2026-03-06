@@ -6584,3 +6584,259 @@ body.simple-mode .card-title {
         border-radius: 16px;
     }
 }
+
+/* ═══════════════════════════════════════
+   FACE AUTH
+   ═══════════════════════════════════════ */
+.face-auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.face-camera-wrap {
+    position: relative;
+    display: inline-block;
+    border-radius: 18px;
+    overflow: hidden;
+}
+.face-scan-line {
+    display: none;
+    position: absolute;
+    left: 10%;
+    width: 80%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #16a34a, transparent);
+    animation: faceScan 2s ease-in-out infinite;
+    border-radius: 2px;
+    z-index: 5;
+}
+@keyframes faceScan {
+    0%, 100% { top: 15%; }
+    50% { top: 80%; }
+}
+.face-btn-glow {
+    border: 2px solid #2563eb !important;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe) !important;
+}
+.face-btn-glow i {
+    color: #2563eb;
+}
+
+/* ═══════════════════════════════════════
+   VOICE NOTE BUTTON
+   ═══════════════════════════════════════ */
+.btn-voice-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #16a34a;
+    background: #f0fdf4;
+    color: #166534;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-voice-note:hover {
+    background: #16a34a;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════
+   ENHANCED MOBILE RESPONSIVENESS
+   ═══════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Stat grid fix */
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+    .stat-card {
+        padding: 0.75rem !important;
+    }
+    .stat-value {
+        font-size: 1.3rem !important;
+    }
+    .stat-icon {
+        font-size: 1.1rem !important;
+    }
+
+    /* Cards full width */
+    .card, .two-col .card {
+        padding: 1rem !important;
+        margin-bottom: 0.75rem;
+    }
+    .two-col {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    .three-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Input grids stack */
+    .input-grid, .grid-2, .grid-3 {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Chart containers */
+    .chart-container {
+        min-height: 200px !important;
+        height: auto !important;
+    }
+
+    /* Weather risk cards */
+    .weather-risk-cards {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    .risk-card {
+        padding: 0.75rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* NPK cards */
+    .npk-cards {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.4rem !important;
+    }
+    .npk-card {
+        padding: 0.75rem 0.4rem !important;
+    }
+    .npk-value {
+        font-size: 1.1rem !important;
+    }
+
+    /* One-tap grid */
+    .one-tap-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+    .one-tap-card {
+        padding: 1rem !important;
+    }
+
+    /* Farm map */
+    #farm-map-container {
+        height: 280px !important;
+    }
+
+    /* Map legend */
+    .map-legend {
+        padding: 0.75rem !important;
+    }
+    .legend-items {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Tabs scroll */
+    .tabs, .auth-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+    }
+    .tab {
+        white-space: nowrap;
+        min-width: max-content;
+        font-size: 0.8rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Modal fix */
+    .modal-content {
+        width: 95% !important;
+        max-height: 85vh !important;
+        padding: 1rem !important;
+    }
+
+    /* Hero section */
+    .dash-hero {
+        padding: 1.5rem 1rem !important;
+    }
+    .dash-hero h1 {
+        font-size: 1.3rem !important;
+    }
+
+    /* Agent cards */
+    .agent-card {
+        padding: 1rem !important;
+    }
+
+    /* Community posts */
+    .post-card {
+        padding: 0.75rem !important;
+    }
+
+    /* Sidebar hidden on mobile (using bottom nav) */
+    .sidebar {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0.75rem !important;
+        padding-bottom: 5rem !important;
+    }
+
+    /* Header compact */
+    .top-header {
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Voice panel full width */
+    .voice-panel {
+        width: 95% !important;
+        right: 2.5% !important;
+        left: 2.5% !important;
+        bottom: 5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    .one-tap-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.4rem !important;
+    }
+    .one-tap-card {
+        padding: 0.75rem !important;
+        font-size: 0.75rem !important;
+    }
+    .one-tap-card i {
+        font-size: 1.2rem !important;
+    }
+    .btn, .btn-primary, .btn-outline {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.85rem !important;
+    }
+    .page-title {
+        font-size: 1.2rem !important;
+    }
+    .card-title {
+        font-size: 0.95rem !important;
+    }
+    .auth-method-options {
+        gap: 0.5rem !important;
+    }
+    /* Map data source */
+    .map-data-source ul {
+        font-size: 0.75rem !important;
+        padding-left: 0.75rem !important;
+    }
+    /* Face auth video smaller */
+    #face-video {
+        max-width: 220px !important;
+    }
+}

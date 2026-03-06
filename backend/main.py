@@ -502,6 +502,13 @@ def init_db():
             date TEXT,
             created_at TEXT
         )''')
+        # Face hashes table for face authentication
+        cursor.execute('''CREATE TABLE IF NOT EXISTS face_hashes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            face_hash TEXT,
+            created_at TEXT
+        )''')
         conn.commit()
 
 init_db()
@@ -527,6 +534,49 @@ def login(user: UserLogin):
         if not row:
             raise HTTPException(status_code=404, detail="User not found.")
         return {"username": row[0], "farm_name": row[1], "profile_picture": row[2]}
+
+# ── Face Authentication ──
+class FaceLoginRequest(BaseModel):
+    face_hash: str
+
+class FaceRegisterRequest(BaseModel):
+    username: str
+    face_hash: str
+
+def hamming_distance(h1: str, h2: str) -> int:
+    return sum(c1 != c2 for c1, c2 in zip(h1, h2))
+
+@app.post("/face_login")
+def face_login(req: FaceLoginRequest):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, face_hash FROM face_hashes")
+        rows = cursor.fetchall()
+        best_match = None
+        best_dist = float('inf')
+        for username, stored_hash in rows:
+            if len(stored_hash) != len(req.face_hash):
+                continue
+            dist = hamming_distance(req.face_hash, stored_hash)
+            if dist < best_dist:
+                best_dist = dist
+                best_match = username
+        # Threshold: 256 bits, ~30% tolerance
+        threshold = len(req.face_hash) * 0.30
+        if best_match and best_dist < threshold:
+            return {"username": best_match, "distance": best_dist}
+        raise HTTPException(status_code=404, detail="Face not recognized")
+
+@app.post("/face_register")
+def face_register(req: FaceRegisterRequest):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        # Remove old face hash for this user if exists
+        cursor.execute("DELETE FROM face_hashes WHERE username = ?", (req.username,))
+        cursor.execute("INSERT INTO face_hashes (username, face_hash, created_at) VALUES (?, ?, ?)",
+                       (req.username, req.face_hash, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        conn.commit()
+    return {"message": "Face registered", "username": req.username}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  DYNAMIC TRANSLATION — deep-translator (Google backend, free)
