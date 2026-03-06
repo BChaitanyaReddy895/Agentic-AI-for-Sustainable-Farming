@@ -5154,9 +5154,9 @@ function animateCounter(el, targetVal, duration = 800) {
 //  FACE AUTHENTICATION (Integrated verification step)
 // ═══════════════════════════════════════
 
-let faceStream = null;
+var faceStream = null;
 // Stores context: { mode: 'signup'|'login'|'voice-auto', username, phone, farm_name, location, source: 'manual'|'voice'|'voiceFlow' }
-let _faceAuthContext = null;
+var _faceAuthContext = null;
 
 function startFaceAuthVerification(ctx) {
     _faceAuthContext = ctx;
