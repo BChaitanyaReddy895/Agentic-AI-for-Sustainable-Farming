@@ -407,17 +407,6 @@ def init_db():
             response TEXT,
             timestamp TEXT
         )''')
-        # Farm maps table
-        cursor.execute('''CREATE TABLE IF NOT EXISTS farm_maps (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            farm_name TEXT,
-            map_data TEXT,
-            recommendations TEXT,
-            risk_areas TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )''')
         # Offline data table
         cursor.execute('''CREATE TABLE IF NOT EXISTS offline_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1254,47 +1243,6 @@ def get_sustainability_scores(username: str = Query(None)):
             "average_score": round(sum(scores) / len(scores), 1)
         }
     return {"timestamps": [], "scores": [], "trend": "no_data", "average_score": 0}
-
-@app.post("/farm_map")
-def save_farm_map(map_data: dict):
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO farm_maps (username, farm_name, map_data, recommendations, risk_areas, created_at, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            map_data.get('username', 'anonymous'),
-            map_data.get('farm_name', 'My Farm'),
-            json.dumps(map_data.get('map_data', {})),
-            json.dumps(map_data.get('recommendations', [])),
-            json.dumps(map_data.get('risk_areas', [])),
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ))
-        conn.commit()
-    return {"message": "Map saved successfully"}
-
-@app.get("/farm_map/{username}")
-def get_farm_map(username: str):
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM farm_maps WHERE username = ? ORDER BY updated_at DESC LIMIT 1
-        """, (username,))
-        row = cursor.fetchone()
-    
-    if row:
-        return {
-            "id": row[0],
-            "username": row[1],
-            "farm_name": row[2],
-            "map_data": json.loads(row[3]) if row[3] else {},
-            "recommendations": json.loads(row[4]) if row[4] else [],
-            "risk_areas": json.loads(row[5]) if row[5] else [],
-            "created_at": row[6],
-            "updated_at": row[7]
-        }
-    return {"message": "No map found", "map_data": None}
 
 @app.post("/community")
 def log_community(insight: CommunityInsight):
@@ -2210,7 +2158,6 @@ def root():
             "community": ["/community", "/community/insights"],
             "market": ["/market/dashboard"],
             "chatbot": ["/chatbot/ask", "/chatbot/history/{username}"],
-            "maps": ["/farm_map", "/farm_map/{username}"],
             "offline": ["/offline/save", "/offline/pending/{username}", "/offline/sync/{username}"],
             "user": ["/user/profile/{username}"],
             "crop_diagnosis": ["/crop_diagnosis", "/crop_diagnosis/history/{username}"],

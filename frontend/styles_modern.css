@@ -1197,19 +1197,6 @@ input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 /* ═══════════════════════════════════════
-   MAP
-   ═══════════════════════════════════════ */
-.map-legend {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-}
-.map-legend h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.5rem; }
-.legend-items { display: flex; flex-wrap: wrap; gap: 1rem; }
-.legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
-.legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
-
-/* ═══════════════════════════════════════
    COMMUNITY
    ═══════════════════════════════════════ */
 .practice-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -6724,20 +6711,6 @@ body.simple-mode .card-title {
     }
     .one-tap-card {
         padding: 1rem !important;
-    }
-
-    /* Farm map */
-    #farm-map-container {
-        height: 280px !important;
-    }
-
-    /* Map legend */
-    .map-legend {
-        padding: 0.75rem !important;
-    }
-    .legend-items {
-        flex-wrap: wrap !important;
-        gap: 0.5rem !important;
     }
 
     /* Tabs scroll */

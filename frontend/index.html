@@ -19,10 +19,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <!-- Plotly -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 
@@ -207,7 +203,6 @@
             <span class="sidebar-section-label">Planning &amp; Tools</span>
             <a class="sidebar-link" data-page="rotation" onclick="navigate('rotation')"><i class="fas fa-calendar-alt"></i><span data-i18n="nav.cropPlanner">Crop Planner</span></a>
             <a class="sidebar-link" data-page="fertilizer" onclick="navigate('fertilizer')"><i class="fas fa-flask"></i><span data-i18n="nav.fertilizer">Fertilizer Calculator</span></a>
-            <a class="sidebar-link" data-page="farm-map" onclick="navigate('farm-map')"><i class="fas fa-map-marked-alt"></i><span data-i18n="nav.farmMap">Farm Map</span></a>
             <a class="sidebar-link" data-page="crop-diagnosis" onclick="navigate('crop-diagnosis')"><i class="fas fa-camera"></i><span data-i18n="nav.cropDiagnosis">Crop Diagnosis</span></a>
 
             <span class="sidebar-section-label">Intelligence</span>
@@ -519,14 +514,6 @@
                         <div class="fc-text">
                             <h3 data-i18n="dash.fertCalc">Fertilizer Calculator</h3>
                             <p data-i18n="dash.fertCalcDesc">Calculate optimal NPK requirements</p>
-                        </div>
-                        <i class="fas fa-arrow-right fc-arrow"></i>
-                    </div>
-                    <div class="feature-card fc-earth" onclick="navigate('farm-map')">
-                        <div class="fc-icon"><i class="fas fa-map"></i></div>
-                        <div class="fc-text">
-                            <h3 data-i18n="dash.farmMap">Farm Map</h3>
-                            <p data-i18n="dash.farmMapDesc">Interactive map with soil zones & risks</p>
                         </div>
                         <i class="fas fa-arrow-right fc-arrow"></i>
                     </div>
@@ -877,55 +864,6 @@
                 </div>
                 <div id="fertilizer-results" class="results-area"></div>
                 <div class="card mt-4"><h3 class="card-title"><i class="fas fa-chart-bar"></i> <span data-i18n="fert.nutrientBreakdown">Nutrient Breakdown</span></h3><div id="fertilizer-chart" class="chart-container"></div></div>
-            </div>
-        </section>
-
-        <!-- ===== FARM MAP ===== -->
-        <section id="farm-map-page" class="page">
-            <div class="page-pad">
-                <div class="page-title-row">
-                    <div class="page-icon bg-earth"><i class="fas fa-map"></i></div>
-                    <div><h1 data-i18n="map.title">Interactive Farm Map</h1><p class="page-desc" data-i18n="map.desc">Visualize soil zones, risk areas, and get location-specific advice</p></div>
-                </div>
-                <div class="card">
-                    <h3 class="card-title"><i class="fas fa-cog"></i> <span data-i18n="map.settings">Map Settings</span></h3>
-                    <div class="input-row-2">
-                        <div class="form-group"><label>Latitude</label><input type="number" id="farm-lat" value="12.9716" step="0.0001"></div>
-                        <div class="form-group"><label>Longitude</label><input type="number" id="farm-lon" value="77.5946" step="0.0001"></div>
-                    </div>
-                    <div class="btn-row">
-                        <button class="btn btn-primary" onclick="createFarmMap()"><i class="fas fa-map"></i> <span data-i18n="map.create">Create Map</span></button>
-                        <button class="btn btn-outline" onclick="loadSavedMap()"><i class="fas fa-folder-open"></i> <span data-i18n="map.loadSaved">Load Saved</span></button>
-                        <button class="btn btn-outline" onclick="saveFarmMap()"><i class="fas fa-save"></i> <span data-i18n="map.saveMap">Save Map</span></button>
-                    </div>
-                </div>
-                <div class="card mt-4">
-                    <div id="farm-map-container" style="height:420px;border-radius:12px;overflow:hidden;background:#f0fdf4"></div>
-                    <div class="map-legend">
-                        <h4 data-i18n="map.legend">Legend</h4>
-                        <div class="legend-items">
-                            <div class="legend-item"><span class="legend-dot" style="background:#8B4513"></span> <span data-i18n="map.claySoil">Clay Soil</span></div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#C2B280"></span> <span data-i18n="map.sandySoil">Sandy Soil</span></div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#228B22"></span> <span data-i18n="map.loamySoil">Loamy Soil</span></div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#dc2626"></span> <span data-i18n="map.erosionRisk">Erosion Risk</span></div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> <span data-i18n="map.waterlogging">Waterlogging</span></div>
-                        </div>
-                    </div>
-                    <div class="map-data-source" style="margin-top:1rem;padding:1rem;background:#f0fdf4;border-radius:10px;border-left:4px solid #16a34a">
-                        <h4 style="font-size:0.85rem;font-weight:700;color:#166534;margin-bottom:0.5rem"><i class="fas fa-info-circle"></i> Data Sources & Reliability</h4>
-                        <ul style="font-size:0.8rem;color:#374151;line-height:1.7;padding-left:1rem;margin:0">
-                            <li><strong>Map tiles:</strong> OpenStreetMap — community-verified global mapping data, updated daily by 2M+ contributors</li>
-                            <li><strong>Soil zones:</strong> Generated using your GPS coordinates combined with ICAR (Indian Council of Agricultural Research) soil classification patterns for your region</li>
-                            <li><strong>Erosion & waterlogging risk:</strong> Estimated from elevation data (SRTM), regional rainfall patterns (IMD), and soil type drainage characteristics</li>
-                            <li><strong>Accuracy:</strong> Zone boundaries are approximate (~200m radius). For precise soil testing, visit your nearest Krishi Vigyan Kendra (KVK)</li>
-                            <li><strong>GPS coordinates:</strong> From your device's location sensor — accuracy depends on your device (typically 3-10m)</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card mt-4" id="map-recs-card" style="display:none">
-                    <h3 class="card-title"><i class="fas fa-clipboard-list"></i> <span data-i18n="map.locationRecs">Location-Specific Recommendations</span></h3>
-                    <div id="map-rec-content"></div>
-                </div>
             </div>
         </section>
 

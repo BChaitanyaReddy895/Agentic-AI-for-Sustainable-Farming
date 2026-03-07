@@ -19,14 +19,6 @@ import base64
 import io
 import time
 import json
-import folium
-try:
-    from streamlit_folium import st_folium
-except Exception:
-    # Graceful fallback if streamlit-folium is not available in the environment
-    def st_folium(*args, **kwargs):
-        st.warning("streamlit-folium is not installed. Maps are disabled. Install it to enable map features.")
-        return {}
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -180,17 +172,7 @@ def initialize_db():
             profile_picture TEXT,
             created_at TEXT
         )''')
-        # Create farm_maps table for interactive farm mapping
-        cursor.execute('''CREATE TABLE IF NOT EXISTS farm_maps (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            farm_name TEXT,
-            map_data TEXT,
-            recommendations TEXT,
-            risk_areas TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )''')
+
         # Create community_insights table for community-driven data
         cursor.execute('''CREATE TABLE IF NOT EXISTS community_insights (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -702,7 +684,7 @@ else:
                 ("🧪 Fertilizer Optimization Calculator", "#fertilizer-optimization", "#f857a6"),
                 ("📜 Previous Recommendations", "#previous-recommendations", "#ff5858"),
                 ("🌍 Sustainability Score Tracker", "#sustainability-score-tracker", "#2af598"),
-                ("🗺️ Interactive Farm Map", "#interactive-farm-map", "#ff6b6b"),
+
                 ("👥 Community Insights", "#community-insights", "#4ecdc4"),
                 ("📈 Market Dashboard", "#market-dashboard", "#45b7d1"),
                 ("🤖 AI Chatbot", "#ai-chatbot", "#ff9f1c"),
@@ -1090,17 +1072,12 @@ else:
         st.markdown("""
         ### 🚀 **Advanced Features**
         
-        **4. Interactive Farm Map**
-        - Create visual maps of your farm
-        - Mark soil zones and risk areas
-        - Get location-specific recommendations
-        
-        **5. Community Insights**
+        **4. Community Insights**
         - Share your farming data (anonymous)
         - Learn from other farmers' experiences
         - Get regional yield and price insights
         
-        **6. AI Chatbot**
+        **5. AI Chatbot**
         - Ask any farming question
         - Get instant expert advice
         - Chat history is saved for reference
@@ -1114,7 +1091,6 @@ else:
     - **Share Community Data**: Help other farmers by sharing your yield data
     - **Check Market Forecasts**: Use price predictions to plan your crops
     - **Enable Offline Mode**: Use the app without internet when needed
-    - **Save Your Maps**: Create and save farm maps for future reference
     """)
     
     st.info("🎯 **Quick Start**: Click on any feature button in the sidebar to jump directly to that section!")
@@ -1672,242 +1648,6 @@ else:
             st.success("Great job! Your practices are highly sustainable.")
     else:
         st.info("No sustainability score data found. Log your first season above!")
-
-    # --- Interactive Farm Map ---
-    st.markdown('<div id="interactive-farm-map"></div>', unsafe_allow_html=True)
-    st.markdown("<hr style='border-color: rgba(255,255,255,0.3);'>", unsafe_allow_html=True)
-    st.header("🗺️ Interactive Farm Map")
-    
-    # Farm Map Section
-    st.markdown("""
-        <div class='card-section'>
-            <span class='section-step'>🗺️</span>
-            <span class='section-icon'>🗺️</span>
-            <b style='font-size:1.3em'>Interactive Farm Mapping</b>
-            <div class='section-instructions'>Upload or draw your farm map to get location-specific recommendations and risk analysis.</div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Map creation options
-    map_option = st.radio(
-        "Choose map creation method:",
-        ["Create New Map", "Load Existing Map", "Upload Farm Image"],
-        horizontal=True
-    )
-    
-    if map_option == "Create New Map":
-        # Get farm coordinates
-        col1, col2 = st.columns(2)
-        with col1:
-            farm_lat = st.number_input("Farm Latitude", value=12.9716, min_value=-90.0, max_value=90.0, step=0.0001)
-        with col2:
-            farm_lon = st.number_input("Farm Longitude", value=77.5946, min_value=-180.0, max_value=180.0, step=0.0001)
-        
-        # Create interactive map
-        m = folium.Map(
-            location=[farm_lat, farm_lon],
-            zoom_start=15,
-            tiles='OpenStreetMap'
-        )
-        
-        # Add farm boundary (example)
-        farm_boundary = folium.Rectangle(
-            bounds=[[farm_lat-0.001, farm_lon-0.001], [farm_lat+0.001, farm_lon+0.001]],
-            color='green',
-            fill=True,
-            fillColor='lightgreen',
-            fillOpacity=0.3,
-            popup='Your Farm'
-        )
-        farm_boundary.add_to(m)
-        
-        # Add soil zones
-        soil_zones = [
-            {"lat": farm_lat-0.0005, "lon": farm_lon-0.0005, "soil": "Clay", "color": "brown"},
-            {"lat": farm_lat+0.0005, "lon": farm_lon-0.0005, "soil": "Sandy", "color": "yellow"},
-            {"lat": farm_lat-0.0005, "lon": farm_lon+0.0005, "soil": "Loamy", "color": "green"},
-            {"lat": farm_lat+0.0005, "lon": farm_lon+0.0005, "soil": "Clay", "color": "brown"}
-        ]
-        
-        for zone in soil_zones:
-            folium.CircleMarker(
-                location=[zone["lat"], zone["lon"]],
-                radius=20,
-                popup=f"Soil Type: {zone['soil']}",
-                color=zone["color"],
-                fill=True,
-                fillColor=zone["color"],
-                fillOpacity=0.7
-            ).add_to(m)
-        
-        # Add risk areas
-        risk_areas = [
-            {"lat": farm_lat-0.0003, "lon": farm_lon+0.0003, "risk": "Erosion Risk", "color": "red"},
-            {"lat": farm_lat+0.0003, "lon": farm_lon-0.0003, "risk": "Waterlogging", "color": "blue"}
-        ]
-        
-        for area in risk_areas:
-            folium.Marker(
-                location=[area["lat"], area["lon"]],
-                popup=f"⚠️ {area['risk']}",
-                icon=folium.Icon(color=area["color"], icon='warning-sign')
-            ).add_to(m)
-        
-        # Display map
-        st_folium(m, width=700, height=500)
-        
-        # Map Legend and Explanation
-        st.markdown("### 🗺️ Map Legend & Features")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **🌱 Soil Zones:**
-            - 🟤 **Brown Circles**: Clay soil areas
-            - 🟡 **Yellow Circles**: Sandy soil areas  
-            - 🟢 **Green Circles**: Loamy soil areas
-            """)
-        
-        with col2:
-            st.markdown("""
-            **⚠️ Risk Areas:**
-            - 🔴 **Red Markers**: Erosion risk zones
-            - 🔵 **Blue Markers**: Waterlogging areas
-            - ⚠️ **Warning Icons**: High-risk locations
-            """)
-        
-        with col3:
-            st.markdown("""
-            **🏡 Farm Features:**
-            - 🟢 **Green Rectangle**: Your farm boundary
-            - 📍 **Markers**: Specific locations
-            - 🗺️ **Interactive**: Click and zoom to explore
-            """)
-        
-        st.info("💡 **Tip**: Click on any marker or zone to see detailed information about that area!")
-        
-        # Save map data
-        if st.button("💾 Save Farm Map"):
-            map_data = {
-                "center": [farm_lat, farm_lon],
-                "soil_zones": soil_zones,
-                "risk_areas": risk_areas,
-                "boundary": [[farm_lat-0.001, farm_lon-0.001], [farm_lat+0.001, farm_lon+0.001]]
-            }
-            
-            with sqlite3.connect(db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT OR REPLACE INTO farm_maps 
-                    (username, farm_name, map_data, recommendations, risk_areas, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    user['username'],
-                    user['farm_name'],
-                    json.dumps(map_data),
-                    json.dumps({"recommendations": ["Plant soybeans in northern section", "Avoid planting in erosion risk area"]}),
-                    json.dumps(risk_areas),
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                ))
-                conn.commit()
-            st.success("✅ Farm map saved successfully!")
-    
-    elif map_option == "Load Existing Map":
-        try:
-            with sqlite3.connect(db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM farm_maps WHERE username = ? ORDER BY updated_at DESC LIMIT 1", (user['username'],))
-                map_record = cursor.fetchone()
-        except Exception as e:
-            st.error(f"Could not load farm map: {e}")
-            map_record = None
-        
-        if map_record:
-            map_data = json.loads(map_record[3])
-            recommendations = json.loads(map_record[4])
-            risk_areas = json.loads(map_record[5])
-            
-            # Recreate map from saved data
-            m = folium.Map(
-                location=map_data["center"],
-                zoom_start=15,
-                tiles='OpenStreetMap'
-            )
-            
-            # Add farm boundary
-            farm_boundary = folium.Rectangle(
-                bounds=map_data["boundary"],
-                color='green',
-                fill=True,
-                fillColor='lightgreen',
-                fillOpacity=0.3,
-                popup='Your Farm'
-            )
-            farm_boundary.add_to(m)
-            
-            # Add soil zones
-            for zone in map_data["soil_zones"]:
-                folium.CircleMarker(
-                    location=[zone["lat"], zone["lon"]],
-                    radius=20,
-                    popup=f"Soil Type: {zone['soil']}",
-                    color=zone["color"],
-                    fill=True,
-                    fillColor=zone["color"],
-                    fillOpacity=0.7
-                ).add_to(m)
-            
-            # Add risk areas
-            for area in risk_areas:
-                folium.Marker(
-                    location=[area["lat"], area["lon"]],
-                    popup=f"⚠️ {area['risk']}",
-                    icon=folium.Icon(color=area["color"], icon='warning-sign')
-                ).add_to(m)
-            
-            st_folium(m, width=700, height=500)
-            
-            # Map Legend for Loaded Map
-            st.markdown("### 🗺️ Your Farm Map Legend")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown("""
-                **🌱 Soil Zones:**
-                - 🟤 **Brown**: Clay soil
-                - 🟡 **Yellow**: Sandy soil  
-                - 🟢 **Green**: Loamy soil
-                """)
-            
-            with col2:
-                st.markdown("""
-                **⚠️ Risk Areas:**
-                - 🔴 **Red**: Erosion risk
-                - 🔵 **Blue**: Waterlogging
-                - ⚠️ **Warning**: High risk
-                """)
-            
-            with col3:
-                st.markdown("""
-                **🏡 Farm Layout:**
-                - 🟢 **Green**: Farm boundary
-                - 📍 **Markers**: Key locations
-                - 🗺️ **Interactive**: Click to explore
-                """)
-            
-            # Display recommendations
-            st.markdown("### 📋 Location-Specific Recommendations")
-            for rec in recommendations["recommendations"]:
-                st.info(f"💡 {rec}")
-        else:
-            st.info("No saved farm map found. Create a new map first!")
-    
-    elif map_option == "Upload Farm Image":
-        uploaded_image = st.file_uploader("Upload Farm Image", type=["jpg", "jpeg", "png"])
-        if uploaded_image:
-            st.image(uploaded_image, caption="Your Farm Image", use_column_width=True)
-            st.info("🔄 Image analysis in progress... This feature will analyze your farm image and create recommendations based on visual soil and terrain analysis.")
 
     # --- Community Insights ---
     st.markdown('<div id="community-insights"></div>', unsafe_allow_html=True)

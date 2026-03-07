@@ -8,8 +8,6 @@ const state = {
     user: null,
     farmSetup: null,
     recommendations: [],
-    leafletMap: null,
-    mapMarkers: [],
     currentPage: 'dashboard',
     language: localStorage.getItem('agri_lang') || 'en',
     isOffline: !navigator.onLine
@@ -2637,79 +2635,6 @@ async function calculateFertilizer() {
 }
 
 // ═══════════════════════════════════════
-//  FARM MAP (Leaflet)
-// ═══════════════════════════════════════
-
-function createFarmMap() {
-    const lat = parseFloat(document.getElementById('farm-lat').value) || 12.9716;
-    const lon = parseFloat(document.getElementById('farm-lon').value) || 77.5946;
-    const container = document.getElementById('farm-map-container');
-    container.innerHTML = ''; // reset
-
-    if (state.leafletMap) { state.leafletMap.remove(); state.leafletMap = null; }
-
-    state.leafletMap = L.map(container).setView([lat, lon], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(state.leafletMap);
-
-    // Farm center marker
-    L.marker([lat, lon]).addTo(state.leafletMap)
-        .bindPopup(`<b>Farm Center</b><br>Lat: ${lat}<br>Lon: ${lon}`).openPopup();
-
-    // Simulated soil zones
-    const zones = [
-        { offset: [0.005, 0.005], color: '#8B4513', label: 'Clay Zone', radius: 200 },
-        { offset: [-0.004, 0.006], color: '#C2B280', label: 'Sandy Zone', radius: 180 },
-        { offset: [0.003, -0.004], color: '#228B22', label: 'Loamy Zone', radius: 250 },
-        { offset: [-0.006, -0.003], color: '#dc2626', label: 'Erosion Risk', radius: 120 },
-        { offset: [0.007, 0.002], color: '#2563eb', label: 'Waterlogging Risk', radius: 100 }
-    ];
-    zones.forEach(z => {
-        L.circle([lat + z.offset[0], lon + z.offset[1]], { color: z.color, fillColor: z.color, fillOpacity: 0.25, radius: z.radius })
-            .addTo(state.leafletMap).bindPopup(z.label);
-    });
-
-    // Show recommendations
-    const recCard = document.getElementById('map-recs-card');
-    recCard.style.display = '';
-    document.getElementById('map-rec-content').innerHTML = `
-        <ul style="padding-left:1.25rem;font-size:0.9rem;line-height:1.8">
-            <li><strong>Clay zone:</strong> Good for rice and wheat — ensure drainage</li>
-            <li><strong>Sandy zone:</strong> Ideal for root crops — add organic matter</li>
-            <li><strong>Loamy zone:</strong> Versatile — great for most crops</li>
-            <li><strong>Erosion risk:</strong> Plant cover crops, build terraces</li>
-            <li><strong>Waterlogging:</strong> Improve drainage; avoid flood-sensitive crops</li>
-        </ul>`;
-    toast('Farm map created! 🗺️', 'success');
-}
-
-async function loadSavedMap() {
-    try {
-        const data = await fetch(`${API}/farm_map/${state.user?.username || 'anonymous'}`).then(r => r.json());
-        if (data.map_data) {
-            document.getElementById('farm-lat').value = data.map_data.lat || 12.9716;
-            document.getElementById('farm-lon').value = data.map_data.lon || 77.5946;
-            createFarmMap();
-            toast('Map loaded', 'success');
-        } else {
-            toast('No saved map found', 'info');
-        }
-    } catch { toast('Could not load map', 'error'); }
-}
-
-async function saveFarmMap() {
-    try {
-        await fetchAPI('/farm_map', {
-            username: state.user?.username || 'anonymous',
-            farm_name: state.user?.farm_name || 'My Farm',
-            map_data: { lat: parseFloat(document.getElementById('farm-lat').value), lon: parseFloat(document.getElementById('farm-lon').value) },
-            recommendations: [],
-            risk_areas: []
-        });
-        toast('Map saved! 💾', 'success');
-    } catch { toast('Could not save map', 'error'); }
-}
-
-// ═══════════════════════════════════════
 //  SUSTAINABILITY
 // ═══════════════════════════════════════
 
@@ -4989,7 +4914,6 @@ const pageNameMap = {
     'recommendation': 'AI Recommendations',
     'rotation': 'Crop Planner',
     'fertilizer': 'Fertilizer Calculator',
-    'farm-map': 'Farm Map',
     'sustainability': 'Sustainability',
     'community': 'Community',
     'market': 'Market Forecast',
